@@ -9,7 +9,7 @@ function PlusButton() {
   return (
     <TouchableOpacity
       style={styles.plusButtonWrapper}
-      onPress={() => router.push('/report')}
+      onPress={() => router.push('/(tabs)/plus')}
     >
       <View style={styles.plusButton}>
         <Ionicons name="add" size={32} color="white" />
