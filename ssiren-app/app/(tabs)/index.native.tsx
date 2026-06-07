@@ -118,11 +118,6 @@ export default function HomeScreen() {
             listViewDisplayed="auto"
             fetchDetails
             enablePoweredByContainer={false}
-            renderRightButton={() => (
-              <View style={styles.searchIconWrapper}>
-                <Ionicons name="search" size={18} color="#6b7280" />
-              </View>
-            )}
             query={{
               key: googlePlacesApiKey,
               language: 'ko',
@@ -189,6 +184,9 @@ export default function HomeScreen() {
               description: styles.placeDescription,
             }}
           />
+        <View pointerEvents="none" style={styles.searchIconOverlay}>
+          <Ionicons name="search" size={18} color="#6b7280" />
+        </View>
         </View>
 
         <MapView
@@ -199,7 +197,7 @@ export default function HomeScreen() {
           style={styles.mapContainer}
           initialRegion={currentRegion}
           showsUserLocation
-          showsMyLocationButton
+        showsMyLocationButton={false}
         >
           <Marker coordinate={CITY_HALL} title="서울시청" />
           {searchMarker ? (
@@ -258,11 +256,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingRight: 40,
   },
-  searchIconWrapper: {
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 12,
+  searchIconOverlay: {
+    position: 'absolute',
+    right: 12,
+    top: 13,
+    height: 18,
+    width: 18,
   },
   placeListView: {
     marginTop: 8,
