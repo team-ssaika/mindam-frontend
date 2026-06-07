@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-export default function HomeScreenWeb() {
+export default function HomeMapScreenWeb() {
   return (
     <View style={styles.container}>
       <View style={styles.messageCard}>
