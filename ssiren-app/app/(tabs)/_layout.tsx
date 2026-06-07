@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -19,9 +19,12 @@ function PlusButton() {
 }
 
 export default function TabLayout() {
+  const pathname = usePathname();
+  const isReportFlow = pathname === '/plus' || pathname === '/(tabs)/plus';
+
   return (
     <>
-      <Header />
+      {!isReportFlow ? <Header /> : null}
       <Tabs
         screenOptions={{
           headerShown: false,
@@ -30,6 +33,7 @@ export default function TabLayout() {
           tabBarStyle: {
             height: 70,
             paddingBottom: 10,
+            display: isReportFlow ? 'none' : 'flex',
           },
         }}
       >
