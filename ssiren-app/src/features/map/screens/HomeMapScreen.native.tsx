@@ -61,6 +61,7 @@ export default function HomeMapScreen() {
     title: string;
   } | null>(null);
   const [isReportSheetVisible, setIsReportSheetVisible] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -162,7 +163,10 @@ export default function HomeMapScreen() {
         duration: 240,
         useNativeDriver: true,
       }),
-    ]).start(() => setIsReportSheetVisible(false));
+    ]).start(() => {
+      setIsReportSheetVisible(false);
+      setIsLiked(false);
+    });
   };
 
   return (
@@ -264,9 +268,7 @@ export default function HomeMapScreen() {
             }}
             onPress={openReportSheet}
           >
-            <View style={styles.reportPinOuter}>
-              <View style={styles.reportPinInner} />
-            </View>
+            <View style={styles.reportPin} />
           </Marker>
           {searchMarker ? (
             <Marker
@@ -341,9 +343,16 @@ export default function HomeMapScreen() {
                 <View style={styles.tagChip}>
                   <Text style={styles.tagChipText}>나도 불편해요 {MOCK_REPORT.empathyCount}</Text>
                 </View>
-                <View style={styles.likeChip}>
-                  <Ionicons name="heart-outline" size={14} color="#4b5563" />
-                </View>
+                <Pressable
+                  style={styles.likeChip}
+                  onPress={() => setIsLiked((prev) => !prev)}
+                >
+                  <Ionicons
+                    name={isLiked ? 'heart' : 'heart-outline'}
+                    size={14}
+                    color={isLiked ? '#6257FF' : '#4b5563'}
+                  />
+                </Pressable>
               </View>
 
               <View style={styles.summaryBox}>
@@ -433,26 +442,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  reportPinOuter: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    justifyContent: 'center',
-    alignItems: 'center',
+  reportPin: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#6257FF',
     shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
     elevation: 3,
-  },
-  reportPinInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#ef4444',
   },
   sheetOverlay: {
     flex: 1,
