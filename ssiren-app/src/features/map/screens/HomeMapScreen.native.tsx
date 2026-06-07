@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   ActivityIndicator,
+  Alert,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -24,7 +24,7 @@ const DEFAULT_DELTA = {
   longitudeDelta: 0.01,
 };
 
-export default function HomeScreen() {
+export default function HomeMapScreen() {
   const mapRef = useRef<MapView | null>(null);
   const [isResolvingCurrentLocation, setIsResolvingCurrentLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{
@@ -151,7 +151,6 @@ export default function HomeScreen() {
                 return;
               }
 
-              // Some responses can miss details; fetch by place_id as fallback.
               if (!data.place_id) {
                 Alert.alert('검색 오류', '장소 좌표를 가져오지 못했습니다.');
                 return;
@@ -184,9 +183,9 @@ export default function HomeScreen() {
               description: styles.placeDescription,
             }}
           />
-        <View pointerEvents="none" style={styles.searchIconOverlay}>
-          <Ionicons name="search" size={18} color="#6b7280" />
-        </View>
+          <View pointerEvents="none" style={styles.searchIconOverlay}>
+            <Ionicons name="search" size={18} color="#6b7280" />
+          </View>
         </View>
 
         <MapView
@@ -197,7 +196,7 @@ export default function HomeScreen() {
           style={styles.mapContainer}
           initialRegion={currentRegion}
           showsUserLocation
-        showsMyLocationButton={false}
+          showsMyLocationButton={false}
         >
           <Marker coordinate={CITY_HALL} title="서울시청" />
           {searchMarker ? (

@@ -1,3 +1,3 @@
-import HomeScreenWeb from './index.web';
+import HomeMapScreen from '../../src/features/map/screens/HomeMapScreen';
 
-export default HomeScreenWeb;
+export default HomeMapScreen;
