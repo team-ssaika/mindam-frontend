@@ -1,0 +1,54 @@
+---
+alwaysApply: true
+description: Generate PR descriptions
+-----------------
+
+When the user enters "/pr" or mentions:
+
+PR
+pr
+pull request
+PR 작성
+PR 생성
+푸시 완료
+push 완료
+머지 전
+
+You should:
+
+Analyze the current branch diff before writing.
+Read and follow the repository template located at:
+.github/PULL_REQUEST_TEMPLATE.md
+Generate a complete PR description using the template.
+Write in Korean.
+Summarize by feature, not by file.
+Focus on implementation details and user-facing changes.
+Fill every section of the template when possible.
+Do not list changed files unless necessary.
+Use concise bullet points.
+Avoid long paragraphs and verbose explanations.
+
+Preferred style:
+
+Good:
+
+Google Maps API 연동
+현재 위치 조회 기능 추가
+장소 검색 결과 마커 표시
+지도 마커 렌더링 최적화
+
+Bad:
+
+Google Maps API를 활용하여 사용자가 현재 위치를 조회할 수 있도록 구현하였습니다.
+검색 결과를 지도에 표시하는 기능을 개발하였습니다.
+지도 렌더링 성능 향상을 위해 최적화를 진행하였습니다.
+
+Formatting rules:
+
+개조식 작성
+항목당 한 문장 이하
+각 섹션당 3~5개 항목 권장
+불필요한 배경 설명 제외
+결과보다 구현 내용 중심 작성
+
+If no diff is available, ask the user for the target branch or current changes before generating the PR description.
