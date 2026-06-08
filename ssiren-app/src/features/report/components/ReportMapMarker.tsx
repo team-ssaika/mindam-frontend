@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
-import { colors } from '../../../design-system/tokens';
+
+const PRIMARY_COLOR = '#6257FF';
 
 export function ReportMapMarker() {
   return <View style={styles.pin} />;
@@ -10,7 +11,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.primary,
+    backgroundColor: PRIMARY_COLOR,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 1 },

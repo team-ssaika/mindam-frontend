@@ -7,7 +7,6 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { colors, spacing } from '../../design-system/tokens';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -94,11 +93,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(17,24,39,0.22)',
   },
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     minHeight: '38%',
-    paddingHorizontal: spacing.screenHorizontal,
+    paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 24,
   },
