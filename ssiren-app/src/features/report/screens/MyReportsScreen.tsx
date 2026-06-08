@@ -83,7 +83,7 @@ export function MyReportsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable
           style={styles.headerButton}

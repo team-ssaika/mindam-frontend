@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chip } from '../../../components/ui/Chip';
 import { SummaryBox } from '../../../components/ui/SummaryBox';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
@@ -45,6 +45,8 @@ export function MyReportDetailScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditVisible, setIsEditVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const insets = useSafeAreaInsets();
+  const showDeleteButton = detail ? canDeleteReport(detail.report.status) : false;
 
   const loadDetail = useCallback(async () => {
     const id = Number(reportId);
@@ -185,7 +187,10 @@ export function MyReportDetailScreen() {
         <>
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            !showDeleteButton ? { paddingBottom: insets.bottom + 32 } : null,
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.title}>{detail.report.title}</Text>
@@ -311,7 +316,7 @@ export function MyReportDetailScreen() {
 
         </ScrollView>
 
-        {canDeleteReport(detail.report.status) ? (
+        {showDeleteButton ? (
           <SafeAreaView edges={['bottom']} style={styles.footer}>
             <Pressable
               style={[styles.deleteButton, isDeleting ? styles.deleteButtonDisabled : null]}

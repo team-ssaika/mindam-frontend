@@ -443,7 +443,7 @@ export function ReportCreateFlowScreen() {
                 ) : null}
               </View>
             ) : (
-              <View style={styles.footer}>
+              <View style={[styles.footer, { paddingBottom: insets.bottom + 18 }]}>
                 {step === 2 ? (
                   <ActionButton label="제출" onPress={handleSubmit} variant="primary" />
                 ) : null}

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { myPageMenuItems, myPageMock } from '../mocks/myPageMock';
 import { fetchMyProfile } from '../api/userApi';
 
@@ -18,6 +19,7 @@ const QUICK_ACTIONS = [
 
 export function MyPageScreen() {
   const router = useRouter();
+  const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [name, setName] = useState(myPageMock.name);
   const [email, setEmail] = useState(myPageMock.email);
 
@@ -54,7 +56,7 @@ export function MyPageScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.profileSection}>
