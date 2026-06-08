@@ -19,7 +19,9 @@ import { fetchMyReportDetail } from '../api/reportApi';
 import type { MyReportDetail } from '../types/myReportDetail';
 import {
   formatReportDateTime,
+  formatStatusTransition,
   getReportStatusLabel,
+  sortStatusHistories,
 } from '../utils/reportStatus';
 
 const CONTENT_FIELDS = [
@@ -86,6 +88,13 @@ export function MyReportDetailScreen() {
         return value ? [{ label, value }] : [];
       })
     : [];
+
+  const statusHistories = detail ? sortStatusHistories(detail.statusHistories) : [];
+  const activeHistoryIndex = statusHistories.reduce<number>(
+    (activeIndex, history, index) =>
+      history.newStatus === detail?.report.status ? index : activeIndex,
+    statusHistories.length > 0 ? statusHistories.length - 1 : -1
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -212,28 +221,26 @@ export function MyReportDetailScreen() {
             </View>
           </View>
 
-          {detail.statusHistories.length > 0 ? (
+          {statusHistories.length > 0 ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>처리 이력</Text>
               <View style={styles.timelineCard}>
-                {detail.statusHistories.map((history, index) => (
+                {statusHistories.map((history, index) => (
                   <View key={history.id} style={styles.timelineItem}>
                     <View style={styles.timelineLeft}>
                       <View
                         style={[
                           styles.timelineDot,
-                          index === detail.statusHistories.length - 1
-                            ? styles.timelineDotActive
-                            : null,
+                          index === activeHistoryIndex ? styles.timelineDotActive : null,
                         ]}
                       />
-                      {index < detail.statusHistories.length - 1 ? (
+                      {index < statusHistories.length - 1 ? (
                         <View style={styles.timelineLine} />
                       ) : null}
                     </View>
                     <View style={styles.timelineContent}>
                       <Text style={styles.timelineStatus}>
-                        {getReportStatusLabel(history.newStatus)}
+                        {formatStatusTransition(history.previousStatus, history.newStatus)}
                       </Text>
                       <Text style={styles.timelineReason}>{history.reason}</Text>
                       <Text style={styles.timelineDate}>

@@ -15,6 +15,23 @@ export function getReportStatusLabel(status: ReportStatus) {
   return REPORT_STATUS_LABEL[status] ?? status;
 }
 
+export function formatStatusTransition(
+  previousStatus: ReportStatus | null,
+  newStatus: ReportStatus
+) {
+  if (!previousStatus) {
+    return getReportStatusLabel(newStatus);
+  }
+
+  return `${getReportStatusLabel(previousStatus)} → ${getReportStatusLabel(newStatus)}`;
+}
+
+export function sortStatusHistories<T extends { createdAt: string }>(histories: T[]) {
+  return [...histories].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+}
+
 export function formatReportDate(isoDate: string) {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) {
