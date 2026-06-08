@@ -7,7 +7,7 @@ export type ReportDetail = {
   address: string;
   summary: string;
   category: string;
-  empathyCount: number;
+  yesCount: number;
   organization: string;
   status: string;
 };

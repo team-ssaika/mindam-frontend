@@ -48,7 +48,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
 
       <View style={styles.tagRow}>
         <Chip variant="tag" label={report.category} />
-        <Chip variant="tag" label={`\uB098\uB3C4 \uBD88\uD3B8\uD574\uC694 ${report.empathyCount}`} />
+        <Chip variant="tag" label={`\uB098\uB3C4 \uBD88\uD3B8\uD574\uC694 ${report.yesCount}`} />
         <Pressable
           style={styles.likeChip}
           onPress={() => setIsLiked((prev) => !prev)}
