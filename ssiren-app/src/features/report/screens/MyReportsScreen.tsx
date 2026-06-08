@@ -87,7 +87,12 @@ export function MyReportsScreen() {
           style={styles.list}
           data={reports}
           keyExtractor={(item) => String(item.report.id)}
-          renderItem={({ item }) => <MyReportListItem item={item} />}
+          renderItem={({ item }) => (
+            <MyReportListItem
+              item={item}
+              onPress={(reportId) => router.push(`/my-reports/${reportId}`)}
+            />
+          )}
           contentContainerStyle={[
             styles.listContent,
             reports.length === 0 ? styles.emptyListContent : null,

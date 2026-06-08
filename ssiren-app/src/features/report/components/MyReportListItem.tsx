@@ -1,17 +1,21 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Chip } from '../../../components/ui/Chip';
 import type { MyReportItem } from '../types/myReport';
 import { formatReportDate, getReportStatusLabel } from '../utils/reportStatus';
 
 type MyReportListItemProps = {
   item: MyReportItem;
+  onPress?: (reportId: number) => void;
 };
 
-export function MyReportListItem({ item }: MyReportListItemProps) {
+export function MyReportListItem({ item, onPress }: MyReportListItemProps) {
   const { report, category, department } = item;
 
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={styles.card}
+      onPress={() => onPress?.(report.id)}
+    >
       <Text style={styles.title} numberOfLines={2}>
         {report.title}
       </Text>
@@ -30,7 +34,7 @@ export function MyReportListItem({ item }: MyReportListItemProps) {
         <Text style={styles.metaDot}>·</Text>
         <Text style={styles.metaText}>{formatReportDate(report.createdAt)}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 

@@ -27,3 +27,24 @@ export function formatReportDate(isoDate: string) {
     day: '2-digit',
   });
 }
+
+export function formatReportDateTime(isoDate: string) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return isoDate;
+  }
+
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export const REACTION_TYPE_LABEL = {
+  YES: '공감',
+  NO: '비공감',
+  UNKNOWN: '모름',
+} as const;
