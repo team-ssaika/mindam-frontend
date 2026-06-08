@@ -5,12 +5,12 @@ import {
   Alert,
   Image,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   checkUserTermsAgreement,
   mockKakaoLogin,

@@ -17,6 +17,7 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Ionicons } from '@expo/vector-icons';
+import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 
 const CITY_HALL = {
   latitude: 37.5665,
@@ -45,6 +46,7 @@ const MOCK_REPORT = {
 };
 
 export default function HomeMapScreen() {
+  const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const mapRef = useRef<MapView | null>(null);
   const [isResolvingCurrentLocation, setIsResolvingCurrentLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{
@@ -283,7 +285,7 @@ export default function HomeMapScreen() {
         </MapView>
 
         <TouchableOpacity
-          style={styles.currentLocationButton}
+          style={[styles.currentLocationButton, { bottom: tabBarOffset + 24 }]}
           onPress={moveToCurrentLocation}
           disabled={isResolvingCurrentLocation}
         >
@@ -432,7 +434,6 @@ const styles = StyleSheet.create({
   currentLocationButton: {
     position: 'absolute',
     right: 20,
-    bottom: 24,
     width: 54,
     height: 54,
     borderRadius: 16,

@@ -3,6 +3,8 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Header from '../../src/components/Header';
+import { TAB_BAR_TOP_PADDING } from '../../src/constants/layout';
+import { useTabBarMetrics } from '../../src/hooks/useTabBarMetrics';
 
 function PlusButton() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function TabLayout() {
   const pathname = usePathname();
   const isReportFlow = pathname === '/plus' || pathname === '/(tabs)/plus';
   const isSettingsScreen = pathname === '/settings' || pathname === '/(tabs)/settings';
+  const { height: tabBarHeight, insets } = useTabBarMetrics();
 
   return (
     <>
@@ -32,8 +35,9 @@ export default function TabLayout() {
           tabBarActiveTintColor: '#6C63FF',
           tabBarInactiveTintColor: '#999',
           tabBarStyle: {
-            height: 70,
-            paddingBottom: 10,
+            height: tabBarHeight,
+            paddingTop: TAB_BAR_TOP_PADDING,
+            paddingBottom: insets.bottom,
             display: isReportFlow ? 'none' : 'flex',
           },
         }}
@@ -51,6 +55,7 @@ export default function TabLayout() {
           name="chatbot"
           options={{
             title: '챗봇',
+            tabBarHideOnKeyboard: true,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="chatbubble-ellipses" size={size} color={color} />
             ),

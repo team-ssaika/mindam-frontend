@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { ConfirmBottomSheet } from '../components/ConfirmBottomSheet';
 import { SettingsCard } from '../components/SettingsCard';
 import { SettingsRow } from '../components/SettingsRow';
@@ -11,6 +13,7 @@ type SheetType = 'logout' | 'withdraw' | null;
 
 export function SettingsScreen() {
   const router = useRouter();
+  const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -70,7 +73,7 @@ export function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable
@@ -92,7 +95,7 @@ export function SettingsScreen() {
 
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
           showsVerticalScrollIndicator={false}
         >
           <SettingsCard>

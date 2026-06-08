@@ -11,7 +11,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type ChatMessage = {
   id: string;
@@ -19,11 +18,12 @@ type ChatMessage = {
   text: string;
 };
 
+const INPUT_BAR_HEIGHT = 56;
+const INPUT_BOTTOM_GAP = 20;
+
 export default function Chatbot() {
-  const insets = useSafeAreaInsets();
-  const TAB_BAR_HEIGHT = 30;
-  const [inputText, setInputText] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'bot-initial',
@@ -34,15 +34,9 @@ export default function Chatbot() {
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
-  const keyboardBottomOffset =
-    keyboardHeight > 0
-      ? Math.max(
-          keyboardHeight -
-            (Platform.OS === 'ios' ? insets.bottom : 5) -
-            TAB_BAR_HEIGHT / 2,
-          0
-        )
-      : 0;
+
+  // 탭 화면은 탭바 위 영역이지만, 키보드 높이만큼 하단 패딩을 주면 입력창이 키보드 바로 위에 붙음
+  const keyboardOverlap = keyboardHeight;
 
   const handleSend = () => {
     const trimmed = inputText.trim();
@@ -78,7 +72,7 @@ export default function Chatbot() {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     });
-  }, [messages]);
+  }, [messages, keyboardOverlap]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -98,11 +92,12 @@ export default function Chatbot() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: keyboardOverlap }]}>
       <ScrollView
         ref={(ref) => {
           scrollRef.current = ref;
         }}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -132,17 +127,7 @@ export default function Chatbot() {
         )}
       </ScrollView>
 
-      <View
-        style={[
-          styles.inputWrapper,
-          {
-            bottom:
-              keyboardHeight > 0
-                ? keyboardBottomOffset + 2
-                : TAB_BAR_HEIGHT,
-          },
-        ]}
-      >
+      <View style={styles.inputWrapper}>
         <View style={styles.inputContainer}>
           <TextInput
             value={inputText}
@@ -183,10 +168,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9f9fb',
   },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 120,
+    paddingBottom: 16,
   },
   userBubbleRow: {
     alignItems: 'flex-end',
@@ -221,14 +209,6 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: 'center',
   },
-  ssirenLogoChip: {
-    height: 24,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   ssirenLogoText: {
     fontSize: 11,
     fontWeight: '700',
@@ -236,13 +216,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   inputWrapper: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: INPUT_BOTTOM_GAP,
   },
   inputContainer: {
-    height: 56,
+    height: INPUT_BAR_HEIGHT,
     borderRadius: 28,
     backgroundColor: '#ececef',
     paddingHorizontal: 16,
@@ -266,7 +245,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 88,
+    bottom: INPUT_BAR_HEIGHT + INPUT_BOTTOM_GAP + 16,
     alignItems: 'center',
     zIndex: 20,
   },
