@@ -360,7 +360,7 @@ export default function HomeMapScreen() {
                 </View>
                 <View style={styles.tagChip}>
                   <Text style={styles.tagChipText}>
-                    나도 불편해요 {selectedReportDetail?.empathyCount}
+                    나도 불편해요 {selectedReportDetail?.yesCount ?? 0}
                   </Text>
                 </View>
                 <Pressable

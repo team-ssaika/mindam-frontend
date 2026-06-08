@@ -75,7 +75,7 @@ export function toMapReportDetail(
     address: report.roadAddress || report.jibunAddress,
     summary: report.contents.summary ?? issueGroup.content,
     category: category.categoryName,
-    empathyCount: issueGroup.yesCount,
+    yesCount: issueGroup.yesCount ?? 0,
     organization: issueGroup.title,
     status: getReportStatusLabel(report.status),
   };

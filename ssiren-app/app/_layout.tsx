@@ -1,9 +1,13 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
-import { Image } from 'react-native';
+import { Image, Platform } from 'react-native';
 
 export default function RootLayout() {
   useEffect(() => {
+    if (Platform.OS === 'web' || typeof Image.resolveAssetSource !== 'function') {
+      return;
+    }
+
     const loginLogoUri = Image.resolveAssetSource(
       require('../src/assets/ssiren-login.png')
     ).uri;
