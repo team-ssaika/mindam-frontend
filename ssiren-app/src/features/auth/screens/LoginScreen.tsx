@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   checkUserTermsAgreement,
-  mockKakaoLogin,
+  kakaoLogin,
   submitTermsAgreement,
 } from '../services/authService';
 import type { TermsAgreementState, TermsKey } from '../types/auth.types';
@@ -50,7 +50,7 @@ export function LoginScreen() {
     setTermsErrorMessage(null);
 
     try {
-      const loginResult = await mockKakaoLogin();
+      const loginResult = await kakaoLogin();
       const termsStatus = await checkUserTermsAgreement(loginResult);
 
       if (termsStatus.needsTermsAgreement) {

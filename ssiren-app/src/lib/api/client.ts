@@ -2,6 +2,8 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+let runtimeAccessToken: string | null = null;
+
 function getDevMachineHost() {
   const hostUri =
     Constants.expoConfig?.hostUri ??
@@ -49,8 +51,13 @@ export const apiClient = axios.create({
   },
 });
 
+export function setApiAccessToken(accessToken: string | null) {
+  runtimeAccessToken = accessToken;
+}
+
 apiClient.interceptors.request.use((config) => {
-  const accessToken = process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
+  const accessToken =
+    runtimeAccessToken ?? process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
