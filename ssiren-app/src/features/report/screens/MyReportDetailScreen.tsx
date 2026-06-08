@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -15,10 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Chip } from '../../../components/ui/Chip';
 import { SummaryBox } from '../../../components/ui/SummaryBox';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { fetchMyReportDetail } from '../api/reportApi';
+import { deleteMyReport, fetchMyReportDetail } from '../api/reportApi';
 import { MyReportEditSheet } from '../components/MyReportEditSheet';
 import type { MyReportDetail } from '../types/myReportDetail';
 import {
+  canDeleteReport,
   canEditReport,
   formatReportDateTime,
   formatStatusTransition,
@@ -42,6 +44,7 @@ export function MyReportDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isEditVisible, setIsEditVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadDetail = useCallback(async () => {
     const id = Number(reportId);
@@ -82,6 +85,45 @@ export function MyReportDetailScreen() {
     loadDetail();
   }, [loadDetail]);
 
+  const handleDeletePress = useCallback(() => {
+    if (!detail || isDeleting) {
+      return;
+    }
+
+    Alert.alert(
+      '민원 삭제',
+      '삭제한 민원은 복구할 수 없어요. 정말 삭제할까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteMyReport(detail.report.id);
+              router.replace('/my-reports');
+            } catch (error) {
+              let message = '민원 삭제에 실패했습니다.';
+              if (axios.isAxiosError(error)) {
+                const apiMessage = error.response?.data?.message;
+                message =
+                  typeof apiMessage === 'string'
+                    ? apiMessage
+                    : error.message || message;
+              } else if (error instanceof Error) {
+                message = error.message;
+              }
+              Alert.alert('삭제 실패', message);
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [detail, isDeleting, router]);
+
   const summaryText =
     detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
 
@@ -117,11 +159,11 @@ export function MyReportDetailScreen() {
         <Text style={styles.headerTitle}>민원 상세</Text>
         {detail && canEditReport(detail.report.status) ? (
           <Pressable
-            style={styles.headerButton}
+            style={styles.headerTextButton}
             onPress={() => setIsEditVisible(true)}
             accessibilityLabel="민원 수정"
           >
-            <Ionicons name="create-outline" size={22} color="#6257FF" />
+            <Text style={styles.headerActionText}>수정</Text>
           </Pressable>
         ) : (
           <View style={styles.headerButton} />
@@ -140,6 +182,7 @@ export function MyReportDetailScreen() {
           </Pressable>
         </View>
       ) : detail ? (
+        <>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -267,6 +310,23 @@ export function MyReportDetailScreen() {
           ) : null}
 
         </ScrollView>
+
+        {canDeleteReport(detail.report.status) ? (
+          <SafeAreaView edges={['bottom']} style={styles.footer}>
+            <Pressable
+              style={[styles.deleteButton, isDeleting ? styles.deleteButtonDisabled : null]}
+              onPress={handleDeletePress}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.deleteButtonText}>삭제</Text>
+              )}
+            </Pressable>
+          </SafeAreaView>
+        ) : null}
+        </>
       ) : null}
 
       {detail && canEditReport(detail.report.status) ? (
@@ -301,6 +361,18 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTextButton: {
+    minWidth: 40,
+    height: 40,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerActionText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6257FF',
   },
   headerTitle: {
     fontSize: 18,
@@ -520,6 +592,28 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  footer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: '#F5F6FA',
+    borderTopWidth: 1,
+    borderTopColor: '#E7EAF0',
+  },
+  deleteButton: {
+    minHeight: 56,
+    borderRadius: 18,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonDisabled: {
+    opacity: 0.7,
+  },
+  deleteButtonText: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
   },

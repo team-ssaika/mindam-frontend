@@ -19,6 +19,10 @@ export function canEditReport(status: ReportStatus) {
   return status === 'SUBMITTED';
 }
 
+export function canDeleteReport(status: ReportStatus) {
+  return status === 'SUBMITTED';
+}
+
 export function formatStatusTransition(
   previousStatus: ReportStatus | null,
   newStatus: ReportStatus
