@@ -17,6 +17,14 @@ import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Ionicons } from '@expo/vector-icons';
+import { fetchPublicReports } from '../../report/api/reportApi';
+import { ReportMapMarker } from '../../report/components/ReportMapMarker';
+import type { PublicReportItem } from '../../report/types/publicReport';
+import type { ReportDetail } from '../../report/types/reportDetail';
+import {
+  hasValidReportCoordinate,
+  toMapReportDetail,
+} from '../../report/utils/publicReportMap';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 
 const CITY_HALL = {
@@ -30,20 +38,6 @@ const DEFAULT_DELTA = {
 };
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-
-const MOCK_REPORT = {
-  id: 'report-mock-1',
-  title: '유성구 궁동 도로 파손 의심',
-  riskLabel: '위험지수 82',
-  timeAgo: '10분 전',
-  distance: '70m',
-  address: '대전 유성구 궁동 어쩌구 길 10-1 (궁동)',
-  summary: '도로 파손으로 차량 통행과 보행자 안전에 주의가 필요해요. 동일 위치에서 반복 제보되고 있어요.',
-  category: '도로파손',
-  empathyCount: 34,
-  organization: '유성구청 도로관리팀',
-  status: '접수 전',
-};
 
 export default function HomeMapScreen() {
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
@@ -62,6 +56,8 @@ export default function HomeMapScreen() {
     longitude: number;
     title: string;
   } | null>(null);
+  const [publicReports, setPublicReports] = useState<PublicReportItem[]>([]);
+  const [selectedReport, setSelectedReport] = useState<PublicReportItem | null>(null);
   const [isReportSheetVisible, setIsReportSheetVisible] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -69,15 +65,9 @@ export default function HomeMapScreen() {
   const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
   const googlePlacesApiKey =
     process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? googleMapsApiKey;
-  const sampleReportCoordinate = userLocation
-    ? {
-        latitude: userLocation.latitude + 0.0009,
-        longitude: userLocation.longitude + 0.0007,
-      }
-    : {
-        latitude: CITY_HALL.latitude + 0.0009,
-        longitude: CITY_HALL.longitude + 0.0007,
-      };
+  const selectedReportDetail: ReportDetail | null = selectedReport
+    ? toMapReportDetail(selectedReport, userLocation)
+    : null;
 
   const moveToCoordinate = (
     latitude: number,
@@ -142,7 +132,30 @@ export default function HomeMapScreen() {
     moveToCurrentLocation();
   }, []);
 
-  const openReportSheet = () => {
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchPublicReports({ page: 0, size: 50, sort: 'createdAt,desc' })
+      .then((data) => {
+        if (!isMounted) return;
+        setPublicReports(
+          Array.isArray(data.contents)
+            ? data.contents.filter(hasValidReportCoordinate)
+            : []
+        );
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setPublicReports([]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const openReportSheet = (item: PublicReportItem) => {
+    setSelectedReport(item);
     backdropOpacity.setValue(1);
     sheetTranslateY.setValue(SCREEN_HEIGHT);
     setIsReportSheetVisible(true);
@@ -168,6 +181,7 @@ export default function HomeMapScreen() {
     ]).start(() => {
       setIsReportSheetVisible(false);
       setIsLiked(false);
+      setSelectedReport(null);
     });
   };
 
@@ -262,16 +276,18 @@ export default function HomeMapScreen() {
           showsUserLocation
           showsMyLocationButton={false}
         >
-          <Marker coordinate={CITY_HALL} title="서울시청" />
-          <Marker
-            coordinate={{
-              latitude: sampleReportCoordinate.latitude,
-              longitude: sampleReportCoordinate.longitude,
-            }}
-            onPress={openReportSheet}
-          >
-            <View style={styles.reportPin} />
-          </Marker>
+          {publicReports.map((item) => (
+            <Marker
+              key={item.report.id}
+              coordinate={{
+                latitude: item.report.latitude,
+                longitude: item.report.longitude,
+              }}
+              onPress={() => openReportSheet(item)}
+            >
+              <ReportMapMarker />
+            </Marker>
+          ))}
           {searchMarker ? (
             <Marker
               coordinate={{
@@ -299,7 +315,7 @@ export default function HomeMapScreen() {
         <Modal
           animationType="none"
           transparent
-          visible={isReportSheetVisible}
+          visible={isReportSheetVisible && selectedReportDetail != null}
           onRequestClose={closeReportSheet}
         >
           <View style={styles.sheetOverlay}>
@@ -317,7 +333,7 @@ export default function HomeMapScreen() {
             >
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeaderRow}>
-                <Text style={styles.sheetTitle}>{MOCK_REPORT.title}</Text>
+                <Text style={styles.sheetTitle}>{selectedReportDetail?.title}</Text>
                 <Pressable
                   style={styles.sheetCloseButton}
                   onPress={closeReportSheet}
@@ -329,21 +345,23 @@ export default function HomeMapScreen() {
               <View style={styles.metaRow}>
                 <View style={styles.riskChip}>
                   <Ionicons name="warning-outline" size={13} color="#dc2626" />
-                  <Text style={styles.riskChipText}>{MOCK_REPORT.riskLabel}</Text>
+                  <Text style={styles.riskChipText}>{selectedReportDetail?.riskLabel}</Text>
                 </View>
                 <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.metaText}>{MOCK_REPORT.timeAgo}</Text>
+                <Text style={styles.metaText}>{selectedReportDetail?.timeAgo}</Text>
                 <Text style={styles.metaDot}>•</Text>
-                <Text style={styles.metaText}>{MOCK_REPORT.distance}</Text>
+                <Text style={styles.metaText}>{selectedReportDetail?.distance}</Text>
               </View>
-              <Text style={styles.addressText}>{MOCK_REPORT.address}</Text>
+              <Text style={styles.addressText}>{selectedReportDetail?.address}</Text>
 
               <View style={styles.tagRow}>
                 <View style={styles.tagChip}>
-                  <Text style={styles.tagChipText}>{MOCK_REPORT.category}</Text>
+                  <Text style={styles.tagChipText}>{selectedReportDetail?.category}</Text>
                 </View>
                 <View style={styles.tagChip}>
-                  <Text style={styles.tagChipText}>나도 불편해요 {MOCK_REPORT.empathyCount}</Text>
+                  <Text style={styles.tagChipText}>
+                    나도 불편해요 {selectedReportDetail?.empathyCount}
+                  </Text>
                 </View>
                 <Pressable
                   style={styles.likeChip}
@@ -359,14 +377,14 @@ export default function HomeMapScreen() {
 
               <View style={styles.summaryBox}>
                 <Text style={styles.summaryTitle}>AI 요약</Text>
-                <Text style={styles.summaryText}>{MOCK_REPORT.summary}</Text>
+                <Text style={styles.summaryText}>{selectedReportDetail?.summary}</Text>
               </View>
 
               <View style={styles.organizationRow}>
                 <Ionicons name="business-outline" size={16} color="#6b7280" />
-                <Text style={styles.organizationText}>{MOCK_REPORT.organization}</Text>
+                <Text style={styles.organizationText}>{selectedReportDetail?.organization}</Text>
                 <View style={styles.statusChip}>
-                  <Text style={styles.statusText}>{MOCK_REPORT.status}</Text>
+                  <Text style={styles.statusText}>{selectedReportDetail?.status}</Text>
                 </View>
               </View>
             </Animated.View>
@@ -442,17 +460,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F6FF',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  reportPin: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#6257FF',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 3,
-    elevation: 3,
   },
   sheetOverlay: {
     flex: 1,

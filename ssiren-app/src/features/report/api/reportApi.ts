@@ -3,7 +3,17 @@ import type { ApiResponse, PageResponse } from '../../../lib/api/types';
 import type { MyReportDetail } from '../types/myReportDetail';
 import type { MyReportItem, MyReportsQuery } from '../types/myReport';
 import type { MyReportDeleteResponse } from '../types/myReportDelete';
+import type { PublicReportItem, PublicReportsQuery } from '../types/publicReport';
 import type { MyReportUpdateRequest, MyReportUpdateResponse } from '../types/myReportUpdate';
+
+export async function fetchPublicReports(params?: PublicReportsQuery) {
+  const response = await apiClient.get<ApiResponse<PageResponse<PublicReportItem>>>(
+    '/api/v1/reports',
+    { params }
+  );
+
+  return response.data.data;
+}
 
 export async function fetchMyReports(params?: MyReportsQuery) {
   const response = await apiClient.get<ApiResponse<PageResponse<MyReportItem>>>(
