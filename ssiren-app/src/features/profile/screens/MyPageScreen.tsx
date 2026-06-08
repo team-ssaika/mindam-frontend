@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { myPageMenuItems, myPageMock } from '../mocks/myPageMock';
+import { fetchMyProfile } from '../api/userApi';
 
 const STATUS_ITEMS = [
   { key: 'pending', label: '접수 대기', count: myPageMock.statusSummary.pending },
@@ -16,6 +18,28 @@ const QUICK_ACTIONS = [
 
 export function MyPageScreen() {
   const router = useRouter();
+  const [name, setName] = useState(myPageMock.name);
+  const [email, setEmail] = useState(myPageMock.email);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchMyProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        setName(data.nickname || name);
+        setEmail(data.email || email);
+      })
+      .catch(() => {
+        // 무시: 목데이터 유지
+      });
+
+    return () => {
+      isMounted = false;
+    };
+    // 초기 진입 시 한 번만 조회
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleActionPress = (id: string) => {
     if (id === 'my-reports') {
@@ -40,7 +64,7 @@ export function MyPageScreen() {
 
         <View style={styles.profileInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{myPageMock.name}</Text>
+            <Text style={styles.name}>{name}</Text>
             <Pressable
               style={styles.editButton}
               onPress={() => {}}
@@ -48,7 +72,7 @@ export function MyPageScreen() {
               <Text style={styles.editButtonText}>수정</Text>
             </Pressable>
           </View>
-          <Text style={styles.email}>{myPageMock.email}</Text>
+          <Text style={styles.email}>{email}</Text>
         </View>
       </View>
 

@@ -64,7 +64,10 @@ export function MyReportsScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <Pressable style={styles.headerButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.headerButton}
+          onPress={() => router.replace('/(tabs)/profile')}
+        >
           <Ionicons name="chevron-back" size={24} color="#1E1E25" />
         </Pressable>
         <Text style={styles.headerTitle}>내 민원함</Text>

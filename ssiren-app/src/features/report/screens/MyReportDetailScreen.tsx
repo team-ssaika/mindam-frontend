@@ -90,7 +90,16 @@ export function MyReportDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
-        <Pressable style={styles.headerButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.headerButton}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+            router.replace('/my-reports');
+          }}
+        >
           <Ionicons name="chevron-back" size={24} color="#1E1E25" />
         </Pressable>
         <Text style={styles.headerTitle}>민원 상세</Text>
