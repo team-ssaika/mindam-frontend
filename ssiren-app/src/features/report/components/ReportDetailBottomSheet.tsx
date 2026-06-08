@@ -4,8 +4,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
 import { Chip } from '../../../components/ui/Chip';
 import { SummaryBox } from '../../../components/ui/SummaryBox';
-import { colors } from '../../../design-system/tokens';
 import type { ReportDetail } from '../types/reportDetail';
+
+const PRIMARY_COLOR = '#6257FF';
 
 type ReportDetailBottomSheetProps = {
   visible: boolean;
@@ -55,7 +56,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
           <Ionicons
             name={isLiked ? 'heart' : 'heart-outline'}
             size={14}
-            color={isLiked ? colors.primary : '#4b5563'}
+            color={isLiked ? PRIMARY_COLOR : '#4b5563'}
           />
         </Pressable>
       </View>
