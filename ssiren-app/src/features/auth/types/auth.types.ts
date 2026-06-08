@@ -5,6 +5,8 @@ export type KakaoLoginResult = {
   isNewUser: boolean;
 };
 
+export type PendingLoginResult = KakaoLoginResult;
+
 export type UserTermsStatus = {
   needsTermsAgreement: boolean;
 };

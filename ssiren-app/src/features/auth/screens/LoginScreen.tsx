@@ -13,10 +13,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   checkUserTermsAgreement,
+  clearRuntimeAuthSession,
   kakaoLogin,
   submitTermsAgreement,
 } from '../services/authService';
-import type { TermsAgreementState, TermsKey } from '../types/auth.types';
+import type { PendingLoginResult, TermsAgreementState, TermsKey } from '../types/auth.types';
 import { TermsAgreementBottomSheet } from '../components/TermsAgreementBottomSheet';
 
 const LOGO_IMAGE = require('../../../assets/ssiren-login.png');
@@ -34,6 +35,7 @@ export function LoginScreen() {
   const [isSubmittingTerms, setIsSubmittingTerms] = useState(false);
   const [termsState, setTermsState] = useState<TermsAgreementState>(INITIAL_TERMS_STATE);
   const [termsErrorMessage, setTermsErrorMessage] = useState<string | null>(null);
+  const [pendingLoginResult, setPendingLoginResult] = useState<PendingLoginResult | null>(null);
 
   const handlePressBrowse = () => {
     // TODO: replace with guest browsing entry flow when route is ready
@@ -54,6 +56,7 @@ export function LoginScreen() {
       const termsStatus = await checkUserTermsAgreement(loginResult);
 
       if (termsStatus.needsTermsAgreement) {
+        setPendingLoginResult(loginResult);
         setTermsState(INITIAL_TERMS_STATE);
         setIsTermsVisible(true);
         return;
@@ -95,7 +98,12 @@ export function LoginScreen() {
     setTermsErrorMessage(null);
 
     try {
-      await submitTermsAgreement(termsState);
+      if (!pendingLoginResult) {
+        throw new Error('pending_login_missing');
+      }
+
+      await submitTermsAgreement(pendingLoginResult, termsState);
+      setPendingLoginResult(null);
       setIsTermsVisible(false);
       router.replace('/(tabs)');
     } catch (error) {
@@ -142,7 +150,12 @@ export function LoginScreen() {
 
       <TermsAgreementBottomSheet
         visible={isTermsVisible}
-        onClose={() => setIsTermsVisible(false)}
+        onClose={() => {
+          setIsTermsVisible(false);
+          setPendingLoginResult(null);
+          clearRuntimeAuthSession();
+          setTermsState(INITIAL_TERMS_STATE);
+        }}
         onSubmit={handleSubmitTerms}
         onToggleAll={handleToggleAllTerms}
         onToggleItem={handleToggleTerm}

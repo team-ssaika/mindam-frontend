@@ -6,6 +6,7 @@ import { apiClient, setApiAccessToken } from '../../../lib/api/client';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
   KakaoLoginResult,
+  PendingLoginResult,
   TermsAgreementState,
   UserTermsStatus,
 } from '../types/auth.types';
@@ -18,6 +19,14 @@ type BackendTokenResponse = {
   refreshToken: string;
   tokenType: string;
   isNewUser: boolean;
+};
+
+type UserConsentResponse = {
+  id: number;
+  locationAgreed: boolean;
+  sensitiveInfoAgreed: boolean;
+  sensitiveInfoAgreedAt: string | null;
+  updatedAt: string;
 };
 
 let isKakaoInitialized = false;
@@ -73,18 +82,29 @@ export async function restoreAuthSession() {
   return accessToken;
 }
 
-export async function kakaoLogin(): Promise<KakaoLoginResult> {
+export function clearRuntimeAuthSession() {
+  setApiAccessToken(null);
+}
+
+export async function kakaoLogin(): Promise<PendingLoginResult> {
   ensureKakaoInitialized();
 
   const kakaoToken = await kakaoSdkLogin();
   const backendTokens = await loginToBackend(kakaoToken.accessToken);
-  await persistBackendTokens(backendTokens);
+
+  if (!backendTokens.isNewUser) {
+    await persistBackendTokens(backendTokens);
+  }
 
   return backendTokens;
 }
 
+export async function completeLogin(tokens: PendingLoginResult) {
+  await persistBackendTokens(tokens);
+}
+
 export async function checkUserTermsAgreement(
-  loginResult: KakaoLoginResult
+  loginResult: PendingLoginResult
 ): Promise<UserTermsStatus> {
   return {
     needsTermsAgreement: loginResult.isNewUser,
@@ -92,11 +112,23 @@ export async function checkUserTermsAgreement(
 }
 
 export async function submitTermsAgreement(
+  loginResult: PendingLoginResult,
   agreement: TermsAgreementState
 ): Promise<void> {
   if (!agreement.service || !agreement.location || !agreement.privacy) {
     throw new Error('required_terms_missing');
   }
 
-  // TODO: connect to the backend consent endpoint when it is available.
+  setApiAccessToken(loginResult.accessToken);
+
+  try {
+    await apiClient.put<ApiResponse<UserConsentResponse>>('/api/v1/users/me/consents', {
+      locationAgreed: agreement.location,
+      sensitiveInfoAgreed: agreement.privacy,
+    });
+    await completeLogin(loginResult);
+  } catch (error) {
+    setApiAccessToken(null);
+    throw error;
+  }
 }
