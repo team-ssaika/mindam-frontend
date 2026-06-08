@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Image } from 'react-native';
+import { restoreAuthSession } from '../src/features/auth/services/authService';
 
 export default function RootLayout() {
   useEffect(() => {
@@ -16,6 +17,10 @@ export default function RootLayout() {
         console.log('[App] logo preload skipped', error);
       }
     );
+
+    restoreAuthSession().catch((error: unknown) => {
+      console.log('[App] auth session restore skipped', error);
+    });
   }, []);
 
   return (

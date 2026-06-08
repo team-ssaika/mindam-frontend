@@ -1,8 +1,11 @@
 export type KakaoLoginResult = {
   accessToken: string;
-  kakaoId: string;
-  nickname: string;
+  refreshToken: string;
+  tokenType: string;
+  isNewUser: boolean;
 };
+
+export type PendingLoginResult = KakaoLoginResult;
 
 export type UserTermsStatus = {
   needsTermsAgreement: boolean;
