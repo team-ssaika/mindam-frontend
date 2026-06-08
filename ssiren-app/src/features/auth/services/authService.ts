@@ -86,6 +86,22 @@ export function clearRuntimeAuthSession() {
   setApiAccessToken(null);
 }
 
+async function clearStoredAuthSession() {
+  setApiAccessToken(null);
+  await Promise.all([
+    SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY),
+    SecureStore.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY),
+  ]);
+}
+
+export async function logout() {
+  try {
+    await apiClient.delete('/api/v1/auth/logout');
+  } finally {
+    await clearStoredAuthSession();
+  }
+}
+
 export async function kakaoLogin(): Promise<PendingLoginResult> {
   ensureKakaoInitialized();
 
