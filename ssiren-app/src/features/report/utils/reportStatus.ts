@@ -15,6 +15,10 @@ export function getReportStatusLabel(status: ReportStatus) {
   return REPORT_STATUS_LABEL[status] ?? status;
 }
 
+export function canEditReport(status: ReportStatus) {
+  return status === 'SUBMITTED';
+}
+
 export function formatStatusTransition(
   previousStatus: ReportStatus | null,
   newStatus: ReportStatus

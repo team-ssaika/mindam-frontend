@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -24,18 +24,27 @@ export function MyReportsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const loadReports = useCallback(async (isRefresh = false) => {
-    if (isRefresh) {
+  const loadReports = useCallback(async (options?: { refresh?: boolean; silent?: boolean }) => {
+    const isRefresh = options?.refresh ?? false;
+    const silent = options?.silent ?? false;
+
+    if (isRefresh && !silent) {
       setIsRefreshing(true);
-    } else {
+    } else if (!silent) {
       setIsLoading(true);
     }
-    setErrorMessage(null);
+    if (!silent) {
+      setErrorMessage(null);
+    }
 
     try {
       const data = await fetchMyReports({ page: 0, size: 20, sort: 'createdAt,desc' });
       setReports(Array.isArray(data.contents) ? data.contents : []);
     } catch (error) {
+      if (silent) {
+        return;
+      }
+
       let message = '내 제보 목록을 불러오지 못했습니다.';
       if (axios.isAxiosError(error)) {
         const apiMessage = error.response?.data?.message;
@@ -52,14 +61,26 @@ export function MyReportsScreen() {
       setErrorMessage(message);
       setReports([]);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (!silent) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
-  useEffect(() => {
-    loadReports();
-  }, [loadReports]);
+  const isFirstFocusRef = useRef(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false;
+        loadReports();
+        return;
+      }
+
+      loadReports({ refresh: true, silent: true });
+    }, [loadReports])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -81,7 +102,7 @@ export function MyReportsScreen() {
       ) : errorMessage ? (
         <View style={styles.centered}>
           <Text style={styles.errorText}>{errorMessage}</Text>
-          <Pressable style={styles.retryButton} onPress={() => loadReports()}>
+          <Pressable style={styles.retryButton} onPress={() => loadReports({ refresh: true })}>
             <Text style={styles.retryButtonText}>다시 시도</Text>
           </Pressable>
         </View>
@@ -104,7 +125,7 @@ export function MyReportsScreen() {
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
-              onRefresh={() => loadReports(true)}
+              onRefresh={() => loadReports({ refresh: true })}
               tintColor="#6257FF"
             />
           }

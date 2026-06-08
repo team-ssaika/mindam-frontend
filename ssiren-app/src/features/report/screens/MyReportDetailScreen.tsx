@@ -16,8 +16,10 @@ import { Chip } from '../../../components/ui/Chip';
 import { SummaryBox } from '../../../components/ui/SummaryBox';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { fetchMyReportDetail } from '../api/reportApi';
+import { MyReportEditSheet } from '../components/MyReportEditSheet';
 import type { MyReportDetail } from '../types/myReportDetail';
 import {
+  canEditReport,
   formatReportDateTime,
   formatStatusTransition,
   getReportStatusLabel,
@@ -39,6 +41,7 @@ export function MyReportDetailScreen() {
   const [detail, setDetail] = useState<MyReportDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isEditVisible, setIsEditVisible] = useState(false);
 
   const loadDetail = useCallback(async () => {
     const id = Number(reportId);
@@ -112,7 +115,17 @@ export function MyReportDetailScreen() {
           <Ionicons name="chevron-back" size={24} color="#1E1E25" />
         </Pressable>
         <Text style={styles.headerTitle}>민원 상세</Text>
-        <View style={styles.headerButton} />
+        {detail && canEditReport(detail.report.status) ? (
+          <Pressable
+            style={styles.headerButton}
+            onPress={() => setIsEditVisible(true)}
+            accessibilityLabel="민원 수정"
+          >
+            <Ionicons name="create-outline" size={22} color="#6257FF" />
+          </Pressable>
+        ) : (
+          <View style={styles.headerButton} />
+        )}
       </View>
 
       {isLoading ? (
@@ -254,6 +267,15 @@ export function MyReportDetailScreen() {
           ) : null}
 
         </ScrollView>
+      ) : null}
+
+      {detail && canEditReport(detail.report.status) ? (
+        <MyReportEditSheet
+          visible={isEditVisible}
+          detail={detail}
+          onClose={() => setIsEditVisible(false)}
+          onSaved={loadDetail}
+        />
       ) : null}
     </SafeAreaView>
   );
