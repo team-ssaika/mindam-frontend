@@ -21,10 +21,11 @@ function PlusButton() {
 export default function TabLayout() {
   const pathname = usePathname();
   const isReportFlow = pathname === '/plus' || pathname === '/(tabs)/plus';
+  const isSettingsScreen = pathname === '/settings' || pathname === '/(tabs)/settings';
 
   return (
     <>
-      {!isReportFlow ? <Header /> : null}
+      {!isReportFlow && !isSettingsScreen ? <Header /> : null}
       <Tabs
         screenOptions={{
           headerShown: false,
