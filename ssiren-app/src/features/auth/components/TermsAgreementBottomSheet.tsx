@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import { colors, fonts, radius } from '../../../theme';
 import type { TermsAgreementState, TermsItem } from '../types/auth.types';
 import { TermsAgreementItem } from './TermsAgreementItem';
 
@@ -98,9 +99,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
+    fontFamily: fonts.bold,
     fontSize: 24,
-    fontWeight: '800',
-    color: '#111119',
+    color: colors.ink,
     marginBottom: 28,
   },
   list: {
@@ -110,27 +111,27 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 14,
     lineHeight: 21,
-    color: '#E25353',
+    color: colors.danger,
   },
   confirmButton: {
-    height: 54,
-    borderRadius: 16,
+    height: 56,
+    borderRadius: radius['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 28,
   },
   confirmButtonEnabled: {
-    backgroundColor: '#6257FF',
+    backgroundColor: colors.brand,
   },
   confirmButtonDisabled: {
-    backgroundColor: '#D4D6DC',
+    backgroundColor: colors.buttonDisabled,
   },
   confirmButtonText: {
+    fontFamily: fonts.bold,
     fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.white,
   },
   confirmButtonTextDisabled: {
-    color: '#FFFFFF',
+    color: colors.white,
   },
 });

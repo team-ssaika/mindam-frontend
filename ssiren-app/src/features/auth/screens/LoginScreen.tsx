@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   kakaoButton: {
-    height: 54,
-    borderRadius: 12,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#FEE500',
     flexDirection: 'row',
     alignItems: 'center',

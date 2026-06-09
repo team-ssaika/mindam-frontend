@@ -383,15 +383,17 @@ export function ReportCreateFlowScreen() {
   }
 
   const tinted = step === 2 || step === 3;
-  const stepLabel = step === 1 ? '1 / 2' : step === 2 ? '2 / 2' : '완료';
-
   return (
     <View style={[styles.flex, tinted && styles.tinted]}>
       <AppBar
-        title={step === 2 ? 'AI 정리 확인' : '제보하기'}
+        title={step === 2 ? 'AI 정리 확인' : '민원 신고 작성'}
         logo={false}
         onBack={step === 3 ? undefined : handleBack}
-        right={<AppText style={styles.stepBadge}>{stepLabel}</AppText>}
+        right={
+          <Pressable accessibilityRole="button" hitSlop={8}>
+            <Icon name="bell" size={22} color={colors.ink} />
+          </Pressable>
+        }
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -400,7 +402,11 @@ export function ReportCreateFlowScreen() {
         <View style={styles.flex}>
           {step !== 3 ? (
             <View style={styles.stepperWrap}>
-              <Stepper step={step} total={2} />
+              <Stepper
+                step={step}
+                total={3}
+                labels={['작성', '확인/수정', '완료']}
+              />
             </View>
           ) : null}
           <ScrollView
@@ -590,10 +596,14 @@ function WriteStep({
       </View>
       <AppText style={styles.counter}>{content.length} / {MAX_CONTENT_LENGTH}</AppText>
 
-      <View style={styles.attachHeader}>
-        <AppText variant="section" color={colors.ink}>사진 첨부</AppText>
-        <AppText style={styles.attachOptional}> (선택)</AppText>
-      </View>
+      <Pressable style={styles.attachRow} onPress={onPickImages}>
+        <View style={styles.attachLeft}>
+          <Icon name="image" size={20} color={colors.ink} />
+          <AppText variant="section" color={colors.ink}>사진</AppText>
+          <AppText style={styles.attachOptional}>선택</AppText>
+        </View>
+        <Icon name="chevD" size={18} color={colors.muted} />
+      </Pressable>
       <View style={styles.imageRow}>
         {images.map((image) => (
           <View key={image.id} style={styles.imageCard}>
@@ -911,25 +921,30 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   tinted: { backgroundColor: colors.soft },
   stepBadge: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted },
-  stepperWrap: { paddingHorizontal: 18, paddingTop: 12 },
-  scroll: { paddingHorizontal: 18, paddingTop: 14 },
+  stepperWrap: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  scroll: { paddingHorizontal: 20, paddingTop: 8 },
   stepContent: { gap: 12 },
 
   // write step
   heroSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22 },
   textAreaWrap: {
     marginTop: 8,
-    backgroundColor: colors.soft,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: 16,
     minHeight: 130,
+    paddingVertical: 4,
   },
-  textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 98 },
+  textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 120 },
   counter: { textAlign: 'right', fontSize: 12, color: colors.faint, marginTop: 6 },
-  attachHeader: { flexDirection: 'row', alignItems: 'baseline', marginTop: 8 },
-  attachOptional: { fontSize: 13, color: colors.muted },
+  attachRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+  },
+  attachLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachOptional: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   imageCard: { width: 92, height: 92, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.soft2 },
   imageThumb: { width: '100%', height: '100%' },
@@ -1047,9 +1062,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.canvas,
   },
   footerStack: { gap: 10 },
 

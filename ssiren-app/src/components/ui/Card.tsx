@@ -3,12 +3,26 @@ import { colors, radius } from '../../theme';
 
 type CardProps = ViewProps & {
   padded?: boolean;
+  bordered?: boolean;
 };
 
-/** White surface with hairline border + lg radius — the default content card. */
-export default function Card({ padded = true, style, children, ...rest }: CardProps) {
+export default function Card({
+  padded = true,
+  bordered = true,
+  style,
+  children,
+  ...rest
+}: CardProps) {
   return (
-    <View style={[styles.base, padded && styles.padded, style]} {...rest}>
+    <View
+      style={[
+        styles.base,
+        padded && styles.padded,
+        bordered && styles.bordered,
+        style,
+      ]}
+      {...rest}
+    >
       {children}
     </View>
   );
@@ -18,6 +32,8 @@ const styles = StyleSheet.create({
   base: {
     backgroundColor: colors.canvas,
     borderRadius: radius.lg,
+  },
+  bordered: {
     borderWidth: 1,
     borderColor: colors.hairline,
   },

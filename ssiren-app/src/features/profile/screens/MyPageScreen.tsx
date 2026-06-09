@@ -81,20 +81,21 @@ export function MyPageScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* profile card */}
-        <Card style={styles.profileCard}>
+        <View style={styles.profileSection}>
           <View style={styles.avatar}>
-            <Icon name="user" size={28} color={colors.brand} />
+            <Icon name="user" size={42} color={colors.faint} />
           </View>
           <View style={styles.profileInfo}>
-            <AppText variant="heading" color={colors.ink}>{name ?? '시민 님'}</AppText>
-            <View style={styles.verifyBadge}>
-              <Icon name="checkCircle" size={13} color={statusColors.done.fg} />
-              <AppText style={styles.verifyText}>{email ?? '본인인증 완료'}</AppText>
-            </View>
+            <AppText variant="heading" color={colors.ink} numberOfLines={1}>
+              {name ?? '시민 님'}
+            </AppText>
+            <AppText style={styles.email} numberOfLines={1}>
+              {email ?? '이메일을 불러오는 중이에요'}
+            </AppText>
           </View>
-          <Icon name="chevR" size={20} color={colors.faint} />
-        </Card>
+        </View>
+
+        <View style={styles.profileDivider} />
 
         {/* status summary */}
         <View style={styles.section}>
@@ -175,27 +176,31 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
   content: { paddingHorizontal: 18, paddingTop: 18, gap: 16 },
 
-  profileCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18 },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 4,
+  },
   avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: colors.brandSoft,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.soft2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileInfo: { flex: 1, gap: 4 },
-  verifyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: statusColors.done.bg,
-    borderRadius: radius.pill,
-    paddingVertical: 3,
-    paddingHorizontal: 9,
+  profileInfo: { flex: 1, minWidth: 0, gap: 6 },
+  email: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.muted,
   },
-  verifyText: { fontFamily: fonts.semibold, fontSize: 11.5, color: statusColors.done.fg },
+  profileDivider: {
+    height: 1,
+    backgroundColor: colors.hairline,
+    marginBottom: 4,
+  },
 
   section: { gap: 0 },
   statRow: { flexDirection: 'row', gap: 10 },
