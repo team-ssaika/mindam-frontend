@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -7,10 +6,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppBar, AppText, ChatBubble, Icon } from '../../src/components/ui';
+import { colors, fonts, radius } from '../../src/theme';
 
 type ChatMessage = {
   id: string;
@@ -18,25 +19,19 @@ type ChatMessage = {
   text: string;
 };
 
-const INPUT_BAR_HEIGHT = 56;
-const INPUT_BOTTOM_GAP = 20;
+const GREETING: ChatMessage = {
+  id: 'bot-initial',
+  role: 'bot',
+  text: '안녕하세요! 무엇을 도와드릴까요?\n사진과 함께 상황을 말씀해 주시면 제가 제보를 정리해 드려요.',
+};
 
 export default function Chatbot() {
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'bot-initial',
-      role: 'bot',
-      text: '층간소음 신고는 관리실 접수 → 증거 수집 → 이웃사이센터 신고 순서로 진행하면 됩니다.',
-    },
-  ]);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
-
-  // 탭 화면은 탭바 위 영역이지만, 키보드 높이만큼 하단 패딩을 주면 입력창이 키보드 바로 위에 붙음
-  const keyboardOverlap = keyboardHeight;
 
   const handleSend = () => {
     const trimmed = inputText.trim();
@@ -44,42 +39,40 @@ export default function Chatbot() {
       return;
     }
 
-    const newMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      text: trimmed,
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: 'user', text: trimmed }]);
     setInputText('');
   };
 
-  const handleCopyMessage = async (messageId: string, text: string) => {
+  const handleReset = () => {
+    Keyboard.dismiss();
+    setMessages([GREETING]);
+    setInputText('');
+  };
+
+  const handleCopyMessage = async (text: string) => {
     try {
       await Clipboard.setStringAsync(text);
-      setCopiedMessageId(messageId);
       setShowCopyToast(true);
-      setTimeout(() => {
-        setCopiedMessageId((prev) => (prev === messageId ? null : prev));
-      }, 1200);
-      setTimeout(() => {
-        setShowCopyToast(false);
-      }, 1400);
+      setTimeout(() => setShowCopyToast(false), 1400);
     } catch {}
   };
 
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    });
-  }, [messages, keyboardOverlap]);
+  const scrollToEnd = () => {
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  };
 
+  useEffect(() => {
+    scrollToEnd();
+  }, [messages, keyboardHeight]);
+
+  // Edge-to-edge Android ignores adjustResize for the IME, so KeyboardAvoidingView
+  // can't lift the input. Track the keyboard height ourselves and pad the bar up.
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
       setKeyboardHeight(0);
@@ -92,7 +85,16 @@ export default function Chatbot() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingBottom: keyboardOverlap }]}>
+    <View style={styles.container}>
+      <AppBar
+        title="제보 도우미"
+        logo={false}
+        right={
+          <Pressable onPress={handleReset} hitSlop={8} accessibilityLabel="대화 초기화">
+            <Icon name="refresh" size={20} color={colors.body} />
+          </Pressable>
+        }
+      />
       <ScrollView
         ref={(ref) => {
           scrollRef.current = ref;
@@ -101,61 +103,55 @@ export default function Chatbot() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToEnd}
       >
         {messages.map((message) =>
           message.role === 'user' ? (
-            <View key={message.id} style={styles.userBubbleRow}>
-              <View style={styles.userBubble}>
-                <Text style={styles.userBubbleText}>{message.text}</Text>
-              </View>
-            </View>
+            <ChatBubble key={message.id}>{message.text}</ChatBubble>
           ) : (
-            <View key={message.id} style={styles.botBubble}>
-              <Text style={styles.botBody}>{message.text}</Text>
-              <View style={styles.actionRow}>
-                <Text style={styles.ssirenLogoText}>SSiren</Text>
-                <Pressable onPress={() => handleCopyMessage(message.id, message.text)}>
-                  <Ionicons
-                    name={copiedMessageId === message.id ? 'checkmark' : 'copy-outline'}
-                    size={16}
-                    color={copiedMessageId === message.id ? '#22c55e' : '#17171f'}
-                  />
-                </Pressable>
-              </View>
-            </View>
+            <Pressable key={message.id} onLongPress={() => handleCopyMessage(message.text)}>
+              <ChatBubble bot>{message.text}</ChatBubble>
+            </Pressable>
           )
         )}
       </ScrollView>
 
-      <View style={styles.inputWrapper}>
-        <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputBar,
+          // Keyboard height excludes the bottom nav-bar inset under edge-to-edge,
+          // so add it back to fully clear the keyboard.
+          { marginBottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0 },
+        ]}
+      >
+        <Pressable style={styles.cameraButton} accessibilityLabel="사진 첨부">
+          <Icon name="camera" size={21} color={colors.body} />
+        </Pressable>
+        <View style={styles.inputPill}>
           <TextInput
             value={inputText}
             onChangeText={setInputText}
-            placeholder="메시지를 입력하세요"
-            placeholderTextColor="#8b8b96"
+            placeholder="메시지 입력…"
+            placeholderTextColor={colors.faint}
             style={styles.input}
             returnKeyType="send"
             onSubmitEditing={handleSend}
           />
-          <Pressable
-            onPress={handleSend}
-            disabled={!inputText.trim()}
-            style={styles.sendButton}
-          >
-            <Ionicons
-              name="send"
-              size={19}
-              color={inputText.trim() ? '#17171f' : '#b9b9c2'}
-            />
-          </Pressable>
         </View>
+        <Pressable
+          onPress={handleSend}
+          disabled={!inputText.trim()}
+          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          accessibilityLabel="전송"
+        >
+          <Icon name="send" size={20} color={colors.white} fill />
+        </Pressable>
       </View>
 
       {showCopyToast ? (
         <View style={styles.toastWrapper} pointerEvents="none">
           <View style={styles.toast}>
-            <Text style={styles.toastText}>클립보드에 복사했습니다</Text>
+            <AppText style={styles.toastText}>클립보드에 복사했습니다</AppText>
           </View>
         </View>
       ) : null}
@@ -164,100 +160,53 @@ export default function Chatbot() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9f9fb',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  userBubbleRow: {
-    alignItems: 'flex-end',
-    marginBottom: 14,
-  },
-  userBubble: {
-    maxWidth: '78%',
-    borderRadius: 22,
-    backgroundColor: '#ececef',
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-  },
-  userBubbleText: {
-    fontSize: 16,
-    color: '#2b2b35',
-  },
-  botBubble: {
-    borderRadius: 18,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  botBody: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#2d2d35',
-  },
-  actionRow: {
-    marginTop: 10,
+  container: { flex: 1, backgroundColor: colors.soft },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
+
+  inputBar: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 12,
+    backgroundColor: colors.soft,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
   },
-  ssirenLogoText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4b5563',
-    letterSpacing: 0.2,
-  },
-  inputWrapper: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: INPUT_BOTTOM_GAP,
-  },
-  inputContainer: {
-    height: INPUT_BAR_HEIGHT,
-    borderRadius: 28,
-    backgroundColor: '#ececef',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  input: {
-    flex: 1,
-    marginHorizontal: 12,
-    fontSize: 16,
-    color: '#17171f',
-    paddingVertical: 0,
-  },
-  sendButton: {
-    width: 24,
+  cameraButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 13,
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toastWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: INPUT_BAR_HEIGHT + INPUT_BOTTOM_GAP + 16,
+  inputPill: {
+    flex: 1,
+    height: 44,
+    backgroundColor: colors.canvas,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  input: { fontFamily: fonts.regular, fontSize: 14.5, color: colors.ink, paddingVertical: 0 },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.brand,
     alignItems: 'center',
-    zIndex: 20,
+    justifyContent: 'center',
   },
-  toast: {
-    backgroundColor: 'rgba(23, 23, 31, 0.9)',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-  },
-  toastText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  sendButtonDisabled: { opacity: 0.4 },
+
+  toastWrapper: { position: 'absolute', left: 0, right: 0, bottom: 90, alignItems: 'center', zIndex: 20 },
+  toast: { backgroundColor: 'rgba(24,29,38,0.92)', borderRadius: radius.pill, paddingHorizontal: 18, paddingVertical: 11 },
+  toastText: { fontFamily: fonts.semibold, color: colors.white, fontSize: 14 },
 });

@@ -1,16 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppText, Icon } from '../../../components/ui';
+import { colors, fonts } from '../../../theme';
 import {
   checkUserTermsAgreement,
   clearStoredAuthSession,
@@ -125,7 +118,8 @@ export function LoginScreen() {
             style={styles.logoImage}
             resizeMode="contain"
           />
-          <Text style={styles.logoText}>SSIREN</Text>
+          <AppText style={styles.logoText}>시민제보</AppText>
+          <AppText style={styles.tagline}>사진 한 장으로 시작하는 우리 동네 제보</AppText>
         </View>
 
         <View style={styles.bottomSection}>
@@ -134,16 +128,16 @@ export function LoginScreen() {
             disabled={isLoggingIn}
             style={[styles.kakaoButton, isLoggingIn && styles.kakaoButtonDisabled]}
           >
-            <Ionicons name="chatbubble" size={18} color="#111111" />
-            <Text style={styles.kakaoButtonText}>
+            <Icon name="chat" size={18} color="#111111" fill />
+            <AppText style={styles.kakaoButtonText}>
               {isLoggingIn ? '카카오 로그인 중...' : '카카오톡으로 로그인'}
-            </Text>
+            </AppText>
           </TouchableOpacity>
 
           <Pressable onPress={handlePressBrowse} style={styles.browseButton}>
-            <Text style={styles.browseText}>
-              회원가입 없이 <Text style={styles.browseAccent}>둘러보기</Text>
-            </Text>
+            <AppText style={styles.browseText}>
+              회원가입 없이 <AppText style={styles.browseAccent}>둘러보기</AppText>
+            </AppText>
           </Pressable>
         </View>
       </View>
@@ -172,11 +166,11 @@ export function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.canvas,
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.canvas,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
   },
@@ -191,20 +185,25 @@ const styles = StyleSheet.create({
     height: 132,
   },
   logoText: {
+    marginTop: 12,
+    fontFamily: fonts.bold,
+    fontSize: 34,
+    letterSpacing: -0.6,
+    color: colors.ink,
+  },
+  tagline: {
     marginTop: 8,
-    fontSize: 42,
-    fontWeight: '900',
-    letterSpacing: 1.2,
-    color: '#111111',
-    transform: [{ scaleX: 1.08 }],
+    fontFamily: fonts.medium,
+    fontSize: 14.5,
+    color: colors.muted,
   },
   bottomSection: {
     paddingBottom: 44,
     gap: 16,
   },
   kakaoButton: {
-    height: 56,
-    borderRadius: 28,
+    height: 54,
+    borderRadius: 12,
     backgroundColor: '#FEE500',
     flexDirection: 'row',
     alignItems: 'center',
@@ -215,8 +214,8 @@ const styles = StyleSheet.create({
     opacity: 0.68,
   },
   kakaoButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
+    fontSize: 16,
     color: '#111111',
   },
   browseButton: {
@@ -225,10 +224,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   browseText: {
-    fontSize: 15,
-    color: '#17171F',
+    fontFamily: fonts.medium,
+    fontSize: 14.5,
+    color: colors.body,
   },
   browseAccent: {
-    color: '#8B7561',
+    fontFamily: fonts.bold,
+    color: colors.accent,
   },
 });

@@ -36,17 +36,29 @@ const kakaoNativeAppKey =
   process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ??
   localEnv.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ??
   '';
+const googleMapsApiKey =
+  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  localEnv.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  '';
 
 module.exports = {
   ...appJson.expo,
   ios: {
     ...appJson.expo.ios,
     bundleIdentifier: 'com.ssaika.ssiren',
+    config: {
+      ...appJson.expo.ios.config,
+      googleMapsApiKey,
+    },
   },
   android: {
     ...appJson.expo.android,
     package: 'com.ssaika.ssiren',
     googleServicesFile: './google-services.json',
+    config: {
+      ...appJson.expo.android.config,
+      googleMaps: { apiKey: googleMapsApiKey },
+    },
   },
   plugins: [
     'expo-router',

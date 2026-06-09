@@ -11,6 +11,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -43,6 +44,7 @@ export function BottomSheet({
   minHeight = '38%',
   showHandle = true,
 }: BottomSheetProps) {
+  const insets = useSafeAreaInsets();
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacityValue = useRef(new Animated.Value(0)).current;
 
@@ -121,6 +123,8 @@ export function BottomSheet({
             { minHeight },
             { transform: [{ translateY: sheetTranslateY }] },
             containerStyle,
+            // Keep content clear of the system navigation bar (edge-to-edge).
+            { paddingBottom: 24 + insets.bottom },
           ]}
         >
           {showHandle ? <View style={styles.handle} /> : null}

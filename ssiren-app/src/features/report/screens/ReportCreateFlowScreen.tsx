@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
@@ -15,14 +14,23 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  AppBar,
+  AppText,
+  Button,
+  Card,
+  CatChip,
+  Icon,
+  ImageSlot,
+  Stepper,
+  Tag,
+} from '../../../components/ui';
+import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { reportSubmissionMock } from '../mocks/reportSubmissionMock';
-import { ReportStepIndicator } from '../components/ReportStepIndicator';
 
 type FlowStep = 1 | 2 | 3;
 
@@ -66,42 +74,46 @@ type EditDraft = {
 const MAX_CONTENT_LENGTH = 1000;
 const MAX_IMAGES = 5;
 const SCREENSHOT_TOAST_DURATION = 2200;
+const ANALYZE_DURATION = 1800;
 
-export function ReportCreateFlowScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<FlowStep>(1);
-  const [content, setContent] = useState('');
-  const [images, setImages] = useState<ReportImage[]>([]);
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
-  const [isExitConfirmVisible, setIsExitConfirmVisible] = useState(false);
-  const [isScreenshotToastVisible, setIsScreenshotToastVisible] = useState(false);
-  const [editableReview, setEditableReview] = useState<EditableReviewData>({
+const ANALYZE_STEPS = ['제목 생성', '카테고리 분류', '육하원칙 정리', '담당 기관 매칭'];
+
+function makeReviewState(): EditableReviewData {
+  return {
     ...reportSubmissionMock,
     location: { ...reportSubmissionMock.location },
     details: { ...reportSubmissionMock.details },
     detectedTags: [...reportSubmissionMock.detectedTags],
     completion: { ...reportSubmissionMock.completion },
-  });
+  };
+}
+
+export function ReportCreateFlowScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<FlowStep>(1);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState<ReportImage[]>([]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isExitConfirmVisible, setIsExitConfirmVisible] = useState(false);
+  const [isScreenshotToastVisible, setIsScreenshotToastVisible] = useState(false);
+  const [editableReview, setEditableReview] = useState<EditableReviewData>(makeReviewState);
   const [activeEditor, setActiveEditor] = useState<DetailFieldKey | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft>({ primary: '', secondary: '' });
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const screenshotToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const analyzeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isNextEnabled = content.trim().length > 0;
 
   const resetFlow = () => {
     setStep(1);
+    setIsAnalyzing(false);
     setContent('');
     setImages([]);
     setIsExitConfirmVisible(false);
-    setEditableReview({
-      ...reportSubmissionMock,
-      location: { ...reportSubmissionMock.location },
-      details: { ...reportSubmissionMock.details },
-      detectedTags: [...reportSubmissionMock.detectedTags],
-      completion: { ...reportSubmissionMock.completion },
-    });
+    setEditableReview(makeReviewState());
     setActiveEditor(null);
     setEditDraft({ primary: '', secondary: '' });
     setIsResolvingLocation(false);
@@ -179,13 +191,18 @@ export function ReportCreateFlowScreen() {
       return;
     }
 
-    setStep(2);
+    Keyboard.dismiss();
+    // AI 정리중 화면을 보여준 뒤 검토 단계로 전환한다.
+    setIsAnalyzing(true);
+    analyzeTimerRef.current = setTimeout(() => {
+      setIsAnalyzing(false);
+      setStep(2);
+    }, ANALYZE_DURATION);
   };
 
   const handleEditField = (field: DetailFieldKey) => {
     setEditDraft(getDraftFromField(field, editableReview));
     setActiveEditor(field);
-    console.log(`[ReportFlow] edit requested: ${field}`);
   };
 
   const handleCloseEditor = () => {
@@ -223,35 +240,14 @@ export function ReportCreateFlowScreen() {
         case 'location':
           return {
             ...prev,
-            location: {
-              address: trimmedPrimary,
-              detail: trimmedSecondary,
-            },
+            location: { address: trimmedPrimary, detail: trimmedSecondary },
           };
         case 'occurredAt':
-          return {
-            ...prev,
-            details: {
-              ...prev.details,
-              occurredAt: trimmedPrimary,
-            },
-          };
+          return { ...prev, details: { ...prev.details, occurredAt: trimmedPrimary } };
         case 'issue':
-          return {
-            ...prev,
-            details: {
-              ...prev.details,
-              issue: trimmedPrimary,
-            },
-          };
+          return { ...prev, details: { ...prev.details, issue: trimmedPrimary } };
         case 'risk':
-          return {
-            ...prev,
-            details: {
-              ...prev.details,
-              risk: trimmedPrimary,
-            },
-          };
+          return { ...prev, details: { ...prev.details, risk: trimmedPrimary } };
       }
     });
 
@@ -284,9 +280,7 @@ export function ReportCreateFlowScreen() {
         : '';
 
       const secondaryAddress = address
-        ? [address.streetNumber, address.name]
-            .filter(Boolean)
-            .join(' ')
+        ? [address.streetNumber, address.name].filter(Boolean).join(' ')
         : '';
 
       if (!primaryAddress) {
@@ -311,13 +305,10 @@ export function ReportCreateFlowScreen() {
   };
 
   const handleGoToInbox = () => {
-    // TODO: navigate to the report inbox route when it is available
-    console.log('[ReportFlow] navigate to report inbox');
+    router.push('/my-reports');
   };
 
   const handleGoHome = () => {
-    // TODO: replace with the home route once the app flow is finalized
-    console.log('[ReportFlow] navigate home');
     router.push('/(tabs)');
   };
 
@@ -353,8 +344,6 @@ export function ReportCreateFlowScreen() {
       if (!isMounted) {
         return;
       }
-
-      console.log(`[ReportFlow] screenshot detected on ${Platform.OS}`);
       showScreenshotToast();
     });
 
@@ -371,13 +360,8 @@ export function ReportCreateFlowScreen() {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-    const showSubscription = Keyboard.addListener(showEvent, () => {
-      setIsKeyboardVisible(true);
-    });
-
-    const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      setIsKeyboardVisible(false);
-    });
+    const showSubscription = Keyboard.addListener(showEvent, () => setIsKeyboardVisible(true));
+    const hideSubscription = Keyboard.addListener(hideEvent, () => setIsKeyboardVisible(false));
 
     return () => {
       showSubscription.remove();
@@ -385,99 +369,97 @@ export function ReportCreateFlowScreen() {
     };
   }, []);
 
+  useEffect(
+    () => () => {
+      if (analyzeTimerRef.current) {
+        clearTimeout(analyzeTimerRef.current);
+      }
+    },
+    []
+  );
+
+  if (isAnalyzing) {
+    return <AnalyzingScreen onBack={handleBack} />;
+  }
+
+  const tinted = step === 2 || step === 3;
+  const stepLabel = step === 1 ? '1 / 2' : step === 2 ? '2 / 2' : '완료';
+
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
+    <View style={[styles.flex, tinted && styles.tinted]}>
+      <AppBar
+        title={step === 2 ? 'AI 정리 확인' : '제보하기'}
+        logo={false}
+        onBack={step === 3 ? undefined : handleBack}
+        right={<AppText style={styles.stepBadge}>{stepLabel}</AppText>}
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.safeArea}
+        style={styles.flex}
       >
-        <View style={styles.container}>
-          <FlowHeader step={step} onBack={handleBack} />
-          <View
-            style={[
-              styles.contentArea,
-              step === 2 || step === 3 ? styles.tintedContentArea : null,
+        <View style={styles.flex}>
+          {step !== 3 ? (
+            <View style={styles.stepperWrap}>
+              <Stepper step={step} total={2} />
+            </View>
+          ) : null}
+          <ScrollView
+            contentContainerStyle={[
+              styles.scroll,
+              { paddingBottom: insets.bottom + 120 },
             ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <ScrollView
-              contentContainerStyle={[
-                styles.scrollContent,
-                step === 1
-                  ? isKeyboardVisible
-                    ? styles.scrollContentWithKeyboardBar
-                    : styles.scrollContentWithBottomStack
-                  : null,
-              ]}
-              showsVerticalScrollIndicator={false}
-            >
-              <ReportStepIndicator currentStep={step} />
-              {step === 1 ? (
-                <WriteStep
-                  content={content}
-                  images={images}
-                  onChangeContent={setContent}
-                  onPickImages={handlePickImages}
-                  onRemoveImage={handleRemoveImage}
-                />
-              ) : null}
-              {step === 2 ? (
-                <ReviewStep reviewData={reviewData} onEditField={handleEditField} />
-              ) : null}
-              {step === 3 ? <CompleteStep completion={reviewData.completion} /> : null}
-            </ScrollView>
             {step === 1 ? (
-              <View
-                style={[
-                  styles.composeBottomStack,
-                  { paddingBottom: isKeyboardVisible ? 0 : insets.bottom + 12 },
-                ]}
-              >
-                <WriteAccessoryBar onPickImages={handlePickImages} />
-                {!isKeyboardVisible ? (
-                  <ActionButton
-                    label="다음"
-                    onPress={handleNext}
-                    variant="primary"
-                    disabled={!isNextEnabled}
-                  />
-                ) : null}
+              <WriteStep
+                content={content}
+                images={images}
+                onChangeContent={setContent}
+                onPickImages={handlePickImages}
+                onRemoveImage={handleRemoveImage}
+              />
+            ) : null}
+            {step === 2 ? <ReviewStep reviewData={reviewData} onEditField={handleEditField} /> : null}
+            {step === 3 ? <CompleteStep completion={reviewData.completion} /> : null}
+          </ScrollView>
+
+          <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
+            {step === 1 ? (
+              <Button
+                label="AI로 정리하기"
+                icon="sparkle"
+                onPress={handleNext}
+                disabled={!isNextEnabled}
+              />
+            ) : null}
+            {step === 2 ? <Button label="이대로 제보하기" onPress={handleSubmit} /> : null}
+            {step === 3 ? (
+              <View style={styles.footerStack}>
+                <Button label="내 민원함 보기" onPress={handleGoToInbox} />
+                <Button label="홈으로" variant="secondary" color={colors.muted} onPress={handleGoHome} />
               </View>
-            ) : (
-              <View style={[styles.footer, { paddingBottom: insets.bottom + 18 }]}>
-                {step === 2 ? (
-                  <ActionButton label="제출" onPress={handleSubmit} variant="primary" />
-                ) : null}
-                {step === 3 ? (
-                  <>
-                    <ActionButton
-                      label="내 민원함 보기"
-                      onPress={handleGoToInbox}
-                      variant="primary"
-                    />
-                    <ActionButton label="홈으로" onPress={handleGoHome} variant="secondary" />
-                  </>
-                ) : null}
-              </View>
-            )}
+            ) : null}
           </View>
         </View>
-        <ExitConfirmModal
-          visible={isExitConfirmVisible}
-          onClose={handleCloseExitConfirm}
-          onExit={handleExitFlow}
-        />
-        <EditFieldModal
-          field={activeEditor}
-          draft={editDraft}
-          onChangeDraft={handleChangeDraft}
-          onUseCurrentLocation={handleFillCurrentLocation}
-          onClose={handleCloseEditor}
-          onSave={handleSaveEditor}
-          isResolvingLocation={isResolvingLocation}
-        />
-        <ScreenshotToast visible={isScreenshotToastVisible} bottomInset={insets.bottom} />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      <ExitConfirmModal
+        visible={isExitConfirmVisible}
+        onClose={handleCloseExitConfirm}
+        onExit={handleExitFlow}
+      />
+      <EditFieldModal
+        field={activeEditor}
+        draft={editDraft}
+        onChangeDraft={handleChangeDraft}
+        onUseCurrentLocation={handleFillCurrentLocation}
+        onClose={handleCloseEditor}
+        onSave={handleSaveEditor}
+        isResolvingLocation={isResolvingLocation}
+      />
+      <ScreenshotToast visible={isScreenshotToastVisible} bottomInset={insets.bottom} />
+    </View>
   );
 }
 
@@ -488,10 +470,7 @@ function getDraftFromField(field: DetailFieldKey, reviewData: EditableReviewData
     case 'category':
       return { primary: reviewData.category, secondary: '' };
     case 'location':
-      return {
-        primary: reviewData.location.address,
-        secondary: reviewData.location.detail,
-      };
+      return { primary: reviewData.location.address, secondary: reviewData.location.detail };
     case 'occurredAt':
       return { primary: reviewData.details.occurredAt, secondary: '' };
     case 'issue':
@@ -504,19 +483,9 @@ function getDraftFromField(field: DetailFieldKey, reviewData: EditableReviewData
 function getEditorMeta(field: DetailFieldKey | null) {
   switch (field) {
     case 'title':
-      return {
-        title: '제목 수정',
-        primaryLabel: '제목',
-        primaryPlaceholder: '민원 제목을 입력해주세요',
-        multiline: false,
-      };
+      return { title: '제목 수정', primaryLabel: '제목', primaryPlaceholder: '민원 제목을 입력해주세요', multiline: false };
     case 'category':
-      return {
-        title: '카테고리 수정',
-        primaryLabel: '카테고리',
-        primaryPlaceholder: '카테고리를 입력해주세요',
-        multiline: false,
-      };
+      return { title: '카테고리 수정', primaryLabel: '카테고리', primaryPlaceholder: '카테고리를 입력해주세요', multiline: false };
     case 'location':
       return {
         title: '위치 수정',
@@ -527,48 +496,69 @@ function getEditorMeta(field: DetailFieldKey | null) {
         multiline: false,
       };
     case 'occurredAt':
-      return {
-        title: '발생 시각 수정',
-        primaryLabel: '발생 시각',
-        primaryPlaceholder: '예) 26.05.28 (수) 07:40 AM',
-        multiline: false,
-      };
+      return { title: '발생 시각 수정', primaryLabel: '발생 시각', primaryPlaceholder: '예) 26.05.28 (수) 07:40 AM', multiline: false };
     case 'issue':
-      return {
-        title: '문제 내용 수정',
-        primaryLabel: '문제 내용',
-        primaryPlaceholder: '무슨 문제가 있었는지 적어주세요',
-        multiline: true,
-      };
+      return { title: '문제 내용 수정', primaryLabel: '문제 내용', primaryPlaceholder: '무슨 문제가 있었는지 적어주세요', multiline: true };
     case 'risk':
-      return {
-        title: '위험 이유 수정',
-        primaryLabel: '위험 이유',
-        primaryPlaceholder: '왜 위험한지 적어주세요',
-        multiline: true,
-      };
+      return { title: '위험 이유 수정', primaryLabel: '위험 이유', primaryPlaceholder: '왜 위험한지 적어주세요', multiline: true };
     default:
       return null;
   }
 }
 
-function FlowHeader({ step, onBack }: { step: FlowStep; onBack: () => void }) {
+// ── AI 정리중 (loading) ──
+function AnalyzingScreen({ onBack }: { onBack: () => void }) {
+  const [done, setDone] = useState(0);
+
+  useEffect(() => {
+    const stepMs = ANALYZE_DURATION / (ANALYZE_STEPS.length + 1);
+    const timers = ANALYZE_STEPS.map((_, i) =>
+      setTimeout(() => setDone(i + 1), stepMs * (i + 1))
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
   return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={onBack} style={styles.headerIconButton}>
-        <Ionicons name="chevron-back" size={24} color="#1E1E25" />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>민원 신고 작성</Text>
-      <TouchableOpacity
-        onPress={() => console.log(`[ReportFlow] notification tapped at step ${step}`)}
-        style={styles.headerIconButton}
-      >
-        <Ionicons name="notifications-outline" size={24} color="#1E1E25" />
-      </TouchableOpacity>
+    <View style={styles.flex}>
+      <AppBar title="제보하기" logo={false} onBack={onBack} right={<AppText style={styles.stepBadge}>1 / 2</AppText>} />
+      <View style={styles.analyzeBody}>
+        <View style={styles.analyzeSpinner}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <View style={styles.analyzeSpark}>
+            <Icon name="sparkle" size={30} color={colors.accent} fill />
+          </View>
+        </View>
+        <AppText variant="title" color={colors.ink} style={styles.analyzeTitle}>
+          AI가 제보를 정리하고 있어요
+        </AppText>
+        <AppText style={styles.analyzeSub}>
+          제목·카테고리·육하원칙을 자동으로{'\n'}채우는 중이에요. 잠시만요…
+        </AppText>
+        <View style={styles.analyzeList}>
+          {ANALYZE_STEPS.map((label, i) => {
+            const isDone = i < done;
+            return (
+              <View key={label} style={[styles.analyzeRow, { opacity: isDone ? 1 : 0.5 }]}>
+                <View style={[styles.analyzeCheck, { backgroundColor: isDone ? colors.brand : colors.soft2 }]}>
+                  {isDone ? (
+                    <Icon name="check" size={14} color={colors.white} strokeWidth={2.6} />
+                  ) : (
+                    <View style={styles.analyzeDot} />
+                  )}
+                </View>
+                <AppText style={[styles.analyzeRowText, { color: isDone ? colors.ink : colors.muted }]}>
+                  {label}
+                </AppText>
+              </View>
+            );
+          })}
+        </View>
+      </View>
     </View>
   );
 }
 
+// ── 1. 입력 ──
 function WriteStep({
   content,
   images,
@@ -584,79 +574,47 @@ function WriteStep({
 }) {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.heroTitle}>상황을 편하게 적어주세요.</Text>
+      <AppText variant="display" color={colors.ink}>무슨 일이{'\n'}있었나요?</AppText>
+      <AppText style={styles.heroSub}>한두 줄이면 충분해요. 나머지는 AI가 정리해 드려요.</AppText>
 
-      <View style={styles.section}>
-        <View style={styles.textAreaWrapper}>
-          {content.length === 0 ? (
-            <View pointerEvents="none" style={styles.textGuideBlock}>
-              <Text style={styles.textGuideText}>
-                AI가 민원 형식에 맞게 정리해드릴게요.
-                {'\n\n'}
-                예) 맨홀 뚜껑이 깨져있어요.
-                {'\n\n'}
-                정확하고 빠른 처리를 위해 사실 위주로 작성해주세요.
-                {'\n'}
-                같은 내용의 반복 제출이나 욕설·비방·개인정보가 포함된 내용은 접수에 제한될 수 있어요.
-              </Text>
-            </View>
-          ) : null}
-          <TextInput
-            value={content}
-            onChangeText={(text) => onChangeContent(text.slice(0, MAX_CONTENT_LENGTH))}
-            multiline
-            textAlignVertical="top"
-            style={styles.textArea}
-          />
-          {content.length > 0 ? (
-            <Text style={styles.remainingCounter}>{MAX_CONTENT_LENGTH - content.length}</Text>
-          ) : null}
-        </View>
+      <View style={styles.textAreaWrap}>
+        <TextInput
+          value={content}
+          onChangeText={(text) => onChangeContent(text.slice(0, MAX_CONTENT_LENGTH))}
+          multiline
+          textAlignVertical="top"
+          placeholder={'예) 역삼로 124 앞 인도에 보도블록이 깨져서\n사람들이 자꾸 걸려 넘어져요.'}
+          placeholderTextColor={colors.faint}
+          style={styles.textArea}
+        />
       </View>
+      <AppText style={styles.counter}>{content.length} / {MAX_CONTENT_LENGTH}</AppText>
 
-      {images.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.fieldLabel}>첨부한 사진</Text>
-          <View style={styles.imagePreviewGrid}>
-          {images.map((image) => (
-            <View key={image.id} style={styles.imageCard}>
-              <Image source={{ uri: image.uri }} style={styles.imageThumbnail} />
-              <Pressable
-                onPress={() => onRemoveImage(image.id)}
-                style={styles.removeImageButton}
-              >
-                <Ionicons name="close" size={16} color="#4A4A54" />
-              </Pressable>
-            </View>
-          ))}
-          {images.length < MAX_IMAGES ? (
-            <Pressable onPress={onPickImages} style={styles.inlineAddImageCard}>
-              <Ionicons name="add" size={20} color="#6E7585" />
+      <View style={styles.attachHeader}>
+        <AppText variant="section" color={colors.ink}>사진 첨부</AppText>
+        <AppText style={styles.attachOptional}> (선택)</AppText>
+      </View>
+      <View style={styles.imageRow}>
+        {images.map((image) => (
+          <View key={image.id} style={styles.imageCard}>
+            <Image source={{ uri: image.uri }} style={styles.imageThumb} />
+            <Pressable onPress={() => onRemoveImage(image.id)} style={styles.removeImage} hitSlop={6}>
+              <Icon name="x" size={13} color={colors.white} strokeWidth={2.4} />
             </Pressable>
-          ) : null}
           </View>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function WriteAccessoryBar({ onPickImages }: { onPickImages: () => Promise<void> }) {
-  return (
-    <View style={styles.inputAccessoryBar}>
-      <TouchableOpacity onPress={onPickImages} style={styles.accessoryButton}>
-        <Ionicons name="image-outline" size={18} color="#5A6273" />
-        <Text style={styles.accessoryButtonText}>사진</Text>
-      </TouchableOpacity>
-      <View style={styles.accessoryRightGroup}>
-        <TouchableOpacity onPress={() => Keyboard.dismiss()} style={styles.keyboardButton}>
-          <Ionicons name="chevron-down" size={18} color="#AAB1BE" />
-        </TouchableOpacity>
+        ))}
+        {images.length < MAX_IMAGES ? (
+          <Pressable onPress={onPickImages} style={styles.addImage}>
+            <Icon name="camera" size={24} color={colors.muted} />
+            <AppText style={styles.addImageText}>추가</AppText>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
 }
 
+// ── 2. AI 정리 확인 ──
 function ReviewStep({
   reviewData,
   onEditField,
@@ -666,152 +624,69 @@ function ReviewStep({
 }) {
   return (
     <View style={styles.stepContent}>
-      <Text style={styles.heroTitle}>AI가 이렇게 정리했어요</Text>
-      <Text style={styles.heroSubtitle}>틀린 내용이 있으면 수정해주세요.</Text>
-
-      <View style={styles.aiSummaryCard}>
-        <View style={styles.aiSummaryHeader}>
-          <Ionicons name="sparkles" size={16} color="#6257FF" />
-          <Text style={styles.aiSummaryTitle}>AI 요약</Text>
-        </View>
-        <Text style={styles.aiSummaryText}>{reviewData.aiSummary}</Text>
+      <View style={styles.aiLine}>
+        <Icon name="sparkle" size={16} color={colors.accent} fill />
+        <AppText style={styles.aiLineText}>AI가 정리했어요 · 수정할 수 있어요</AppText>
       </View>
 
-      <EditableRow label="제목" value={reviewData.title} onPress={() => onEditField('title')} />
-      <EditableRow
-        label="카테고리"
-        value={reviewData.category}
-        onPress={() => onEditField('category')}
-      />
-
-      <View style={styles.reviewSection}>
-        <View style={styles.reviewSectionHeader}>
-          <Text style={styles.reviewSectionTitle}>위치</Text>
-          <EditTextButton onPress={() => onEditField('location')} />
+      <Card style={styles.gap}>
+        <View style={styles.cardHeadRow}>
+          <CatChip icon="alert" label={reviewData.category} color={colors.coral} />
+          <EditButton onPress={() => onEditField('category')} />
         </View>
-        <View style={styles.locationCard}>
-          <Ionicons name="location" size={20} color="#2B2B33" style={styles.locationIcon} />
-          <View style={styles.locationTextWrapper}>
-            <Text style={styles.locationPrimary}>{reviewData.location.address}</Text>
-            <Text style={styles.locationSecondary}>{reviewData.location.detail}</Text>
+        <View style={styles.titleRow}>
+          <AppText variant="heading" color={colors.ink} style={styles.reviewTitle}>
+            {reviewData.title}
+          </AppText>
+          <EditButton onPress={() => onEditField('title')} />
+        </View>
+        {reviewData.detectedTags.length > 0 ? (
+          <View style={styles.tagRow}>
+            {reviewData.detectedTags.map((tag) => (
+              <Tag key={tag} label={tag.startsWith('#') ? tag : `#${tag}`} />
+            ))}
           </View>
-        </View>
-      </View>
+        ) : null}
+      </Card>
 
-      <View style={styles.reviewSection}>
-        <Text style={styles.reviewSectionTitle}>상세 내용</Text>
-        <DetailItem
-          icon="calendar-outline"
-          label="발생 시각"
-          value={reviewData.details.occurredAt}
-          onPress={() => onEditField('occurredAt')}
-        />
-        <DetailItem
-          icon="alert-circle-outline"
-          label="문제 내용"
-          value={reviewData.details.issue}
-          onPress={() => onEditField('issue')}
-        />
-        <DetailItem
-          icon="shield-checkmark-outline"
-          label="위험 이유"
-          value={reviewData.details.risk}
-          onPress={() => onEditField('risk')}
-        />
-      </View>
+      {reviewData.aiSummary ? (
+        <Card style={styles.gap}>
+          <AppText style={styles.cardLabel}>AI 요약</AppText>
+          <AppText style={styles.summaryText}>{reviewData.aiSummary}</AppText>
+        </Card>
+      ) : null}
 
-      <View style={styles.reviewSection}>
-        <Text style={styles.reviewSectionTitle}>사진에서 감지된 내용</Text>
-        <View style={styles.tagList}>
-          {reviewData.detectedTags.map((tag) => (
-            <View key={tag} style={styles.tagChip}>
-              <Text style={styles.tagText}>{tag}</Text>
-            </View>
-          ))}
+      <Card style={styles.gap}>
+        <View style={styles.cardHeadRow}>
+          <View style={styles.rowCenter}>
+            <Icon name="location" size={15} color={colors.muted} />
+            <AppText style={styles.cardLabel}> 위치</AppText>
+          </View>
+          <EditButton onPress={() => onEditField('location')} />
         </View>
-      </View>
+        <AppText style={styles.locationPrimary}>{reviewData.location.address}</AppText>
+        <AppText style={styles.locationSecondary}>{reviewData.location.detail}</AppText>
+      </Card>
+
+      <Card style={styles.gap}>
+        <AppText style={[styles.cardLabel, styles.detailHead]}>상세 내용</AppText>
+        <DetailItem icon="clock" label="발생 시각" value={reviewData.details.occurredAt} onPress={() => onEditField('occurredAt')} />
+        <DetailItem icon="alert" label="문제 내용" value={reviewData.details.issue} onPress={() => onEditField('issue')} />
+        <DetailItem icon="info" label="위험 이유" value={reviewData.details.risk} onPress={() => onEditField('risk')} />
+      </Card>
 
       {reviewData.images.length > 0 ? (
-        <View style={styles.reviewSection}>
-          <Text style={styles.reviewSectionTitle}>첨부 사진</Text>
-          <View style={styles.imageGrid}>
+        <Card style={styles.gap}>
+          <AppText style={[styles.cardLabel, styles.detailHead]}>첨부 사진</AppText>
+          <View style={styles.imageRow}>
             {reviewData.images.map((image) => (
               <View key={image.id} style={styles.imageCard}>
-                <Image source={{ uri: image.uri }} style={styles.imageThumbnail} />
+                <Image source={{ uri: image.uri }} style={styles.imageThumb} />
               </View>
             ))}
           </View>
-        </View>
+        </Card>
       ) : null}
-    </View>
-  );
-}
-
-function CompleteStep({
-  completion,
-}: {
-  completion: EditableReviewData['completion'];
-}) {
-  return (
-    <View style={styles.stepContent}>
-      <View style={styles.completeHeroTextBlock}>
-        <Text style={styles.completeTitle}>제보 접수 완료 !</Text>
-        <Text style={styles.completeId}>{completion.reportId}</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>담당 기관</Text>
-      <View style={styles.infoCard}>
-        <View style={styles.organizationHeader}>
-          <View style={styles.organizationIconCircle}>
-            <Ionicons name="business-outline" size={26} color="#6257FF" />
-          </View>
-          <View>
-            <Text style={styles.organizationName}>{completion.organization}</Text>
-            <Text style={styles.organizationDept}>{completion.department}</Text>
-          </View>
-        </View>
-
-        <InfoRow icon="receipt-outline" label="접수번호" value={completion.receiptNumber} />
-        <InfoRow icon="time-outline" label="예상 처리 기간" value={completion.eta} />
-        <View style={styles.infoRow}>
-          <Ionicons name="git-compare-outline" size={18} color="#6257FF" />
-          <View style={styles.infoReasonBlock}>
-            <Text style={styles.infoRowLabel}>자동 배정 사유</Text>
-            <Text style={styles.assignmentReason}>{completion.assignmentReason}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.noticeCard}>
-        <Ionicons name="megaphone-outline" size={18} color="#33A66F" />
-        <Text style={styles.noticeText}>
-          처리 상태는 <Text style={styles.noticeAccent}>‘내 민원함’</Text>에서 확인할 수 있어요.
-          {'\n'}
-          처리 과정에서 담당 기관이 연락드릴 수 있습니다.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function EditableRow({
-  label,
-  value,
-  onPress,
-}: {
-  label: string;
-  value: string;
-  onPress: () => void;
-}) {
-  return (
-    <View style={styles.reviewSection}>
-      <View style={styles.reviewSectionHeader}>
-        <Text style={styles.reviewSectionTitle}>{label}</Text>
-        <EditTextButton onPress={onPress} />
-      </View>
-      <View style={styles.valueCard}>
-        <Text style={styles.valueText}>{value}</Text>
-      </View>
     </View>
   );
 }
@@ -822,7 +697,7 @@ function DetailItem({
   value,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: 'clock' | 'alert' | 'info';
   label: string;
   value: string;
   onPress: () => void;
@@ -830,75 +705,68 @@ function DetailItem({
   return (
     <View style={styles.detailItem}>
       <View style={styles.detailLeft}>
-        <Ionicons name={icon} size={18} color="#2B2B33" />
-        <Text style={styles.detailLabel}>{label}</Text>
+        <Icon name={icon} size={18} color={colors.faint} />
+        <View style={styles.detailTextBlock}>
+          <AppText style={styles.detailLabel}>{label}</AppText>
+          <AppText style={styles.detailValue}>{value}</AppText>
+        </View>
       </View>
-      <View style={styles.detailRight}>
-        <Text style={styles.detailValue}>{value}</Text>
-        <EditTextButton onPress={onPress} />
-      </View>
+      <EditButton onPress={onPress} />
     </View>
   );
 }
 
-function EditTextButton({ onPress }: { onPress: () => void }) {
+function EditButton({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.editButton}>
-      <Ionicons name="create-outline" size={14} color="#6257FF" />
-      <Text style={styles.editButtonText}>수정</Text>
-    </TouchableOpacity>
+    <Pressable onPress={onPress} hitSlop={8} style={styles.editBtn}>
+      <AppText style={styles.editBtnText}>수정</AppText>
+    </Pressable>
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
+// ── 3. 접수 완료 ──
+function CompleteStep({ completion }: { completion: EditableReviewData['completion'] }) {
   return (
-    <View style={styles.infoRow}>
-      <Ionicons name={icon} size={18} color="#6257FF" />
-      <Text style={styles.infoRowLabel}>{label}</Text>
-      <Text style={styles.infoRowValue}>{value}</Text>
+    <View style={styles.completeContent}>
+      <View style={styles.completeCheck}>
+        <Icon name="checkCircle" size={42} color={statusColors.done.dot} strokeWidth={2} />
+      </View>
+      <AppText variant="title" color={colors.ink} style={styles.completeTitle}>제보가 접수되었어요</AppText>
+      <AppText style={styles.completeSub}>
+        담당 기관으로 자동 전달되었습니다.{'\n'}처리 현황은 알림으로 알려드릴게요.
+      </AppText>
+
+      <Card padded={false} style={styles.completeCard}>
+        <View style={styles.completeRow}>
+          <AppText style={styles.completeRowLabel}>접수 번호</AppText>
+          <AppText style={styles.completeMono}>{completion.receiptNumber}</AppText>
+        </View>
+        <View style={styles.completeDivider} />
+        <View style={styles.completeAgency}>
+          <View style={styles.agencyIcon}>
+            <Icon name="building" size={20} color={colors.brand} />
+          </View>
+          <View>
+            <AppText style={styles.completeRowLabel}>담당 기관</AppText>
+            <AppText style={styles.agencyName}>
+              {completion.organization} · {completion.department}
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.completeDivider} />
+        <View style={styles.completeRow}>
+          <AppText style={styles.completeRowLabel}>예상 처리 기간</AppText>
+          <AppText style={styles.completeRowValue}>{completion.eta}</AppText>
+        </View>
+      </Card>
+
+      <View style={styles.noticeCard}>
+        <Icon name="info" size={18} color={colors.accent} />
+        <AppText style={styles.noticeText}>
+          처리 상태는 <AppText style={styles.noticeAccent}>‘내 민원함’</AppText>에서 확인할 수 있어요.
+        </AppText>
+      </View>
     </View>
-  );
-}
-
-function ActionButton({
-  label,
-  onPress,
-  variant,
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  variant: 'primary' | 'secondary';
-  disabled?: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.actionButton,
-        variant === 'primary' ? styles.primaryButton : styles.secondaryButton,
-        disabled && styles.disabledButton,
-      ]}
-    >
-      <Text
-        style={[
-          styles.actionButtonText,
-          variant === 'secondary' && styles.secondaryButtonText,
-          disabled && styles.disabledButtonText,
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
   );
 }
 
@@ -912,25 +780,18 @@ function ExitConfirmModal({
   onExit: () => void;
 }) {
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.exitModalCard}>
-          <Text style={styles.exitModalTitle}>다음에 남길까요?</Text>
-          <Text style={styles.exitModalDescription}>
-            지금까지 쓴 내용은 저장되지 않아요.
-          </Text>
-          <View style={styles.exitModalActions}>
-            <TouchableOpacity onPress={onClose} style={styles.exitSecondaryButton}>
-              <Text style={styles.exitSecondaryButtonText}>닫기</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onExit} style={styles.exitPrimaryButton}>
-              <Text style={styles.exitPrimaryButtonText}>나가기</Text>
-            </TouchableOpacity>
+        <View style={styles.exitCard}>
+          <AppText variant="title" color={colors.ink} style={styles.center}>다음에 남길까요?</AppText>
+          <AppText style={styles.exitDesc}>지금까지 쓴 내용은 저장되지 않아요.</AppText>
+          <View style={styles.exitActions}>
+            <View style={styles.exitBtn}>
+              <Button label="닫기" variant="secondary" color={colors.muted} onPress={onClose} />
+            </View>
+            <View style={styles.exitBtn}>
+              <Button label="나가기" bg={colors.accent} onPress={onExit} />
+            </View>
           </View>
         </View>
       </View>
@@ -966,54 +827,51 @@ function EditFieldModal({
       <Pressable style={styles.sheetOverlay} onPress={onClose}>
         <Pressable style={styles.sheetCard} onPress={() => {}}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>{meta.title}</Text>
+          <AppText variant="heading" color={colors.ink}>{meta.title}</AppText>
 
           <View style={styles.sheetForm}>
-            <Text style={styles.sheetFieldLabel}>{meta.primaryLabel}</Text>
+            <AppText style={styles.sheetFieldLabel}>{meta.primaryLabel}</AppText>
             {field === 'location' ? (
               <View style={styles.locationInputRow}>
                 <TextInput
                   value={draft.primary}
                   onChangeText={(value) => onChangeDraft('primary', value)}
                   placeholder={meta.primaryPlaceholder}
-                  placeholderTextColor="#A1A1AE"
-                  style={[styles.sheetInput, styles.locationInput]}
+                  placeholderTextColor={colors.faint}
+                  style={[styles.sheetInput, styles.flex]}
                 />
-                <TouchableOpacity
+                <Pressable
                   onPress={onUseCurrentLocation}
-                  style={styles.currentLocationButton}
+                  style={styles.currentLocationBtn}
                   disabled={isResolvingLocation}
                 >
                   {isResolvingLocation ? (
-                    <ActivityIndicator size="small" color="#6257FF" />
+                    <ActivityIndicator size="small" color={colors.accent} />
                   ) : (
-                    <Ionicons name="locate-outline" size={20} color="#6257FF" />
+                    <Icon name="location" size={20} color={colors.accent} />
                   )}
-                </TouchableOpacity>
+                </Pressable>
               </View>
             ) : (
               <TextInput
                 value={draft.primary}
                 onChangeText={(value) => onChangeDraft('primary', value)}
                 placeholder={meta.primaryPlaceholder}
-                placeholderTextColor="#A1A1AE"
+                placeholderTextColor={colors.faint}
                 multiline={meta.multiline}
                 textAlignVertical={meta.multiline ? 'top' : 'center'}
-                style={[
-                  styles.sheetInput,
-                  meta.multiline ? styles.sheetTextArea : null,
-                ]}
+                style={[styles.sheetInput, meta.multiline ? styles.sheetTextArea : null]}
               />
             )}
 
             {meta.secondaryLabel ? (
               <>
-                <Text style={styles.sheetFieldLabel}>{meta.secondaryLabel}</Text>
+                <AppText style={styles.sheetFieldLabel}>{meta.secondaryLabel}</AppText>
                 <TextInput
                   value={draft.secondary}
                   onChangeText={(value) => onChangeDraft('secondary', value)}
                   placeholder={meta.secondaryPlaceholder}
-                  placeholderTextColor="#A1A1AE"
+                  placeholderTextColor={colors.faint}
                   style={styles.sheetInput}
                 />
               </>
@@ -1021,12 +879,12 @@ function EditFieldModal({
           </View>
 
           <View style={styles.sheetActions}>
-            <TouchableOpacity onPress={onClose} style={styles.sheetSecondaryButton}>
-              <Text style={styles.sheetSecondaryButtonText}>취소</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onSave} style={styles.sheetPrimaryButton}>
-              <Text style={styles.sheetPrimaryButtonText}>저장</Text>
-            </TouchableOpacity>
+            <View style={styles.exitBtn}>
+              <Button label="취소" variant="secondary" color={colors.muted} onPress={onClose} />
+            </View>
+            <View style={styles.exitBtn}>
+              <Button label="저장" onPress={onSave} />
+            </View>
           </View>
         </Pressable>
       </Pressable>
@@ -1034,688 +892,216 @@ function EditFieldModal({
   );
 }
 
-function ScreenshotToast({
-  visible,
-  bottomInset,
-}: {
-  visible: boolean;
-  bottomInset: number;
-}) {
+function ScreenshotToast({ visible, bottomInset }: { visible: boolean; bottomInset: number }) {
   if (!visible || Platform.OS === 'web') {
     return null;
   }
 
   return (
-    <View
-      pointerEvents="none"
-      style={[
-        styles.screenshotToastWrapper,
-        { bottom: Platform.OS === 'ios' ? bottomInset + 18 : 26 },
-      ]}
-    >
-      <View style={styles.screenshotToast}>
-        <View style={styles.screenshotToastIcon}>
-          <Ionicons name="alert" size={16} color="#3B3B42" />
-        </View>
-        <Text style={styles.screenshotToastText}>화면 캡처를 감지했어요.</Text>
+    <SafeAreaView pointerEvents="none" style={[styles.toastWrap, { bottom: bottomInset + 18 }]}>
+      <View style={styles.toast}>
+        <Icon name="alert" size={16} color={colors.white} />
+        <AppText style={styles.toastText}>화면 캡처를 감지했어요.</AppText>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    height: 56,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F4',
-  },
-  headerIconButton: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111119',
-  },
-  contentArea: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  tintedContentArea: {
-    backgroundColor: '#F5F6FA',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  scrollContentWithBottomStack: {
-    paddingBottom: 188,
-  },
-  scrollContentWithKeyboardBar: {
-    paddingBottom: 60,
-  },
-  stepContent: {
-    gap: 22,
-  },
-  heroTitle: {
-    fontSize: 31,
-    lineHeight: 40,
-    fontWeight: '800',
-    color: '#17171F',
-    marginTop: 6,
-  },
-  heroSubtitle: {
-    marginTop: -12,
-    fontSize: 17,
-    lineHeight: 24,
-    color: '#6D6D78',
-  },
-  section: {
-    gap: 12,
-  },
-  fieldLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  textArea: {
-    minHeight: 340,
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 34,
-    fontSize: 17,
-    lineHeight: 29,
-    color: '#252531',
-  },
-  textAreaWrapper: {
-    position: 'relative',
-    minHeight: 340,
-    borderTopWidth: 1,
-    borderTopColor: '#E7EAF0',
-    paddingTop: 14,
-    backgroundColor: '#FFFFFF',
-  },
-  textGuideBlock: {
-    position: 'absolute',
-    top: 14,
-    left: 0,
-    right: 0,
-  },
-  textGuideText: {
-    fontSize: 19,
-    lineHeight: 31,
-    color: '#B1B1BC',
-  },
-  remainingCounter: {
-    position: 'absolute',
-    right: 0,
-    bottom: 30,
-    fontSize: 14,
-    color: '#9B9BA6',
-  },
-  composeBottomStack: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 0,
-    gap: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  inputAccessoryBar: {
-    minHeight: 42,
-    paddingHorizontal: 2,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F0F1F5',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  accessoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  accessoryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#5A6273',
-  },
-  accessoryRightGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  keyboardButton: {
-    width: 42,
-    height: 34,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 0,
-  },
-  imageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  imagePreviewGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 2,
-  },
-  imageCard: {
-    width: 96,
-    height: 96,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F8',
-    position: 'relative',
-  },
-  imageThumbnail: {
-    width: '100%',
-    height: '100%',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addImageCard: {
-    width: 96,
-    height: 96,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#CACBDA',
-    backgroundColor: '#FBFBFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  addImageText: {
-    fontSize: 14,
-    color: '#7E7E8F',
-    fontWeight: '600',
-  },
-  inlineAddImageCard: {
-    width: 96,
-    height: 96,
-    borderRadius: 18,
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  tinted: { backgroundColor: colors.soft },
+  stepBadge: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted },
+  stepperWrap: { paddingHorizontal: 18, paddingTop: 12 },
+  scroll: { paddingHorizontal: 18, paddingTop: 14 },
+  stepContent: { gap: 12 },
+
+  // write step
+  heroSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22 },
+  textAreaWrap: {
+    marginTop: 8,
+    backgroundColor: colors.soft,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#CACBDA',
-    backgroundColor: '#FBFBFE',
+    borderColor: colors.hairline,
+    padding: 16,
+    minHeight: 130,
+  },
+  textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 98 },
+  counter: { textAlign: 'right', fontSize: 12, color: colors.faint, marginTop: 6 },
+  attachHeader: { flexDirection: 'row', alignItems: 'baseline', marginTop: 8 },
+  attachOptional: { fontSize: 13, color: colors.muted },
+  imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  imageCard: { width: 92, height: 92, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.soft2 },
+  imageThumb: { width: '100%', height: '100%' },
+  removeImage: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(24,29,38,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  aiSummaryCard: {
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: '#F3F0FF',
-    gap: 10,
-  },
-  aiSummaryHeader: {
-    flexDirection: 'row',
+  addImage: {
+    width: 92,
+    height: 92,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.hairline,
+    borderStyle: 'dashed',
     alignItems: 'center',
-    gap: 6,
-  },
-  aiSummaryTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#282842',
-  },
-  aiSummaryText: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: '#343447',
-  },
-  reviewSection: {
-    gap: 10,
-  },
-  reviewSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  reviewSectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  valueCard: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
-  },
-  valueText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#2A2A38',
-  },
-  editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  editButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#6257FF',
-  },
-  locationCard: {
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationIcon: {
-    marginRight: 10,
-  },
-  locationTextWrapper: {
-    flex: 1,
+    justifyContent: 'center',
     gap: 4,
   },
-  locationPrimary: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#242433',
-  },
-  locationSecondary: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#5F5F6C',
-  },
+  addImageText: { fontFamily: fonts.semibold, fontSize: 11.5, color: colors.muted },
+
+  // review step
+  aiLine: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  aiLineText: { fontFamily: fonts.bold, fontSize: 13, color: colors.accent },
+  gap: { marginTop: 0 },
+  cardHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowCenter: { flexDirection: 'row', alignItems: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginTop: 8 },
+  reviewTitle: { flex: 1, lineHeight: 24 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  cardLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink },
+  summaryText: { fontSize: 14, color: colors.body, lineHeight: 21, marginTop: 8 },
+  locationPrimary: { fontSize: 14, color: colors.body, fontFamily: fonts.medium, marginTop: 10 },
+  locationSecondary: { fontSize: 13, color: colors.muted, marginTop: 3 },
+  detailHead: { marginBottom: 4 },
   detailItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    gap: 10,
-  },
-  detailLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  detailLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#232331',
-  },
-  detailRight: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 12,
-  },
-  detailValue: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#484855',
-  },
-  tagList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#EFF3FF',
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4665B5',
-  },
-  completeHeroTextBlock: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 28,
-  },
-  completeTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#17171F',
-    textAlign: 'center',
-  },
-  completeId: {
-    marginTop: 6,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2C2C39',
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#181820',
-    marginTop: 8,
-    marginBottom: -8,
-  },
-  infoCard: {
-    padding: 20,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    gap: 18,
-  },
-  organizationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  organizationIconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F1EEFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  organizationName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#191925',
-  },
-  organizationDept: {
-    marginTop: 4,
-    fontSize: 15,
-    color: '#5E5E6C',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  infoRowLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: '#5B5B68',
-  },
-  infoRowValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1D1D29',
-  },
-  infoReasonBlock: {
-    flex: 1,
-    gap: 8,
-  },
-  assignmentReason: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#2F2F3D',
-  },
-  noticeCard: {
-    padding: 18,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  noticeText: {
-    flex: 1,
-    fontSize: 15,
-    lineHeight: 24,
-    color: '#2D4738',
-  },
-  noticeAccent: {
-    color: '#1F9A63',
-    fontWeight: '700',
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 18,
+    paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F4',
-    backgroundColor: '#FFFFFF',
-    gap: 12,
+    borderTopColor: colors.hairline,
+    marginTop: 8,
   },
-  actionButton: {
-    minHeight: 56,
-    borderRadius: 18,
+  detailLeft: { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1 },
+  detailTextBlock: { flex: 1 },
+  detailLabel: { fontSize: 12, color: colors.muted },
+  detailValue: { fontSize: 14, color: colors.body, fontFamily: fonts.medium, marginTop: 2, lineHeight: 20 },
+  editBtn: { paddingVertical: 4, paddingHorizontal: 8 },
+  editBtnText: { fontFamily: fonts.bold, fontSize: 12.5, color: colors.accent },
+
+  // complete step
+  completeContent: { alignItems: 'center', paddingTop: 24 },
+  completeCheck: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: statusColors.done.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  completeTitle: { textAlign: 'center' },
+  completeSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22, textAlign: 'center' },
+  completeCard: { width: '100%', padding: 16, marginTop: 20, gap: 14 },
+  completeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  completeRowLabel: { fontSize: 13, color: colors.muted },
+  completeRowValue: { fontSize: 14, color: colors.body, fontFamily: fonts.semibold },
+  completeMono: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
+  completeDivider: { height: 1, backgroundColor: colors.hairline },
+  completeAgency: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  agencyIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.brandSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButton: {
-    backgroundColor: '#6257FF',
-  },
-  secondaryButton: {
-    backgroundColor: '#F4F4F7',
-  },
-  disabledButton: {
-    backgroundColor: '#D6D5E8',
-  },
-  actionButtonText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  secondaryButtonText: {
-    color: '#20202B',
-  },
-  disabledButtonText: {
-    color: '#FFFFFF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 17, 25, 0.28)',
-    justifyContent: 'center',
+  agencyName: { fontSize: 14.5, fontFamily: fonts.bold, color: colors.ink, marginTop: 2 },
+  noticeCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  exitModalCard: {
+    gap: 9,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.md,
+    padding: 14,
+    marginTop: 16,
     width: '100%',
-    maxWidth: 360,
-    borderRadius: 32,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 22,
   },
-  exitModalTitle: {
-    fontSize: 27,
-    lineHeight: 36,
-    fontWeight: '800',
-    color: '#31384A',
-  },
-  exitModalDescription: {
-    marginTop: 18,
-    fontSize: 18,
-    lineHeight: 28,
-    color: '#7D8697',
-  },
-  exitModalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 28,
-  },
-  exitSecondaryButton: {
-    flex: 1,
-    minHeight: 64,
-    borderRadius: 24,
-    backgroundColor: '#F2F3F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exitSecondaryButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#667085',
-  },
-  exitPrimaryButton: {
-    flex: 1,
-    minHeight: 64,
-    borderRadius: 24,
-    backgroundColor: '#6257FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exitPrimaryButtonText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(17, 17, 25, 0.32)',
-    justifyContent: 'flex-end',
-  },
-  sheetCard: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 24,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: '#D8D8E2',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#181820',
-  },
-  sheetForm: {
-    gap: 12,
-    marginTop: 20,
-  },
-  sheetFieldLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#31313F',
-  },
-  sheetInput: {
-    minHeight: 54,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E3EB',
-    backgroundColor: '#F9F9FC',
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#232330',
-  },
-  sheetTextArea: {
-    minHeight: 120,
-    paddingTop: 16,
-    paddingBottom: 16,
-  },
-  locationInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  locationInput: {
-    flex: 1,
-  },
-  currentLocationButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#D9DBE8',
-    backgroundColor: '#F5F6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
-  sheetSecondaryButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetSecondaryButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#555568',
-  },
-  sheetPrimaryButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: '#6257FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sheetPrimaryButtonText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  screenshotToastWrapper: {
+  noticeText: { flex: 1, fontSize: 13.5, color: colors.body, lineHeight: 20 },
+  noticeAccent: { fontFamily: fonts.bold, color: colors.accent },
+
+  // analyzing
+  analyzeBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
+  analyzeSpinner: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center', marginBottom: 26 },
+  analyzeSpark: { position: 'absolute' },
+  analyzeTitle: { textAlign: 'center' },
+  analyzeSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, textAlign: 'center', lineHeight: 22 },
+  analyzeList: { width: '100%', marginTop: 30, gap: 12 },
+  analyzeRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  analyzeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  analyzeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.faint },
+  analyzeRowText: { fontFamily: fonts.semibold, fontSize: 14.5 },
+
+  // footer
+  footer: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-    zIndex: 50,
-    elevation: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
   },
-  screenshotToast: {
-    minHeight: 60,
-    borderRadius: 999,
-    backgroundColor: 'rgba(122, 126, 139, 0.96)',
-    paddingHorizontal: 24,
+  footerStack: { gap: 10 },
+
+  // exit modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(24,29,38,0.5)', alignItems: 'center', justifyContent: 'center', padding: 22 },
+  exitCard: { width: '100%', backgroundColor: colors.canvas, borderRadius: 22, padding: 24 },
+  center: { textAlign: 'center' },
+  exitDesc: { fontSize: 14.5, color: colors.muted, textAlign: 'center', marginTop: 10, lineHeight: 21 },
+  exitActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  exitBtn: { flex: 1 },
+
+  // edit sheet
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(24,29,38,0.5)', justifyContent: 'flex-end' },
+  sheetCard: { backgroundColor: colors.canvas, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 32, ...shadow.sheet },
+  sheetHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', alignSelf: 'center', marginBottom: 16 },
+  sheetForm: { marginTop: 16, gap: 8 },
+  sheetFieldLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, marginTop: 4 },
+  sheetInput: {
+    backgroundColor: colors.soft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  sheetTextArea: { minHeight: 96, textAlignVertical: 'top' },
+  locationInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  currentLocationBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.canvas,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetActions: { flexDirection: 'row', gap: 10, marginTop: 22 },
+
+  // screenshot toast
+  toastWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  toast: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    alignSelf: 'center',
-    maxWidth: '94%',
+    gap: 8,
+    backgroundColor: 'rgba(24,29,38,0.92)',
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
-  screenshotToastIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFC94D',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  screenshotToastText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
+  toastText: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.white },
 });

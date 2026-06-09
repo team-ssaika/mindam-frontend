@@ -15,6 +15,22 @@ export function getReportStatusLabel(status: ReportStatus) {
   return REPORT_STATUS_LABEL[status] ?? status;
 }
 
+/** Map a report status to a design-system status tone (접수 대기 / 처리중 / 처리 완료). */
+export function getReportStatusTone(status: ReportStatus): 'wait' | 'prog' | 'done' {
+  if (status === 'COMPLETED') {
+    return 'done';
+  }
+  if (
+    status === 'RECEIVED' ||
+    status === 'CHECKING' ||
+    status === 'IN_PROGRESS' ||
+    status === 'TRANSFERRED'
+  ) {
+    return 'prog';
+  }
+  return 'wait';
+}
+
 export function canEditReport(status: ReportStatus) {
   return status === 'SUBMITTED';
 }

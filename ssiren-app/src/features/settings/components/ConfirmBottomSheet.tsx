@@ -66,7 +66,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 36,
-    paddingBottom: 34,
   },
   content: {
     alignItems: 'center',
