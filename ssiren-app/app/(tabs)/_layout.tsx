@@ -1,6 +1,5 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import Header from '../../src/components/Header';
 import { Icon } from '../../src/components/ui';
 import { colors } from '../../src/theme';
 import { TAB_BAR_TOP_PADDING } from '../../src/constants/layout';
@@ -25,20 +24,11 @@ function PlusButton() {
 export default function TabLayout() {
   const pathname = usePathname();
   const isReportFlow = pathname === '/plus' || pathname === '/(tabs)/plus';
-  // Screens that render their own AppBar should not also show the global header.
-  const ownsHeader =
-    isReportFlow ||
-    pathname === '/settings' ||
-    pathname === '/(tabs)/settings' ||
-    pathname === '/profile' ||
-    pathname === '/(tabs)/profile' ||
-    pathname === '/chatbot' ||
-    pathname === '/(tabs)/chatbot';
   const { height: tabBarHeight, insets } = useTabBarMetrics();
 
+  // Every screen renders its own AppBar / floating bar, so no global header.
   return (
     <>
-      {!ownsHeader ? <Header /> : null}
       <Tabs
         screenOptions={{
           headerShown: false,
