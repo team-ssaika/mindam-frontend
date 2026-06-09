@@ -11,6 +11,7 @@ import {
 import { fetchMyProfile, updateMyProfile } from '../../profile/api/userApi';
 import { ConfirmBottomSheet } from '../components/ConfirmBottomSheet';
 import { logoutUser, withdrawUser } from '../services/settingsService';
+import { hasStoredAuthSession } from '../../auth/services/authService';
 
 type SheetType = 'logout' | 'withdraw' | null;
 
@@ -31,19 +32,35 @@ export function SettingsScreen() {
   const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
   const [isAlarmLoading, setIsAlarmLoading] = useState(true);
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
 
-    fetchMyProfile()
-      .then((profile) => {
-        if (!isMounted) return;
-        setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+    hasStoredAuthSession()
+      .then((hasSession) => {
+        if (!isMounted) return null;
+        setIsAuthenticated(hasSession);
+
+        if (!hasSession) {
+          setIsAlarmLoading(false);
+          return null;
+        }
+
+        return fetchMyProfile()
+          .then((profile) => {
+            if (!isMounted) return;
+            setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+          })
+          .catch((error: unknown) => {
+            console.log('[Settings] profile load error', error);
+          })
+          .finally(() => {
+            if (isMounted) setIsAlarmLoading(false);
+          });
       })
       .catch((error: unknown) => {
-        console.log('[Settings] profile load error', error);
-      })
-      .finally(() => {
+        console.log('[Settings] auth session check error', error);
         if (isMounted) setIsAlarmLoading(false);
       });
 
@@ -54,6 +71,10 @@ export function SettingsScreen() {
 
   const handleToggleAlarm = async (nextValue: boolean) => {
     if (isAlarmSaving) return;
+    if (!isAuthenticated) {
+      Alert.alert('로그인이 필요해요.', '푸시 알림을 받으려면 먼저 로그인해주세요.');
+      return;
+    }
 
     const previousValue = isAlarmEnabled;
     setIsAlarmEnabled(nextValue);
@@ -156,8 +177,14 @@ export function SettingsScreen() {
         </SGroup>
 
         <SGroup title="계정">
-          <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
-          <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
+          {isAuthenticated ? (
+            <>
+              <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
+              <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
+            </>
+          ) : (
+            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={() => router.replace('/auth/login')} />
+          )}
         </SGroup>
 
         <View style={styles.footer}>

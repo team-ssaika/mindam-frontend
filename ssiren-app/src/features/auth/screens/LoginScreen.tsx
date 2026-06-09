@@ -30,10 +30,15 @@ export function LoginScreen() {
   const [termsErrorMessage, setTermsErrorMessage] = useState<string | null>(null);
   const [pendingLoginResult, setPendingLoginResult] = useState<PendingLoginResult | null>(null);
 
-  const handlePressBrowse = () => {
-    // TODO: replace with guest browsing entry flow when route is ready
-    console.log('[Auth] continue as guest');
-    router.replace('/(tabs)');
+  const handlePressBrowse = async () => {
+    try {
+      await clearStoredAuthSession();
+    } catch (error) {
+      console.log('[Auth] clear auth session for guest failed', error);
+    } finally {
+      console.log('[Auth] continue as guest');
+      router.replace('/(tabs)');
+    }
   };
 
   const handlePressKakaoLogin = async () => {
