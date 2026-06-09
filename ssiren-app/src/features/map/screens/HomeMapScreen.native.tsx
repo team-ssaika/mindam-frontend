@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { fetchPublicReports } from '../../report/api/reportApi';
+import { usePublicReports } from '../../report/api/reportQueries';
 import { ReportMapMarker } from '../../report/components/ReportMapMarker';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import type { ReportDetail } from '../../report/types/reportDetail';
@@ -79,7 +79,14 @@ export default function HomeMapScreen() {
     longitude: number;
     title: string;
   } | null>(null);
-  const [publicReports, setPublicReports] = useState<PublicReportItem[]>([]);
+  const { data: publicReportsPage } = usePublicReports({ page: 0, size: 50, sort: 'createdAt,desc' });
+  const publicReports = useMemo(
+    () =>
+      Array.isArray(publicReportsPage?.contents)
+        ? publicReportsPage.contents.filter(hasValidReportCoordinate)
+        : [],
+    [publicReportsPage]
+  );
   const [selectedReport, setSelectedReport] = useState<PublicReportItem | null>(null);
   const [isReportSheetVisible, setIsReportSheetVisible] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -141,26 +148,6 @@ export default function HomeMapScreen() {
 
   useEffect(() => {
     moveToCurrentLocation();
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchPublicReports({ page: 0, size: 50, sort: 'createdAt,desc' })
-      .then((data) => {
-        if (!isMounted) return;
-        setPublicReports(
-          Array.isArray(data.contents) ? data.contents.filter(hasValidReportCoordinate) : []
-        );
-      })
-      .catch(() => {
-        if (!isMounted) return;
-        setPublicReports([]);
-      });
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
 
   const openReportSheet = (item: PublicReportItem) => {

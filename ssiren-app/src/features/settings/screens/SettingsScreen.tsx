@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Card, ListRow } from '../../../components/ui';
 import { colors, fonts } from '../../../theme';
@@ -8,7 +8,7 @@ import {
   deactivateStoredPushToken,
   registerDevicePushToken,
 } from '../../notifications/services/pushNotificationService';
-import { fetchMyProfile, updateMyProfile } from '../../profile/api/userApi';
+import { useMyProfile, useUpdateMyProfile } from '../../profile/api/userQueries';
 import { ConfirmBottomSheet } from '../components/ConfirmBottomSheet';
 import { logoutUser, withdrawUser } from '../services/settingsService';
 
@@ -28,40 +28,23 @@ export function SettingsScreen() {
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
-  const [isAlarmLoading, setIsAlarmLoading] = useState(true);
-  const [isAlarmSaving, setIsAlarmSaving] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    fetchMyProfile()
-      .then((profile) => {
-        if (!isMounted) return;
-        setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
-      })
-      .catch((error: unknown) => {
-        console.log('[Settings] profile load error', error);
-      })
-      .finally(() => {
-        if (isMounted) setIsAlarmLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { data: profile, isPending: isAlarmLoading } = useMyProfile();
+  const updateProfile = useUpdateMyProfile();
+  const isAlarmSaving = updateProfile.isPending;
+  // Local override lets the toggle reflect the optimistic value before the
+  // server round-trip + FCM side effects settle.
+  const [alarmOverride, setAlarmOverride] = useState<boolean | null>(null);
+  const isAlarmEnabled = alarmOverride ?? Boolean(profile?.isAlarmEnabled);
 
   const handleToggleAlarm = async (nextValue: boolean) => {
-    if (isAlarmSaving) return;
+    if (updateProfile.isPending) return;
 
     const previousValue = isAlarmEnabled;
-    setIsAlarmEnabled(nextValue);
-    setIsAlarmSaving(true);
+    setAlarmOverride(nextValue);
 
     try {
-      const updatedProfile = await updateMyProfile({ isAlarmEnabled: nextValue });
-      setIsAlarmEnabled(Boolean(updatedProfile.isAlarmEnabled));
+      const updatedProfile = await updateProfile.mutateAsync({ isAlarmEnabled: nextValue });
+      setAlarmOverride(Boolean(updatedProfile.isAlarmEnabled));
 
       if (nextValue) {
         try {
@@ -78,10 +61,8 @@ export function SettingsScreen() {
       }
     } catch (error) {
       console.log('[Settings] alarm update error', error);
-      setIsAlarmEnabled(previousValue);
+      setAlarmOverride(previousValue);
       Alert.alert('알림 설정 변경 실패', '다시 시도해주세요.');
-    } finally {
-      setIsAlarmSaving(false);
     }
   };
 

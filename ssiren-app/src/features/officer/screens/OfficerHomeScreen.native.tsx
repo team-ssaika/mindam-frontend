@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
@@ -7,9 +7,8 @@ import * as Location from 'expo-location';
 import { AppText, Icon } from '../../../components/ui';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
-import { fetchPublicReports } from '../../report/api/reportApi';
+import { usePublicReports } from '../../report/api/reportQueries';
 import { ReportMapMarker } from '../../report/components/ReportMapMarker';
-import type { PublicReportItem } from '../../report/types/publicReport';
 import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
 import { officerProfile, officerSummary } from '../mocks/officerMock';
 
@@ -22,7 +21,14 @@ export default function OfficerHomeScreen() {
   const mapRef = useRef<MapView | null>(null);
   const [resolving, setResolving] = useState(false);
   const [region, setRegion] = useState<Region>({ ...CITY_HALL, ...DEFAULT_DELTA });
-  const [reports, setReports] = useState<PublicReportItem[]>([]);
+  const { data: publicReportsPage } = usePublicReports({ page: 0, size: 50, sort: 'createdAt,desc' });
+  const reports = useMemo(
+    () =>
+      Array.isArray(publicReportsPage?.contents)
+        ? publicReportsPage.contents.filter(hasValidReportCoordinate)
+        : [],
+    [publicReportsPage]
+  );
 
   const moveToCurrentLocation = async () => {
     try {
@@ -44,19 +50,6 @@ export default function OfficerHomeScreen() {
 
   useEffect(() => {
     moveToCurrentLocation();
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    fetchPublicReports({ page: 0, size: 50, sort: 'createdAt,desc' })
-      .then((data) => {
-        if (!mounted) return;
-        setReports(Array.isArray(data.contents) ? data.contents.filter(hasValidReportCoordinate) : []);
-      })
-      .catch(() => mounted && setReports([]));
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   return (

@@ -1,81 +1,31 @@
-import axios from 'axios';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Button, Icon } from '../../../components/ui';
 import { colors } from '../../../theme';
-import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { fetchMyReports } from '../api/reportApi';
+import { getApiErrorMessage } from '../../../lib/api/errorMessage';
+import { useRefetchOnFocus } from '../../../lib/api/useRefetchOnFocus';
+import { useMyReports } from '../api/reportQueries';
 import { MyReportListItem } from '../components/MyReportListItem';
-import type { MyReportItem } from '../types/myReport';
 
 export function MyReportsScreen() {
   const router = useRouter();
-  const [reports, setReports] = useState<MyReportItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { data, isPending, isError, error, isRefetching, refetch } = useMyReports({
+    page: 0,
+    size: 20,
+    sort: 'createdAt,desc',
+  });
 
-  const loadReports = useCallback(async (options?: { refresh?: boolean; silent?: boolean }) => {
-    const isRefresh = options?.refresh ?? false;
-    const silent = options?.silent ?? false;
+  const reports = data?.contents ?? [];
+  const errorMessage =
+    isError && !data ? getApiErrorMessage(error, '내 제보 목록을 불러오지 못했습니다.', { withBaseUrl: true }) : null;
 
-    if (isRefresh && !silent) {
-      setIsRefreshing(true);
-    } else if (!silent) {
-      setIsLoading(true);
-    }
-    if (!silent) {
-      setErrorMessage(null);
-    }
-
-    try {
-      const data = await fetchMyReports({ page: 0, size: 20, sort: 'createdAt,desc' });
-      setReports(Array.isArray(data.contents) ? data.contents : []);
-    } catch (error) {
-      if (silent) {
-        return;
-      }
-
-      let message = '내 제보 목록을 불러오지 못했습니다.';
-      if (axios.isAxiosError(error)) {
-        const apiMessage = error.response?.data?.message;
-        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
-      } else if (error instanceof Error) {
-        message = error.message;
-      }
-      if (axios.isAxiosError(error) && !error.response) {
-        message = `${message}\n\n요청 주소: ${resolveApiBaseUrl()}\nPC와 폰이 같은 Wi‑Fi인지 확인해주세요.`;
-      }
-      setErrorMessage(message);
-      setReports([]);
-    } finally {
-      if (!silent) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    }
-  }, []);
-
-  const isFirstFocusRef = useRef(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (isFirstFocusRef.current) {
-        isFirstFocusRef.current = false;
-        loadReports();
-        return;
-      }
-
-      loadReports({ refresh: true, silent: true });
-    }, [loadReports])
-  );
+  useRefetchOnFocus(refetch);
 
   return (
     <View style={styles.flex}>
       <AppBar title="내 민원함" logo={false} onBack={() => router.replace('/(tabs)/profile')} />
 
-      {isLoading ? (
+      {isPending ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.brand} />
         </View>
@@ -83,7 +33,7 @@ export function MyReportsScreen() {
         <View style={styles.centered}>
           <AppText style={styles.errorText}>{errorMessage}</AppText>
           <View style={styles.retryWrap}>
-            <Button label="다시 시도" icon="refresh" onPress={() => loadReports({ refresh: true })} />
+            <Button label="다시 시도" icon="refresh" onPress={() => refetch()} />
           </View>
         </View>
       ) : (
@@ -101,11 +51,7 @@ export function MyReportsScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={() => loadReports({ refresh: true })}
-              tintColor={colors.brand}
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={colors.brand} />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>

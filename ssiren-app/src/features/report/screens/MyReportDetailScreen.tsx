@@ -1,6 +1,5 @@
-import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,10 +20,9 @@ import {
   StatusBadge,
 } from '../../../components/ui';
 import { colors, fonts, radius } from '../../../theme';
-import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { deleteMyReport, fetchMyReportDetail } from '../api/reportApi';
+import { getApiErrorMessage } from '../../../lib/api/errorMessage';
+import { useDeleteMyReport, useMyReportDetail } from '../api/reportQueries';
 import { MyReportEditSheet } from '../components/MyReportEditSheet';
-import type { MyReportDetail } from '../types/myReportDetail';
 import {
   canDeleteReport,
   canEditReport,
@@ -46,52 +44,24 @@ const CONTENT_FIELDS = [
 export function MyReportDetailScreen() {
   const router = useRouter();
   const { reportId } = useLocalSearchParams<{ reportId: string }>();
-  const [detail, setDetail] = useState<MyReportDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isEditVisible, setIsEditVisible] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const insets = useSafeAreaInsets();
+  const [isEditVisible, setIsEditVisible] = useState(false);
+
+  const id = Number(reportId);
+  const isValidId = Number.isFinite(id);
+  const { data: detail, isLoading, isError, error, refetch } = useMyReportDetail(id);
+  const deleteMutation = useDeleteMyReport();
+  const isDeleting = deleteMutation.isPending;
+
   const showDeleteButton = detail ? canDeleteReport(detail.report.status) : false;
-
-  const loadDetail = useCallback(async () => {
-    const id = Number(reportId);
-    if (!Number.isFinite(id)) {
-      setErrorMessage('유효하지 않은 민원 ID입니다.');
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const data = await fetchMyReportDetail(id);
-      setDetail(data);
-    } catch (error) {
-      let message = '민원 상세를 불러오지 못했습니다.';
-      if (axios.isAxiosError(error)) {
-        const apiMessage = error.response?.data?.message;
-        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
-      } else if (error instanceof Error) {
-        message = error.message;
-      }
-      if (axios.isAxiosError(error) && !error.response) {
-        message = `${message}\n\n요청 주소: ${resolveApiBaseUrl()}`;
-      }
-      setErrorMessage(message);
-      setDetail(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [reportId]);
-
-  useEffect(() => {
-    loadDetail();
-  }, [loadDetail]);
+  const errorMessage = !isValidId
+    ? '유효하지 않은 민원 ID입니다.'
+    : isError && !detail
+      ? getApiErrorMessage(error, '민원 상세를 불러오지 못했습니다.', { withBaseUrl: true })
+      : null;
 
   const handleDeletePress = useCallback(() => {
-    if (!detail || isDeleting) {
+    if (!detail || deleteMutation.isPending) {
       return;
     }
 
@@ -100,27 +70,16 @@ export function MyReportDetailScreen() {
       {
         text: '삭제',
         style: 'destructive',
-        onPress: async () => {
-          setIsDeleting(true);
-          try {
-            await deleteMyReport(detail.report.id);
-            router.replace('/my-reports');
-          } catch (error) {
-            let message = '민원 삭제에 실패했습니다.';
-            if (axios.isAxiosError(error)) {
-              const apiMessage = error.response?.data?.message;
-              message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
-            } else if (error instanceof Error) {
-              message = error.message;
-            }
-            Alert.alert('삭제 실패', message);
-          } finally {
-            setIsDeleting(false);
-          }
+        onPress: () => {
+          deleteMutation.mutate(detail.report.id, {
+            onSuccess: () => router.replace('/my-reports'),
+            onError: (err) =>
+              Alert.alert('삭제 실패', getApiErrorMessage(err, '민원 삭제에 실패했습니다.')),
+          });
         },
       },
     ]);
-  }, [detail, isDeleting, router]);
+  }, [detail, deleteMutation, router]);
 
   const summaryText = detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
 
@@ -169,7 +128,7 @@ export function MyReportDetailScreen() {
         <View style={styles.centered}>
           <AppText style={styles.errorText}>{errorMessage}</AppText>
           <View style={styles.retryWrap}>
-            <Button label="다시 시도" icon="refresh" onPress={loadDetail} />
+            <Button label="다시 시도" icon="refresh" onPress={() => refetch()} />
           </View>
         </View>
       ) : detail ? (
@@ -304,7 +263,7 @@ export function MyReportDetailScreen() {
           visible={isEditVisible}
           detail={detail}
           onClose={() => setIsEditVisible(false)}
-          onSaved={loadDetail}
+          onSaved={() => refetch()}
         />
       ) : null}
     </View>
