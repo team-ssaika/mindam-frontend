@@ -1,50 +1,50 @@
 /**
  * Design tokens — tone "A · 소프트 퍼플".
- * White canvas, purple accent, lavender surfaces, grey typography hierarchy.
+ * Lavender-tinted neutrals + #6C63FF brand family.
  */
 
 export const colors = {
-  // text
-  ink: '#000000',
-  body: '#333840',
-  muted: '#767676',
-  faint: '#BDBDBD',
-  // surfaces
+  // text (purple-gray undertone)
+  ink: '#1C1B26',
+  body: '#3F3D50',
+  muted: '#7B7894',
+  faint: '#B3B0C4',
+  // surfaces (lavender tint)
   canvas: '#ffffff',
-  soft: '#FAFAFC',
-  soft2: '#F0F0F5',
-  hairline: '#ECECF2',
+  soft: '#F9F8FD',
+  soft2: '#EEECF8',
+  hairline: '#E6E4F2',
   // brand (purple)
   brand: '#6C63FF',
   brandActive: '#5A52E8',
-  brandSoft: '#F0EEFF',
+  brandSoft: '#EEEAFF',
   accent: '#6C63FF',
-  accentSoft: '#ECE9FF',
+  accentSoft: '#E8E4FF',
   accentActive: '#5A52E8',
   // buttons
-  buttonDisabled: '#E1E1F0',
+  buttonDisabled: '#DDD9F0',
   buttonDisabledText: '#FFFFFF',
-  // legacy aliases (map to purple system)
+  // supporting palette (harmonized with brand)
   coral: '#6C63FF',
-  forest: '#1F6B32',
-  cream: '#F5F0FF',
-  peach: '#C4BFFF',
-  mint: '#DCEFE1',
-  yellow: '#F4D35E',
-  mustard: '#D9A441',
+  forest: '#3D8B62',
+  cream: '#F5F2FF',
+  peach: '#A89FFF',
+  mint: '#D8EDE4',
+  yellow: '#D4CCFF',
+  mustard: '#8B83F0',
   // misc
   white: '#ffffff',
   black: '#000000',
-  danger: '#E25353',
+  danger: '#E45B5B',
 } as const;
 
 export type ColorToken = keyof typeof colors;
 
-/** Report status palette (접수 대기 / 처리중 / 처리 완료). */
+/** Report status palette — purple-family wait/prog, soft green done. */
 export const statusColors = {
-  wait: { bg: '#F0F0F5', fg: '#767676', dot: '#BDBDBD', label: '접수 대기' },
-  prog: { bg: '#FBEccb', fg: '#8A6612', dot: '#D9A441', label: '처리중' },
-  done: { bg: '#DCEFE1', fg: '#1F6B32', dot: '#2E8B46', label: '처리 완료' },
+  wait: { bg: '#DDE1EF', fg: '#4A4F63', dot: '#72789A', label: '접수 대기' },
+  prog: { bg: '#EEEAFF', fg: '#5A52E8', dot: '#6C63FF', label: '처리중' },
+  done: { bg: '#E6F4EC', fg: '#2F6B4A', dot: '#3D8B62', label: '처리 완료' },
 } as const;
 
 export type StatusKey = keyof typeof statusColors;
@@ -101,12 +101,12 @@ export const shadow = {
   card: {
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 2,
   },
   sheet: {
-    shadowColor: '#000',
+    shadowColor: '#3F3D50',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
@@ -115,12 +115,12 @@ export const shadow = {
   fab: {
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.3,
     shadowRadius: 18,
     elevation: 8,
   },
   float: {
-    shadowColor: '#000',
+    shadowColor: '#3F3D50',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,

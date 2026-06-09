@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { colors, fonts } from '../../theme';
+import { colors, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon, { IconName } from './Icon';
 import Toggle from './Toggle';
@@ -48,12 +48,10 @@ export default function ListRow({
       ]}
     >
       {icon ? (
-        <View style={[styles.iconTile, danger && styles.iconTileDanger]}>
-          <Icon name={icon} size={18} color={danger ? colors.coral : colors.ink} />
-        </View>
+        <Icon name={icon} size={20} color={danger ? colors.danger : colors.ink} />
       ) : null}
       <View style={styles.center}>
-        <AppText style={[styles.label, danger && { color: colors.coral }]}>{label}</AppText>
+        <AppText style={[styles.label, danger && styles.dangerLabel]}>{label}</AppText>
         {sub ? <AppText style={styles.sub}>{sub}</AppText> : null}
       </View>
       {right ??
@@ -62,7 +60,9 @@ export default function ListRow({
         ) : (
           <View style={styles.trailing}>
             {value ? <AppText style={styles.value}>{value}</AppText> : null}
-            {!danger ? <Icon name="chevR" size={17} color={colors.faint} /> : null}
+            {!danger && !value && onPress ? (
+              <Icon name="chevR" size={17} color={colors.faint} />
+            ) : null}
           </View>
         ))}
     </Pressable>
@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: layout.screenPadding,
   },
   divider: {
     borderTopWidth: 1,
@@ -83,17 +83,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     backgroundColor: colors.soft,
-  },
-  iconTile: {
-    width: 32,
-    height: 32,
-    borderRadius: 9,
-    backgroundColor: colors.brandSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconTileDanger: {
-    backgroundColor: '#fdeceb',
   },
   center: {
     flex: 1,
@@ -104,6 +93,9 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: colors.ink,
     letterSpacing: -0.2,
+  },
+  dangerLabel: {
+    color: colors.danger,
   },
   sub: {
     fontSize: 12,

@@ -4,12 +4,11 @@ import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import {
   AppBar,
   AppText,
-  Card,
   Icon,
-  SectionLabel,
+  ListRow,
   StatusBadge,
 } from '../../../components/ui';
-import { colors, fonts, radius, statusColors, StatusKey } from '../../../theme';
+import { colors, fonts, layout, statusColors, StatusKey } from '../../../theme';
 import { fetchMyReports } from '../../report/api/reportApi';
 import type { MyReportItem } from '../../report/types/myReport';
 import {
@@ -21,11 +20,37 @@ import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { fetchMyProfile } from '../api/userApi';
 import { myPageMock } from '../mocks/myPageMock';
 
-const STATUS_CARDS = [
+const STATUS_ITEMS = [
   { key: 'wait' as StatusKey, label: '접수 대기', count: myPageMock.statusSummary.pending },
   { key: 'prog' as StatusKey, label: '처리중', count: myPageMock.statusSummary.inProgress },
   { key: 'done' as StatusKey, label: '처리 완료', count: myPageMock.statusSummary.completed },
 ];
+
+const MENU_ITEMS = [
+  { icon: 'info' as const, label: '이용안내' },
+  { icon: 'headset' as const, label: '고객센터' },
+];
+
+function ProfileSectionTitle({
+  title,
+  actionLabel,
+  onPressAction,
+}: {
+  title: string;
+  actionLabel?: string;
+  onPressAction?: () => void;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <AppText style={styles.sectionTitle}>{title}</AppText>
+      {actionLabel && onPressAction ? (
+        <Pressable onPress={onPressAction} hitSlop={8} accessibilityRole="button">
+          <AppText style={styles.sectionAction}>{actionLabel}</AppText>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 export function MyPageScreen() {
   const router = useRouter();
@@ -95,46 +120,63 @@ export function MyPageScreen() {
           </View>
         </View>
 
-        <View style={styles.profileDivider} />
+        <View style={styles.sectionDivider} />
 
-        {/* status summary */}
         <View style={styles.section}>
-          <SectionLabel title="내 제보 현황" right="전체 보기 ›" onPressRight={goMyReports} />
+          <ProfileSectionTitle
+            title="내 제보 현황"
+            actionLabel="전체 보기 ›"
+            onPressAction={goMyReports}
+          />
           <View style={styles.statRow}>
-            {STATUS_CARDS.map((s) => (
-              <Pressable key={s.key} style={styles.statCard} onPress={goMyReports}>
-                <AppText style={[styles.statCount, { color: statusColors[s.key].dot }]}>{s.count}</AppText>
-                <AppText style={styles.statLabel}>{s.label}</AppText>
-              </Pressable>
+            {STATUS_ITEMS.map((item, index) => (
+              <View key={item.key} style={styles.statColumn}>
+                {index > 0 ? <View style={styles.statSeparator} /> : null}
+                <Pressable style={styles.statPressable} onPress={goMyReports}>
+                  <AppText style={[styles.statCount, { color: statusColors[item.key].dot }]}>
+                    {item.count}
+                  </AppText>
+                  <AppText style={styles.statLabel}>{item.label}</AppText>
+                </Pressable>
+              </View>
             ))}
           </View>
         </View>
 
-        {/* recent reports */}
+        <View style={styles.sectionDivider} />
+
         <View style={styles.section}>
-          <SectionLabel title="최근 제보" />
-          <Card padded={false}>
-            {recent.length === 0 ? (
-              <View style={styles.emptyBox}>
-                <AppText style={styles.emptyText}>아직 제보 내역이 없어요.</AppText>
-              </View>
-            ) : (
-              recent.map((item, index) => (
-                <RecentRow
-                  key={item.report.id}
-                  item={item}
-                  first={index === 0}
-                  onPress={() => router.push(`/my-reports/${item.report.id}`)}
-                />
-              ))
-            )}
-          </Card>
+          <ProfileSectionTitle title="최근 제보" />
+          {recent.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <AppText style={styles.emptyText}>아직 제보 내역이 없어요.</AppText>
+            </View>
+          ) : (
+            recent.map((item) => (
+              <RecentRow
+                key={item.report.id}
+                item={item}
+                onPress={() => router.push(`/my-reports/${item.report.id}`)}
+              />
+            ))
+          )}
         </View>
 
-        {/* menu tiles */}
-        <View style={styles.menuRow}>
-          <MenuTile icon="info" label="이용안내" />
-          <MenuTile icon="headset" label="고객센터" />
+        <View style={styles.sectionDivider} />
+
+        <View style={styles.section}>
+          <ProfileSectionTitle title="도움이 필요하신가요?" />
+          <View style={styles.helpList}>
+            {MENU_ITEMS.map((item, index) => (
+              <ListRow
+                key={item.label}
+                icon={item.icon}
+                label={item.label}
+                first={index === 0}
+                onPress={() => {}}
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -143,17 +185,15 @@ export function MyPageScreen() {
 
 function RecentRow({
   item,
-  first,
   onPress,
 }: {
   item: MyReportItem;
-  first: boolean;
   onPress: () => void;
 }) {
   const { report, category } = item;
   const meta = `${formatReportDate(report.createdAt)} · ${category?.categoryName ?? getReportStatusLabel(report.status)}`;
   return (
-    <Pressable onPress={onPress} style={[styles.recentRow, !first && styles.recentDivider]}>
+    <Pressable onPress={onPress} style={styles.recentRow}>
       <View style={styles.recentText}>
         <AppText style={styles.recentTitle} numberOfLines={1}>{report.title}</AppText>
         <AppText style={styles.recentMeta}>{meta}</AppText>
@@ -163,24 +203,16 @@ function RecentRow({
   );
 }
 
-function MenuTile({ icon, label }: { icon: 'info' | 'headset'; label: string }) {
-  return (
-    <Card style={styles.menuTile}>
-      <Icon name={icon} size={20} color={colors.brand} />
-      <AppText style={styles.menuLabel}>{label}</AppText>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.soft },
-  content: { paddingHorizontal: 18, paddingTop: 18, gap: 16 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingTop: 8 },
 
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    paddingVertical: 4,
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: 20,
   },
   avatar: {
     width: 72,
@@ -196,36 +228,98 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.muted,
   },
-  profileDivider: {
-    height: 1,
-    backgroundColor: colors.hairline,
-    marginBottom: 4,
+  sectionDivider: {
+    height: 8,
+    backgroundColor: colors.soft,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.hairline,
   },
 
-  section: { gap: 0 },
-  statRow: { flexDirection: 'row', gap: 10 },
-  statCard: {
+  section: {
+    paddingTop: 18,
+    paddingBottom: 18,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.screenPadding,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.muted,
+    letterSpacing: -0.1,
+  },
+  sectionAction: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.brand,
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  statColumn: {
     flex: 1,
-    backgroundColor: colors.canvas,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  statCount: { fontFamily: fonts.bold, fontSize: 26, letterSpacing: -0.5 },
-  statLabel: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted, marginTop: 3 },
+  statSeparator: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: colors.hairline,
+    marginVertical: 4,
+  },
+  statPressable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  statCount: {
+    fontFamily: fonts.bold,
+    fontSize: 26,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.muted,
+  },
 
-  emptyBox: { paddingVertical: 28, alignItems: 'center' },
-  emptyText: { fontSize: 13.5, color: colors.muted },
-  recentRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
-  recentDivider: { borderTopWidth: 1, borderTopColor: colors.hairline },
+  emptyBox: {
+    paddingVertical: 28,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 13.5,
+    color: colors.muted,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: layout.screenPadding,
+  },
   recentText: { flex: 1, minWidth: 0 },
-  recentTitle: { fontFamily: fonts.semibold, fontSize: 14.5, color: colors.ink },
-  recentMeta: { fontSize: 12.5, color: colors.muted, marginTop: 3 },
+  recentTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  recentMeta: {
+    fontSize: 12.5,
+    color: colors.muted,
+    marginTop: 3,
+  },
 
-  menuRow: { flexDirection: 'row', gap: 10 },
-  menuTile: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
-  menuLabel: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  helpList: {
+    marginTop: 2,
+  },
 });

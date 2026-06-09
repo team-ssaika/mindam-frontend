@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, Card, ListRow } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { AppBar, AppText, ListRow } from '../../../components/ui';
+import { colors, fonts, layout } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -18,7 +18,7 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.group}>
       <AppText style={styles.groupTitle}>{title}</AppText>
-      <Card padded={false}>{children}</Card>
+      <View style={styles.groupList}>{children}</View>
     </View>
   );
 }
@@ -124,7 +124,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar title="설정" logo={false} border={false} />
+      <AppBar title="설정" logo={false} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
@@ -189,11 +189,21 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.soft },
-  content: { paddingTop: 18, paddingHorizontal: 18, gap: 18 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingTop: 8, gap: 28 },
   group: { gap: 8 },
-  groupTitle: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted, marginLeft: 4 },
-  footer: { alignItems: 'center', paddingTop: 6, gap: 8 },
+  groupTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: colors.muted,
+    paddingHorizontal: layout.screenPadding,
+  },
+  groupList: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.hairline,
+  },
+  footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
   footerLinks: { fontSize: 12.5, color: colors.muted, fontFamily: fonts.medium },
   footerVersion: { fontSize: 11.5, color: colors.faint },
 });
