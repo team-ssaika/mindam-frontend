@@ -63,7 +63,7 @@ function formatDistance(meters: number): string {
 }
 
 export default function HomeMapScreen() {
-  const { contentOffset: tabBarOffset } = useTabBarMetrics();
+  const { contentOffset: tabBarOffset, insets } = useTabBarMetrics();
   const mapRef = useRef<MapView | null>(null);
   const [isResolvingCurrentLocation, setIsResolvingCurrentLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{
@@ -341,8 +341,7 @@ export default function HomeMapScreen() {
         </View>
 
         {/* peek summary + nearby report cards */}
-        <View style={[styles.peekSheet, { paddingBottom: tabBarOffset + 12 }]} pointerEvents="box-none">
-          <View style={styles.peekHandle} />
+        <View style={[styles.peekSheet, styles.peekSheetPad]} pointerEvents="box-none">
           <View style={styles.peekRow}>
             <AppText variant="section" color={colors.ink}>내 주변 제보</AppText>
             <AppText style={styles.peekMeta}>
@@ -407,7 +406,10 @@ export default function HomeMapScreen() {
               <Pressable style={StyleSheet.absoluteFillObject} onPress={closeReportSheet} />
             </Animated.View>
             <Animated.View
-              style={[styles.sheetContainer, { transform: [{ translateY: sheetTranslateY }] }]}
+              style={[
+                styles.sheetContainer,
+                { paddingBottom: insets.bottom + 24, transform: [{ translateY: sheetTranslateY }] },
+              ]}
             >
               <View style={styles.sheetHandle} />
               <View style={styles.sheetHeaderRow}>
@@ -584,10 +586,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 18,
-    paddingTop: 10,
+    paddingTop: 16,
     ...shadow.sheet,
   },
-  peekHandle: { width: 38, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', alignSelf: 'center', marginBottom: 12 },
+  peekSheetPad: { paddingBottom: 16 },
   peekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   peekMeta: { fontSize: 13, color: colors.muted },
   peekCount: { fontFamily: fonts.bold, fontSize: 15, color: colors.coral },

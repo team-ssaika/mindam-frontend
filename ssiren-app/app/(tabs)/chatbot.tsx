@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Keyboard,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, ChatBubble, Icon } from '../../src/components/ui';
 import { colors, fonts, radius } from '../../src/theme';
 
@@ -24,8 +25,11 @@ const GREETING: ChatMessage = {
   text: '안녕하세요! 무엇을 도와드릴까요?\n사진과 함께 상황을 말씀해 주시면 제가 제보를 정리해 드려요.',
 };
 
+// AppBar(52) + status bar inset → KeyboardAvoidingView's distance from the top.
+const APP_BAR_HEIGHT = 52;
+
 export default function Chatbot() {
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -42,7 +46,6 @@ export default function Chatbot() {
   };
 
   const handleReset = () => {
-    Keyboard.dismiss();
     setMessages([GREETING]);
     setInputText('');
   };
@@ -55,28 +58,13 @@ export default function Chatbot() {
     } catch {}
   };
 
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    });
-  }, [messages, keyboardHeight]);
+  const scrollToEnd = () => {
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+  };
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+    scrollToEnd();
+  }, [messages]);
 
   return (
     <View style={styles.container}>
@@ -89,7 +77,11 @@ export default function Chatbot() {
           </Pressable>
         }
       />
-      <View style={[styles.body, { paddingBottom: keyboardHeight }]}>
+      <KeyboardAvoidingView
+        style={styles.body}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + APP_BAR_HEIGHT : 0}
+      >
         <ScrollView
           ref={(ref) => {
             scrollRef.current = ref;
@@ -98,6 +90,7 @@ export default function Chatbot() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToEnd}
         >
           {messages.map((message) =>
             message.role === 'user' ? (
@@ -134,7 +127,7 @@ export default function Chatbot() {
             <Icon name="send" size={20} color={colors.white} fill />
           </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       {showCopyToast ? (
         <View style={styles.toastWrapper} pointerEvents="none">
@@ -159,7 +152,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 14,
+    paddingBottom: 12,
     backgroundColor: colors.soft,
     borderTopWidth: 1,
     borderTopColor: colors.hairline,
