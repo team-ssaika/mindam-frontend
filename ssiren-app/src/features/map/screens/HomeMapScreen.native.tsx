@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,6 +7,7 @@ import {
   Keyboard,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -25,8 +26,9 @@ import {
   hasValidReportCoordinate,
   toMapReportDetail,
 } from '../../report/utils/publicReportMap';
-import { AppText, CatChip, Icon, Tag } from '../../../components/ui';
+import { AppText, CatChip, Icon, StatusBadge, Tag } from '../../../components/ui';
 import { colors, fonts, radius, shadow } from '../../../theme';
+import { getReportStatusTone } from '../../report/utils/reportStatus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 
 const CITY_HALL = {
@@ -40,6 +42,25 @@ const DEFAULT_DELTA = {
 };
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+
+type LatLng = { latitude: number; longitude: number };
+
+/** Great-circle distance in meters between two coordinates. */
+function distanceMeters(a: LatLng, b: LatLng): number {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function formatDistance(meters: number): string {
+  return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
+}
 
 export default function HomeMapScreen() {
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
@@ -69,6 +90,18 @@ export default function HomeMapScreen() {
   const selectedReportDetail: ReportDetail | null = selectedReport
     ? toMapReportDetail(selectedReport, userLocation)
     : null;
+
+  // Reports sorted nearest-first (when we know where the user is) for the peek list.
+  const sortedReports = useMemo(() => {
+    if (!userLocation) {
+      return publicReports;
+    }
+    return [...publicReports].sort(
+      (a, b) =>
+        distanceMeters(userLocation, { latitude: a.report.latitude, longitude: a.report.longitude }) -
+        distanceMeters(userLocation, { latitude: b.report.latitude, longitude: b.report.longitude })
+    );
+  }, [publicReports, userLocation]);
 
   const moveToCoordinate = (latitude: number, longitude: number, title: string) => {
     const nextRegion: Region = { latitude, longitude, ...DEFAULT_DELTA };
@@ -136,6 +169,18 @@ export default function HomeMapScreen() {
     sheetTranslateY.setValue(SCREEN_HEIGHT);
     setIsReportSheetVisible(true);
     Animated.timing(sheetTranslateY, { toValue: 0, duration: 280, useNativeDriver: true }).start();
+  };
+
+  // Peek-list tap: pan the map to the report, then open its detail sheet.
+  const focusReport = (item: PublicReportItem) => {
+    const region: Region = {
+      latitude: item.report.latitude,
+      longitude: item.report.longitude,
+      ...DEFAULT_DELTA,
+    };
+    setCurrentRegion(region);
+    mapRef.current?.animateToRegion(region, 600);
+    openReportSheet(item);
   };
 
   const closeReportSheet = () => {
@@ -295,17 +340,57 @@ export default function HomeMapScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* peek summary */}
-        <View style={[styles.peekSheet, { paddingBottom: tabBarOffset + 14 }]} pointerEvents="box-none">
+        {/* peek summary + nearby report cards */}
+        <View style={[styles.peekSheet, { paddingBottom: tabBarOffset + 12 }]} pointerEvents="box-none">
           <View style={styles.peekHandle} />
           <View style={styles.peekRow}>
-            <View>
-              <AppText variant="section" color={colors.ink}>내 주변 제보</AppText>
-              <AppText style={styles.peekMeta}>
-                지도에 표시된 제보 <AppText style={styles.peekCount}>{publicReports.length}건</AppText>
-              </AppText>
-            </View>
+            <AppText variant="section" color={colors.ink}>내 주변 제보</AppText>
+            <AppText style={styles.peekMeta}>
+              <AppText style={styles.peekCount}>{publicReports.length}건</AppText>
+            </AppText>
           </View>
+
+          {sortedReports.length === 0 ? (
+            <AppText style={styles.peekEmpty}>아직 주변에 등록된 제보가 없어요.</AppText>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.peekListContent}
+            >
+              {sortedReports.map((item) => {
+                const dist = userLocation
+                  ? formatDistance(
+                      distanceMeters(userLocation, {
+                        latitude: item.report.latitude,
+                        longitude: item.report.longitude,
+                      })
+                    )
+                  : null;
+                return (
+                  <Pressable
+                    key={item.report.id}
+                    style={styles.peekCard}
+                    onPress={() => focusReport(item)}
+                  >
+                    <View style={styles.peekCardTop}>
+                      <CatChip icon="alert" label={item.category.categoryName} color={colors.coral} />
+                      <StatusBadge status={getReportStatusTone(item.report.status)} size="sm" />
+                    </View>
+                    <AppText style={styles.peekCardTitle} numberOfLines={2}>
+                      {item.report.title}
+                    </AppText>
+                    {dist ? (
+                      <View style={styles.peekCardMeta}>
+                        <Icon name="location" size={13} color={colors.faint} />
+                        <AppText style={styles.peekCardDist}>{dist}</AppText>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
 
         <Modal
@@ -504,8 +589,23 @@ const styles = StyleSheet.create({
   },
   peekHandle: { width: 38, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', alignSelf: 'center', marginBottom: 12 },
   peekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  peekMeta: { fontSize: 13, color: colors.muted, marginTop: 2 },
-  peekCount: { fontFamily: fonts.bold, color: colors.coral },
+  peekMeta: { fontSize: 13, color: colors.muted },
+  peekCount: { fontFamily: fonts.bold, fontSize: 15, color: colors.coral },
+  peekEmpty: { fontSize: 13.5, color: colors.muted, paddingVertical: 16 },
+  peekListContent: { gap: 10, paddingTop: 12, paddingRight: 4 },
+  peekCard: {
+    width: 220,
+    backgroundColor: colors.canvas,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 13,
+    gap: 8,
+  },
+  peekCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  peekCardTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, lineHeight: 19 },
+  peekCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  peekCardDist: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
 
   sheetOverlay: { flex: 1, justifyContent: 'flex-end' },
   sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(24,29,38,0.28)' },
