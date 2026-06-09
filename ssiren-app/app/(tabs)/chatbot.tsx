@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, ChatBubble, Icon } from '../../src/components/ui';
 import { colors, fonts, radius } from '../../src/theme';
 
@@ -25,6 +26,7 @@ const GREETING: ChatMessage = {
 };
 
 export default function Chatbot() {
+  const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [showCopyToast, setShowCopyToast] = useState(false);
@@ -114,7 +116,14 @@ export default function Chatbot() {
         )}
       </ScrollView>
 
-      <View style={[styles.inputBar, { marginBottom: keyboardHeight }]}>
+      <View
+        style={[
+          styles.inputBar,
+          // Keyboard height excludes the bottom nav-bar inset under edge-to-edge,
+          // so add it back to fully clear the keyboard.
+          { marginBottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0 },
+        ]}
+      >
         <Pressable style={styles.cameraButton} accessibilityLabel="사진 첨부">
           <Icon name="camera" size={21} color={colors.body} />
         </Pressable>
