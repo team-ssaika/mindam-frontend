@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { myPageMenuItems, myPageMock } from '../mocks/myPageMock';
@@ -20,19 +20,27 @@ const QUICK_ACTIONS = [
 export function MyPageScreen() {
   const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
-  const [name, setName] = useState(myPageMock.name);
-  const [email, setEmail] = useState(myPageMock.email);
+  const [name, setName] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadProfile = useCallback(() => {
     let isMounted = true;
 
     fetchMyProfile()
       .then((data) => {
         if (!isMounted) return;
-        setName(data.nickname || name);
-        setEmail(data.email || email);
+        console.log('[Profile] fetched /api/v1/users/me', data.id);
+        setName(data.nickname || data.email);
+        setEmail(data.email);
+        setProfileError(null);
       })
-      .catch(() => {
+      .catch((error) => {
+        if (!isMounted) return;
+        console.log('[Profile] failed to fetch /api/v1/users/me', error);
+        setName(null);
+        setEmail(null);
+        setProfileError('Profile API unavailable');
         // 무시: 목데이터 유지
       });
 
@@ -42,6 +50,8 @@ export function MyPageScreen() {
     // 초기 진입 시 한 번만 조회
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useFocusEffect(loadProfile);
 
   const handleActionPress = (id: string) => {
     if (id === 'my-reports') {
@@ -66,7 +76,7 @@ export function MyPageScreen() {
 
         <View style={styles.profileInfo}>
           <View style={styles.nameRow}>
-            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.name}>{name ?? 'Loading profile...'}</Text>
             <Pressable
               style={styles.editButton}
               onPress={() => {}}
@@ -74,7 +84,9 @@ export function MyPageScreen() {
               <Text style={styles.editButtonText}>수정</Text>
             </Pressable>
           </View>
-          <Text style={styles.email}>{email}</Text>
+          <Text style={[styles.email, profileError && styles.profileError]}>
+            {profileError ?? email ?? 'Fetching /api/v1/users/me'}
+          </Text>
         </View>
       </View>
 
@@ -180,6 +192,9 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 15,
     color: '#6D6D78',
+  },
+  profileError: {
+    color: '#D14343',
   },
   divider: {
     height: 1,
