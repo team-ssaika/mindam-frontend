@@ -99,7 +99,7 @@ export function MyPageScreen() {
 
         {/* status summary */}
         <View style={styles.section}>
-          <SectionLabel title="내 제보 현황" right="전체 보기 ›" />
+          <SectionLabel title="내 제보 현황" right="전체 보기 ›" onPressRight={goMyReports} />
           <View style={styles.statRow}>
             {STATUS_CARDS.map((s) => (
               <Pressable key={s.key} style={styles.statCard} onPress={goMyReports}>
