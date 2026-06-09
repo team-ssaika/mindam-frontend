@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
   ScrollView,
@@ -9,7 +9,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, ChatBubble, Icon } from '../../src/components/ui';
 import { colors, fonts, radius } from '../../src/theme';
 
@@ -25,14 +24,11 @@ const GREETING: ChatMessage = {
   text: '안녕하세요! 무엇을 도와드릴까요?\n사진과 함께 상황을 말씀해 주시면 제가 제보를 정리해 드려요.',
 };
 
-// AppBar(52) + status bar inset → KeyboardAvoidingView's distance from the top.
-const APP_BAR_HEIGHT = 52;
-
 export default function Chatbot() {
-  const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
   const [showCopyToast, setShowCopyToast] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const handleSend = () => {
@@ -46,6 +42,7 @@ export default function Chatbot() {
   };
 
   const handleReset = () => {
+    Keyboard.dismiss();
     setMessages([GREETING]);
     setInputText('');
   };
@@ -64,7 +61,26 @@ export default function Chatbot() {
 
   useEffect(() => {
     scrollToEnd();
-  }, [messages]);
+  }, [messages, keyboardHeight]);
+
+  // Edge-to-edge Android ignores adjustResize for the IME, so KeyboardAvoidingView
+  // can't lift the input. Track the keyboard height ourselves and pad the bar up.
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -77,57 +93,51 @@ export default function Chatbot() {
           </Pressable>
         }
       />
-      <KeyboardAvoidingView
-        style={styles.body}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + APP_BAR_HEIGHT : 0}
+      <ScrollView
+        ref={(ref) => {
+          scrollRef.current = ref;
+        }}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToEnd}
       >
-        <ScrollView
-          ref={(ref) => {
-            scrollRef.current = ref;
-          }}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={scrollToEnd}
-        >
-          {messages.map((message) =>
-            message.role === 'user' ? (
-              <ChatBubble key={message.id}>{message.text}</ChatBubble>
-            ) : (
-              <Pressable key={message.id} onLongPress={() => handleCopyMessage(message.text)}>
-                <ChatBubble bot>{message.text}</ChatBubble>
-              </Pressable>
-            )
-          )}
-        </ScrollView>
+        {messages.map((message) =>
+          message.role === 'user' ? (
+            <ChatBubble key={message.id}>{message.text}</ChatBubble>
+          ) : (
+            <Pressable key={message.id} onLongPress={() => handleCopyMessage(message.text)}>
+              <ChatBubble bot>{message.text}</ChatBubble>
+            </Pressable>
+          )
+        )}
+      </ScrollView>
 
-        <View style={styles.inputBar}>
-          <Pressable style={styles.cameraButton} accessibilityLabel="사진 첨부">
-            <Icon name="camera" size={21} color={colors.body} />
-          </Pressable>
-          <View style={styles.inputPill}>
-            <TextInput
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="메시지 입력…"
-              placeholderTextColor={colors.faint}
-              style={styles.input}
-              returnKeyType="send"
-              onSubmitEditing={handleSend}
-            />
-          </View>
-          <Pressable
-            onPress={handleSend}
-            disabled={!inputText.trim()}
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-            accessibilityLabel="전송"
-          >
-            <Icon name="send" size={20} color={colors.white} fill />
-          </Pressable>
+      <View style={[styles.inputBar, { marginBottom: keyboardHeight }]}>
+        <Pressable style={styles.cameraButton} accessibilityLabel="사진 첨부">
+          <Icon name="camera" size={21} color={colors.body} />
+        </Pressable>
+        <View style={styles.inputPill}>
+          <TextInput
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="메시지 입력…"
+            placeholderTextColor={colors.faint}
+            style={styles.input}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+          />
         </View>
-      </KeyboardAvoidingView>
+        <Pressable
+          onPress={handleSend}
+          disabled={!inputText.trim()}
+          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+          accessibilityLabel="전송"
+        >
+          <Icon name="send" size={20} color={colors.white} fill />
+        </Pressable>
+      </View>
 
       {showCopyToast ? (
         <View style={styles.toastWrapper} pointerEvents="none">
@@ -142,7 +152,6 @@ export default function Chatbot() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.soft },
-  body: { flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
 
