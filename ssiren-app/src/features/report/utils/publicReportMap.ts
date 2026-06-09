@@ -1,4 +1,5 @@
 import type { PublicReportItem } from '../types/publicReport';
+import type { IssueDetail, IssueItem } from '../types/issue';
 import type { ReportDetail } from '../types/reportDetail';
 import { getReportStatusLabel } from './reportStatus';
 
@@ -85,5 +86,48 @@ export function hasValidReportCoordinate(item: PublicReportItem) {
   return (
     Number.isFinite(item.report.latitude) &&
     Number.isFinite(item.report.longitude)
+  );
+}
+
+export function issueToPublicReportItem(item: IssueItem): PublicReportItem | null {
+  const { issueGroup, representativeReport, category } = item;
+  if (!representativeReport || !category) {
+    return null;
+  }
+
+  return {
+    report: {
+      ...representativeReport,
+      latitude: issueGroup.groupLatitude,
+      longitude: issueGroup.groupLongitude,
+    },
+    reportImages: [],
+    category,
+    issueGroup,
+  };
+}
+
+export function issueDetailToPublicReportItem(detail: IssueDetail): PublicReportItem | null {
+  const { issueGroup, representativeReport, category } = detail;
+  if (!representativeReport || !category) {
+    return null;
+  }
+
+  return {
+    report: {
+      ...representativeReport,
+      latitude: issueGroup.groupLatitude,
+      longitude: issueGroup.groupLongitude,
+    },
+    reportImages: [],
+    category,
+    issueGroup,
+  };
+}
+
+export function hasValidIssueCoordinate(item: IssueItem) {
+  return (
+    Number.isFinite(item.issueGroup.groupLatitude) &&
+    Number.isFinite(item.issueGroup.groupLongitude)
   );
 }
