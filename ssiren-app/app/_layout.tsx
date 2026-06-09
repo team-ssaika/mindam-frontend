@@ -1,9 +1,13 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Image, Platform } from 'react-native';
 import { restoreAuthSession } from '../src/features/auth/services/authService';
+import { fontAssets } from '../src/theme';
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts(fontAssets);
+
   useEffect(() => {
     if (Platform.OS === 'web' || typeof Image.resolveAssetSource !== 'function') {
       return;
@@ -26,6 +30,10 @@ export default function RootLayout() {
       console.log('[App] auth session restore skipped', error);
     });
   }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
