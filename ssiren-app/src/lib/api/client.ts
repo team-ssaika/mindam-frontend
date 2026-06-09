@@ -1,8 +1,30 @@
-import axios from 'axios';
+import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+export const ACCESS_TOKEN_STORAGE_KEY = 'ssiren.accessToken';
+export const REFRESH_TOKEN_STORAGE_KEY = 'ssiren.refreshToken';
+
 let runtimeAccessToken: string | null = null;
+let refreshTokenRequest: Promise<string | null> | null = null;
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+type TokenRefreshResponse = {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  isNewUser: boolean;
+};
+
+type ApiResponse<T> = {
+  status: number;
+  message: string;
+  data: T;
+};
 
 function getDevMachineHost() {
   const hostUri =
@@ -55,7 +77,76 @@ export function setApiAccessToken(accessToken: string | null) {
   runtimeAccessToken = accessToken;
 }
 
+export async function persistApiAuthTokens(tokens: TokenRefreshResponse) {
+  setApiAccessToken(tokens.accessToken);
+  await Promise.all([
+    SecureStore.setItemAsync(ACCESS_TOKEN_STORAGE_KEY, tokens.accessToken),
+    SecureStore.setItemAsync(REFRESH_TOKEN_STORAGE_KEY, tokens.refreshToken),
+  ]);
+}
+
+export async function clearApiAuthTokens() {
+  setApiAccessToken(null);
+  await Promise.all([
+    SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY),
+    SecureStore.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY),
+  ]);
+}
+
+async function refreshAccessToken() {
+  const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_STORAGE_KEY);
+
+  if (!refreshToken) {
+    console.log('[Auth] refresh token missing');
+    await clearApiAuthTokens();
+    return null;
+  }
+
+  try {
+    console.log('[Auth] refreshing access token');
+    const response = await apiClient.post<ApiResponse<TokenRefreshResponse>>(
+      '/api/v1/auth/token/refresh',
+      { refreshToken }
+    );
+    const tokens = response.data.data;
+    await persistApiAuthTokens(tokens);
+    console.log('[Auth] access token refreshed');
+    return tokens.accessToken;
+  } catch (error) {
+    console.log('[Auth] failed to refresh access token', error);
+    await clearApiAuthTokens();
+    throw error;
+  }
+}
+
+function getRefreshTokenRequest() {
+  if (!refreshTokenRequest) {
+    refreshTokenRequest = refreshAccessToken().finally(() => {
+      refreshTokenRequest = null;
+    });
+  }
+
+  return refreshTokenRequest;
+}
+
+function isTokenRefreshRequest(config: InternalAxiosRequestConfig) {
+  return config.url?.includes('/api/v1/auth/token/refresh') ?? false;
+}
+
+function isAuthTokenOptionalRequest(config: InternalAxiosRequestConfig) {
+  return (
+    config.url?.includes('/api/v1/auth/login') ||
+    config.url?.includes('/api/v1/auth/token/refresh') ||
+    false
+  );
+}
+
 apiClient.interceptors.request.use((config) => {
+  if (isAuthTokenOptionalRequest(config)) {
+    delete config.headers.Authorization;
+    return config;
+  }
+
   const accessToken =
     runtimeAccessToken ?? process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
   if (accessToken) {
@@ -63,3 +154,30 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+    if (
+      error.response?.status !== 401 ||
+      !originalRequest ||
+      originalRequest._retry ||
+      isTokenRefreshRequest(originalRequest)
+    ) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    const accessToken = await getRefreshTokenRequest();
+
+    if (!accessToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+    return apiClient.request(originalRequest);
+  }
+);
