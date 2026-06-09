@@ -123,21 +123,17 @@ export function MyPageScreen() {
         <View style={styles.sectionDivider} />
 
         <View style={styles.section}>
-          <ProfileSectionTitle
-            title="내 제보 현황"
-            actionLabel="전체 보기 ›"
-            onPressAction={goMyReports}
-          />
+          <ProfileSectionTitle title="내 제보 현황" />
           <View style={styles.statRow}>
             {STATUS_ITEMS.map((item, index) => (
               <View key={item.key} style={styles.statColumn}>
                 {index > 0 ? <View style={styles.statSeparator} /> : null}
-                <Pressable style={styles.statPressable} onPress={goMyReports}>
+                <View style={styles.statPressable}>
                   <AppText style={[styles.statCount, { color: statusColors[item.key].dot }]}>
                     {item.count}
                   </AppText>
                   <AppText style={styles.statLabel}>{item.label}</AppText>
-                </Pressable>
+                </View>
               </View>
             ))}
           </View>
@@ -146,7 +142,11 @@ export function MyPageScreen() {
         <View style={styles.sectionDivider} />
 
         <View style={styles.section}>
-          <ProfileSectionTitle title="최근 제보" />
+          <ProfileSectionTitle
+            title="최근 제보"
+            actionLabel="전체 보기 ›"
+            onPressAction={goMyReports}
+          />
           {recent.length === 0 ? (
             <View style={styles.emptyBox}>
               <AppText style={styles.emptyText}>아직 제보 내역이 없어요.</AppText>

@@ -40,10 +40,10 @@ export const colors = {
 
 export type ColorToken = keyof typeof colors;
 
-/** Report status palette — purple-family wait/prog, soft green done. */
+/** Report status palette — gray wait, amber prog, soft green done. */
 export const statusColors = {
   wait: { bg: '#DDE1EF', fg: '#4A4F63', dot: '#72789A', label: '접수 대기' },
-  prog: { bg: '#EEEAFF', fg: '#5A52E8', dot: '#6C63FF', label: '처리중' },
+  prog: { bg: '#FEF3C7', fg: '#92400E', dot: '#D97706', label: '처리중' },
   done: { bg: '#E6F4EC', fg: '#2F6B4A', dot: '#3D8B62', label: '처리 완료' },
 } as const;
 

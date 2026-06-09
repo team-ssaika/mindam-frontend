@@ -19,6 +19,8 @@ type ListRowProps = {
   danger?: boolean;
   /** First row in a group skips the top divider. */
   first?: boolean;
+  /** `lg` = taller touch target (settings rows). */
+  size?: 'md' | 'lg';
   onPress?: () => void;
   right?: ReactNode;
 };
@@ -34,6 +36,7 @@ export default function ListRow({
   onToggle,
   danger = false,
   first = false,
+  size = 'md',
   onPress,
   right,
 }: ListRowProps) {
@@ -43,12 +46,19 @@ export default function ListRow({
       disabled={!onPress || toggle}
       style={({ pressed }) => [
         styles.row,
+        size === 'lg' && styles.rowLg,
         !first && styles.divider,
         pressed && onPress ? styles.pressed : null,
       ]}
     >
       {icon ? (
-        <Icon name={icon} size={20} color={danger ? colors.danger : colors.ink} />
+        <View style={[styles.iconSlot, size === 'lg' && styles.iconSlotLg]}>
+          <Icon
+            name={icon}
+            size={size === 'lg' ? 22 : 20}
+            color={danger ? colors.danger : colors.ink}
+          />
+        </View>
       ) : null}
       <View style={styles.center}>
         <AppText style={[styles.label, danger && styles.dangerLabel]}>{label}</AppText>
@@ -76,6 +86,17 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 16,
     paddingHorizontal: layout.screenPadding,
+  },
+  rowLg: {
+    minHeight: 58,
+    paddingVertical: 18,
+  },
+  iconSlot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconSlotLg: {
+    marginHorizontal: 4,
   },
   divider: {
     borderTopWidth: 1,

@@ -124,7 +124,7 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar title="설정" logo={false} />
+      <AppBar title="설정" logo={false} border={false} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
@@ -136,6 +136,7 @@ export function SettingsScreen() {
             label="푸시 알림"
             sub="제보 상태 변경·주변 제보 소식"
             first
+            size="lg"
             toggle
             on={isAlarmEnabled}
             onToggle={handleToggleAlarm}
@@ -145,18 +146,18 @@ export function SettingsScreen() {
               ) : undefined
             }
           />
-          <ListRow icon="pin" label="지도" onPress={() => console.log('[Settings] open map')} />
+          <ListRow icon="pin" label="지도" size="lg" onPress={() => console.log('[Settings] open map')} />
         </SGroup>
 
         <SGroup title="기타">
-          <ListRow icon="info" label="버전 정보" value="1.32" first />
-          <ListRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
-          <ListRow icon="building" label="담당자 모드" onPress={() => router.replace('/(officer)')} />
+          <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
+          <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
+          <ListRow icon="building" label="담당자 모드" size="lg" onPress={() => router.replace('/(officer)')} />
         </SGroup>
 
         <SGroup title="계정">
-          <ListRow icon="arrowL" label="로그아웃" danger first onPress={() => setActiveSheet('logout')} />
-          <ListRow icon="x" label="회원탈퇴" danger onPress={() => setActiveSheet('withdraw')} />
+          <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
+          <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
         </SGroup>
 
         <View style={styles.footer}>
