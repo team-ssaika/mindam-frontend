@@ -75,15 +75,7 @@ export function MyPageScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar
-        title="내 정보"
-        logo={false}
-        right={
-          <Pressable onPress={() => router.push('/(tabs)/settings')} hitSlop={8}>
-            <Icon name="gear" size={21} color={colors.body} />
-          </Pressable>
-        }
-      />
+      <AppBar title="내 정보" logo={false} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}

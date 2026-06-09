@@ -1,5 +1,4 @@
-import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Card, Icon, SectionLabel } from '../../../components/ui';
 import { colors, fonts, radius, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
@@ -12,20 +11,11 @@ const MENU: { icon: 'doc' | 'headset' | 'info'; label: string }[] = [
 ];
 
 export function OfficerProfileScreen() {
-  const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
 
   return (
     <View style={styles.flex}>
-      <AppBar
-        title="내 정보"
-        logo={false}
-        right={
-          <Pressable onPress={() => router.push('/(officer)/settings')} hitSlop={8}>
-            <Icon name="gear" size={21} color={colors.body} />
-          </Pressable>
-        }
-      />
+      <AppBar title="내 정보" logo={false} />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
