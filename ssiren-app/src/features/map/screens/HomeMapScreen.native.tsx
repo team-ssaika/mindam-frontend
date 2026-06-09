@@ -252,6 +252,7 @@ export default function HomeMapScreen() {
                 }
               }}
               styles={{
+                container: styles.placesContainer,
                 textInput: styles.searchInput,
                 listView: styles.placeListView,
                 row: styles.placeRow,
@@ -426,7 +427,10 @@ const styles = StyleSheet.create({
     borderColor: colors.canvas,
   },
 
-  searchContainer: { marginTop: 12, marginHorizontal: 16, maxHeight: 320 },
+  // Fixed-height search row: the GooglePlacesAutocomplete container is pinned to
+  // the input height so the (absolute) results dropdown can't push the legend.
+  searchContainer: { marginTop: 12, marginHorizontal: 16, height: 46, zIndex: 20 },
+  placesContainer: { flexGrow: 0, flexShrink: 0 },
   searchInput: {
     height: 46,
     borderRadius: 14,
@@ -440,11 +444,17 @@ const styles = StyleSheet.create({
   },
   searchIconOverlay: { position: 'absolute', right: 14, top: 14, height: 19, width: 19 },
   placeListView: {
-    marginTop: 8,
+    position: 'absolute',
+    top: 54,
+    left: 0,
+    right: 0,
+    maxHeight: 260,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.hairline,
     backgroundColor: colors.canvas,
+    zIndex: 30,
+    ...shadow.float,
   },
   placeRow: { paddingHorizontal: 14, paddingVertical: 11 },
   placeSeparator: { height: 1, backgroundColor: colors.soft2 },
