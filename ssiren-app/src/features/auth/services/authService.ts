@@ -2,7 +2,13 @@ import { getKeyHashAndroid, initializeKakaoSDK } from '@react-native-kakao/core'
 import { login as kakaoSdkLogin } from '@react-native-kakao/user';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { apiClient, setApiAccessToken } from '../../../lib/api/client';
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  apiClient,
+  clearApiAuthTokens,
+  persistApiAuthTokens,
+  setApiAccessToken,
+} from '../../../lib/api/client';
 import {
   deactivateStoredPushToken,
   registerDevicePushToken,
@@ -14,9 +20,6 @@ import type {
   TermsAgreementState,
   UserTermsStatus,
 } from '../types/auth.types';
-
-const ACCESS_TOKEN_STORAGE_KEY = 'ssiren.accessToken';
-const REFRESH_TOKEN_STORAGE_KEY = 'ssiren.refreshToken';
 
 type BackendTokenResponse = {
   accessToken: string;
@@ -73,20 +76,20 @@ async function loginToBackend(providerToken: string) {
 }
 
 async function persistBackendTokens(tokens: BackendTokenResponse) {
-  setApiAccessToken(tokens.accessToken);
-  await Promise.all([
-    SecureStore.setItemAsync(ACCESS_TOKEN_STORAGE_KEY, tokens.accessToken),
-    SecureStore.setItemAsync(REFRESH_TOKEN_STORAGE_KEY, tokens.refreshToken),
-  ]);
+  await persistApiAuthTokens(tokens);
+}
+
+function registerPushTokenInBackground(logPrefix: string) {
+  registerDevicePushToken().catch((error: unknown) => {
+    console.log(`[Auth] push token ${logPrefix} skipped`, error);
+  });
 }
 
 export async function restoreAuthSession() {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
   setApiAccessToken(accessToken);
   if (accessToken) {
-    registerDevicePushToken().catch((error: unknown) => {
-      console.log('[Auth] push token restore skipped', error);
-    });
+    registerPushTokenInBackground('restore');
   }
   return accessToken;
 }
@@ -95,12 +98,8 @@ export function clearRuntimeAuthSession() {
   setApiAccessToken(null);
 }
 
-async function clearStoredAuthSession() {
-  setApiAccessToken(null);
-  await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY),
-    SecureStore.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY),
-  ]);
+export async function clearStoredAuthSession() {
+  await clearApiAuthTokens();
 }
 
 export async function logout() {
@@ -114,15 +113,15 @@ export async function logout() {
 
 export async function kakaoLogin(): Promise<PendingLoginResult> {
   ensureKakaoInitialized();
+  await clearStoredAuthSession();
 
   const kakaoToken = await kakaoSdkLogin();
   const backendTokens = await loginToBackend(kakaoToken.accessToken);
 
+  await persistBackendTokens(backendTokens);
+
   if (!backendTokens.isNewUser) {
-    await persistBackendTokens(backendTokens);
-    registerDevicePushToken().catch((error: unknown) => {
-      console.log('[Auth] push token registration skipped', error);
-    });
+    registerPushTokenInBackground('registration');
   }
 
   return backendTokens;
@@ -130,9 +129,7 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
 
 export async function completeLogin(tokens: PendingLoginResult) {
   await persistBackendTokens(tokens);
-  registerDevicePushToken().catch((error: unknown) => {
-    console.log('[Auth] push token registration skipped', error);
-  });
+  registerPushTokenInBackground('registration');
 }
 
 export async function checkUserTermsAgreement(
