@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,12 +8,19 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Chip } from '../../../components/ui/Chip';
-import { SummaryBox } from '../../../components/ui/SummaryBox';
+import {
+  AppBar,
+  AppText,
+  Button,
+  Card,
+  CatChip,
+  Icon,
+  StatusBadge,
+} from '../../../components/ui';
+import { colors, fonts, radius } from '../../../theme';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { deleteMyReport, fetchMyReportDetail } from '../api/reportApi';
 import { MyReportEditSheet } from '../components/MyReportEditSheet';
@@ -24,7 +30,7 @@ import {
   canEditReport,
   formatReportDateTime,
   formatStatusTransition,
-  getReportStatusLabel,
+  getReportStatusTone,
   sortStatusHistories,
 } from '../utils/reportStatus';
 
@@ -66,10 +72,7 @@ export function MyReportDetailScreen() {
       let message = '민원 상세를 불러오지 못했습니다.';
       if (axios.isAxiosError(error)) {
         const apiMessage = error.response?.data?.message;
-        message =
-          typeof apiMessage === 'string'
-            ? apiMessage
-            : error.message || message;
+        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
       } else if (error instanceof Error) {
         message = error.message;
       }
@@ -92,42 +95,34 @@ export function MyReportDetailScreen() {
       return;
     }
 
-    Alert.alert(
-      '민원 삭제',
-      '삭제한 민원은 복구할 수 없어요. 정말 삭제할까요?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            try {
-              await deleteMyReport(detail.report.id);
-              router.replace('/my-reports');
-            } catch (error) {
-              let message = '민원 삭제에 실패했습니다.';
-              if (axios.isAxiosError(error)) {
-                const apiMessage = error.response?.data?.message;
-                message =
-                  typeof apiMessage === 'string'
-                    ? apiMessage
-                    : error.message || message;
-              } else if (error instanceof Error) {
-                message = error.message;
-              }
-              Alert.alert('삭제 실패', message);
-            } finally {
-              setIsDeleting(false);
+    Alert.alert('민원 삭제', '삭제한 민원은 복구할 수 없어요. 정말 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          setIsDeleting(true);
+          try {
+            await deleteMyReport(detail.report.id);
+            router.replace('/my-reports');
+          } catch (error) {
+            let message = '민원 삭제에 실패했습니다.';
+            if (axios.isAxiosError(error)) {
+              const apiMessage = error.response?.data?.message;
+              message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
+            } else if (error instanceof Error) {
+              message = error.message;
             }
-          },
+            Alert.alert('삭제 실패', message);
+          } finally {
+            setIsDeleting(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   }, [detail, isDeleting, router]);
 
-  const summaryText =
-    detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
+  const summaryText = detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
 
   const contentEntries = detail
     ? CONTENT_FIELDS.flatMap(({ key, label }) => {
@@ -143,149 +138,130 @@ export function MyReportDetailScreen() {
     statusHistories.length > 0 ? statusHistories.length - 1 : -1
   );
 
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/my-reports');
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.headerButton}
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-              return;
-            }
-            router.replace('/my-reports');
-          }}
-        >
-          <Ionicons name="chevron-back" size={24} color="#1E1E25" />
-        </Pressable>
-        <Text style={styles.headerTitle}>민원 상세</Text>
-        {detail && canEditReport(detail.report.status) ? (
-          <Pressable
-            style={styles.headerTextButton}
-            onPress={() => setIsEditVisible(true)}
-            accessibilityLabel="민원 수정"
-          >
-            <Text style={styles.headerActionText}>수정</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.headerButton} />
-        )}
-      </View>
+    <View style={styles.flex}>
+      <AppBar
+        title="민원 상세"
+        logo={false}
+        onBack={goBack}
+        right={
+          detail && canEditReport(detail.report.status) ? (
+            <Pressable onPress={() => setIsEditVisible(true)} hitSlop={8}>
+              <AppText style={styles.editAction}>수정</AppText>
+            </Pressable>
+          ) : undefined
+        }
+      />
 
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#6257FF" />
+          <ActivityIndicator size="large" color={colors.brand} />
         </View>
       ) : errorMessage ? (
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <Pressable style={styles.retryButton} onPress={loadDetail}>
-            <Text style={styles.retryButtonText}>다시 시도</Text>
-          </Pressable>
+          <AppText style={styles.errorText}>{errorMessage}</AppText>
+          <View style={styles.retryWrap}>
+            <Button label="다시 시도" icon="refresh" onPress={loadDetail} />
+          </View>
         </View>
       ) : detail ? (
         <>
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[
-            styles.content,
-            !showDeleteButton ? { paddingBottom: insets.bottom + 32 } : null,
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.title}>{detail.report.title}</Text>
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: showDeleteButton ? 24 : insets.bottom + 32 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.topRow}>
+              <CatChip icon="alert" label={detail.category.categoryName} color={colors.coral} />
+              <StatusBadge status={getReportStatusTone(detail.report.status)} size="sm" />
+            </View>
+            <AppText variant="title" color={colors.ink} style={styles.title}>
+              {detail.report.title}
+            </AppText>
 
-          <View style={styles.chipRow}>
-            {detail.parentCategory ? (
-              <Chip variant="tag" label={detail.parentCategory.categoryName} />
+            <Card style={styles.metaCard}>
+              <View style={styles.metaCol}>
+                <AppText style={styles.metaLabel}>위험 지수</AppText>
+                <AppText style={styles.metaValue}>{detail.report.riskScore}</AppText>
+              </View>
+              <View style={styles.metaSep} />
+              <View style={styles.metaCol}>
+                <AppText style={styles.metaLabel}>신고일</AppText>
+                <AppText style={styles.metaValue}>
+                  {formatReportDateTime(detail.report.createdAt)}
+                </AppText>
+              </View>
+            </Card>
+
+            {summaryText ? (
+              <Card>
+                <AppText style={styles.cardLabel}>AI 요약</AppText>
+                <AppText style={styles.summaryText}>{summaryText}</AppText>
+              </Card>
             ) : null}
-            <Chip variant="tag" label={detail.category.categoryName} />
-            <Chip variant="status" label={getReportStatusLabel(detail.report.status)} />
-          </View>
 
-          <View style={styles.metaCard}>
-            <Text style={styles.metaLabel}>위험 지수</Text>
-            <Text style={styles.metaValue}>{detail.report.riskScore}</Text>
-            <Text style={styles.metaDivider}>|</Text>
-            <Text style={styles.metaLabel}>신고일</Text>
-            <Text style={styles.metaValue}>
-              {formatReportDateTime(detail.report.createdAt)}
-            </Text>
-          </View>
+            {contentEntries.length > 0 ? (
+              <Card>
+                <AppText style={[styles.cardLabel, styles.cardLabelGap]}>상세 내용</AppText>
+                <View style={styles.grid}>
+                  {contentEntries.map((entry) => (
+                    <View key={entry.label} style={styles.gridItem}>
+                      <AppText style={styles.gridKey}>{entry.label}</AppText>
+                      <AppText style={styles.gridValue}>{entry.value}</AppText>
+                    </View>
+                  ))}
+                </View>
+              </Card>
+            ) : null}
 
-          {summaryText ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>요약</Text>
-              <SummaryBox title="AI 요약" content={summaryText} />
-            </View>
-          ) : null}
-
-          {contentEntries.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>상세 내용</Text>
-              <View style={styles.valueCard}>
-                {contentEntries.map((entry) => (
-                  <View key={entry.label} style={styles.contentRow}>
-                    <Text style={styles.contentLabel}>{entry.label}</Text>
-                    <Text style={styles.contentValue}>{entry.value}</Text>
-                  </View>
-                ))}
+            {detail.reportImages.length > 0 ? (
+              <View>
+                <AppText style={[styles.cardLabel, styles.outerLabel]}>첨부 사진</AppText>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageRow}>
+                  {detail.reportImages.map((image) => (
+                    <Image key={image.id} source={{ uri: image.imageUrl }} style={styles.image} />
+                  ))}
+                </ScrollView>
               </View>
-            </View>
-          ) : null}
+            ) : null}
 
-          {detail.reportImages.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>첨부 사진</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.imageRow}
-              >
-                {detail.reportImages.map((image) => (
-                  <Image
-                    key={image.id}
-                    source={{ uri: image.imageUrl }}
-                    style={styles.image}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>위치</Text>
-            <View style={styles.locationCard}>
-              <Ionicons
-                name="location-outline"
-                size={20}
-                color="#6257FF"
-                style={styles.locationIcon}
-              />
-              <View style={styles.locationTextWrapper}>
-                <Text style={styles.locationPrimary}>{detail.report.roadAddress}</Text>
-                <Text style={styles.locationSecondary}>{detail.report.jibunAddress}</Text>
-                <Text style={styles.locationSecondary}>
-                  {detail.report.sido} {detail.report.sigungu} {detail.report.eupmyeondong}
-                </Text>
+            <Card>
+              <View style={styles.rowCenter}>
+                <Icon name="location" size={15} color={colors.muted} />
+                <AppText style={[styles.cardLabel, styles.inlineLabel]}>위치</AppText>
               </View>
-            </View>
-          </View>
+              <AppText style={styles.locationPrimary}>{detail.report.roadAddress}</AppText>
+              <AppText style={styles.locationSecondary}>{detail.report.jibunAddress}</AppText>
+              <AppText style={styles.locationSecondary}>
+                {detail.report.sido} {detail.report.sigungu} {detail.report.eupmyeondong}
+              </AppText>
+            </Card>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>담당 기관</Text>
-            <View style={styles.valueCard}>
-              <Text style={styles.organizationName}>
+            <Card>
+              <View style={styles.rowCenter}>
+                <Icon name="building" size={15} color={colors.muted} />
+                <AppText style={[styles.cardLabel, styles.inlineLabel]}>담당 기관</AppText>
+              </View>
+              <AppText style={styles.agencyName}>
                 {detail.department.agencyName} · {detail.agencyType.name}
-              </Text>
-              <Text style={styles.organizationDept}>{detail.department.name}</Text>
-            </View>
-          </View>
+              </AppText>
+              <AppText style={styles.locationSecondary}>{detail.department.name}</AppText>
+            </Card>
 
-          {statusHistories.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>처리 이력</Text>
-              <View style={styles.timelineCard}>
+            {statusHistories.length > 0 ? (
+              <Card>
+                <AppText style={[styles.cardLabel, styles.cardLabelGap]}>처리 이력</AppText>
                 {statusHistories.map((history, index) => (
                   <View key={history.id} style={styles.timelineItem}>
                     <View style={styles.timelineLeft}>
@@ -295,42 +271,31 @@ export function MyReportDetailScreen() {
                           index === activeHistoryIndex ? styles.timelineDotActive : null,
                         ]}
                       />
-                      {index < statusHistories.length - 1 ? (
-                        <View style={styles.timelineLine} />
-                      ) : null}
+                      {index < statusHistories.length - 1 ? <View style={styles.timelineLine} /> : null}
                     </View>
                     <View style={styles.timelineContent}>
-                      <Text style={styles.timelineStatus}>
+                      <AppText style={styles.timelineStatus}>
                         {formatStatusTransition(history.previousStatus, history.newStatus)}
-                      </Text>
-                      <Text style={styles.timelineReason}>{history.reason}</Text>
-                      <Text style={styles.timelineDate}>
-                        {formatReportDateTime(history.createdAt)}
-                      </Text>
+                      </AppText>
+                      {history.reason ? <AppText style={styles.timelineReason}>{history.reason}</AppText> : null}
+                      <AppText style={styles.timelineDate}>{formatReportDateTime(history.createdAt)}</AppText>
                     </View>
                   </View>
                 ))}
-              </View>
-            </View>
+              </Card>
+            ) : null}
+          </ScrollView>
+
+          {showDeleteButton ? (
+            <SafeAreaView edges={['bottom']} style={styles.footer}>
+              <Button
+                label="삭제"
+                bg={colors.accent}
+                loading={isDeleting}
+                onPress={handleDeletePress}
+              />
+            </SafeAreaView>
           ) : null}
-
-        </ScrollView>
-
-        {showDeleteButton ? (
-          <SafeAreaView edges={['bottom']} style={styles.footer}>
-            <Pressable
-              style={[styles.deleteButton, isDeleting ? styles.deleteButtonDisabled : null]}
-              onPress={handleDeletePress}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.deleteButtonText}>삭제</Text>
-              )}
-            </Pressable>
-          </SafeAreaView>
-        ) : null}
         </>
       ) : null}
 
@@ -342,284 +307,61 @@ export function MyReportDetailScreen() {
           onSaved={loadDetail}
         />
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
-  },
-  header: {
-    height: 56,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E7EAF0',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTextButton: {
-    minWidth: 40,
-    height: 40,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerActionText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6257FF',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111119',
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
-    gap: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 28,
-    color: '#17171F',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  metaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E7EAF0',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  metaLabel: {
-    fontSize: 13,
-    color: '#6D6D78',
-  },
-  metaValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  metaDivider: {
-    fontSize: 13,
-    color: '#D1D5DB',
-  },
-  section: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  valueCard: {
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
-    gap: 12,
-  },
-  contentRow: {
-    gap: 4,
-  },
-  contentLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6D6D78',
-  },
-  contentValue: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#2A2A38',
-  },
-  imageRow: {
-    gap: 10,
-  },
-  image: {
-    width: 96,
-    height: 96,
-    borderRadius: 14,
-    backgroundColor: '#E7EAF0',
-  },
-  locationCard: {
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  locationIcon: {
-    marginRight: 10,
-    marginTop: 2,
-  },
-  locationTextWrapper: {
-    flex: 1,
-    gap: 4,
-  },
-  locationPrimary: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#242433',
-  },
-  locationSecondary: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#5F5F6C',
-  },
-  organizationName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  organizationDept: {
-    fontSize: 14,
-    color: '#6D6D78',
-  },
-  timelineCard: {
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 4,
-  },
-  timelineItem: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  timelineLeft: {
-    alignItems: 'center',
-    width: 14,
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#D1D5DB',
-    marginTop: 4,
-  },
-  timelineDotActive: {
-    backgroundColor: '#6257FF',
-  },
-  timelineLine: {
-    flex: 1,
-    width: 2,
-    backgroundColor: '#E7EAF0',
-    marginTop: 4,
-    minHeight: 36,
-  },
-  timelineContent: {
-    flex: 1,
-    paddingBottom: 14,
-    gap: 4,
-  },
-  timelineStatus: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  timelineReason: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#484855',
-  },
-  timelineDate: {
-    fontSize: 12,
-    color: '#9B9BA6',
-  },
-  reactionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  reactionChip: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E7EAF0',
-    paddingVertical: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  reactionLabel: {
-    fontSize: 13,
-    color: '#6D6D78',
-  },
-  reactionCount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  errorText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#6D6D78',
-    textAlign: 'center',
-  },
-  retryButton: {
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: '#6257FF',
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  flex: { flex: 1, backgroundColor: colors.soft },
+  editAction: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.accent },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
+  errorText: { fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
+  retryWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },
+
+  content: { paddingHorizontal: 18, paddingTop: 16, gap: 12 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  title: { lineHeight: 26 },
+
+  metaCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
+  metaCol: { flex: 1, alignItems: 'center', gap: 4 },
+  metaSep: { width: 1, alignSelf: 'stretch', backgroundColor: colors.hairline },
+  metaLabel: { fontSize: 12, color: colors.muted },
+  metaValue: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
+
+  cardLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink },
+  cardLabelGap: { marginBottom: 6 },
+  outerLabel: { marginLeft: 4, marginBottom: 8 },
+  inlineLabel: { marginLeft: 6 },
+  rowCenter: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  summaryText: { fontSize: 14, color: colors.body, lineHeight: 21, marginTop: 8 },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  gridItem: { width: '50%', paddingVertical: 8, paddingRight: 8, gap: 2 },
+  gridKey: { fontFamily: fonts.bold, fontSize: 11.5, color: colors.brand },
+  gridValue: { fontFamily: fonts.medium, fontSize: 14, color: colors.body, lineHeight: 19 },
+
+  imageRow: { gap: 10, paddingVertical: 2 },
+  image: { width: 130, height: 130, borderRadius: radius.md, backgroundColor: colors.soft2 },
+
+  locationPrimary: { fontSize: 14, color: colors.body, fontFamily: fonts.medium },
+  locationSecondary: { fontSize: 13, color: colors.muted, marginTop: 3 },
+  agencyName: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.ink },
+
+  timelineItem: { flexDirection: 'row', gap: 12 },
+  timelineLeft: { alignItems: 'center', width: 14 },
+  timelineDot: { width: 11, height: 11, borderRadius: 6, backgroundColor: colors.soft2, marginTop: 3 },
+  timelineDotActive: { backgroundColor: colors.accent },
+  timelineLine: { flex: 1, width: 2, backgroundColor: colors.hairline, marginVertical: 2 },
+  timelineContent: { flex: 1, paddingBottom: 18 },
+  timelineStatus: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
+  timelineReason: { fontSize: 13, color: colors.body, marginTop: 3, lineHeight: 19 },
+  timelineDate: { fontSize: 12, color: colors.faint, marginTop: 4 },
+
   footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    backgroundColor: '#F5F6FA',
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    backgroundColor: colors.canvas,
     borderTopWidth: 1,
-    borderTopColor: '#E7EAF0',
-  },
-  deleteButton: {
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButtonDisabled: {
-    opacity: 0.7,
-  },
-  deleteButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    borderTopColor: colors.hairline,
   },
 });

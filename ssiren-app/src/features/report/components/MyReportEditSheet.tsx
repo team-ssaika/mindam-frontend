@@ -1,17 +1,17 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { AppText, Button } from '../../../components/ui';
+import { colors, fonts, radius, shadow } from '../../../theme';
 import { updateMyReport } from '../api/reportApi';
 import type { MyReportDetail } from '../types/myReportDetail';
 import type { ReportVisibility } from '../types/myReportUpdate';
@@ -30,58 +30,18 @@ const VISIBILITY_OPTIONS: { value: ReportVisibility; label: string }[] = [
 ];
 
 const CONTENT_FIELDS = [
-  {
-    key: 'summary',
-    label: '요약',
-    placeholder: '제보 내용을 한눈에 파악할 수 있도록 요약해주세요',
-    multiline: true,
-  },
-  {
-    key: 'what',
-    label: '무엇을',
-    placeholder: '발생한 문제 유형 또는 내용',
-    multiline: true,
-  },
-  {
-    key: 'where',
-    label: '어디서',
-    placeholder: '문제 발생 위치 설명',
-    multiline: false,
-  },
-  {
-    key: 'when',
-    label: '언제',
-    placeholder: '문제 발생 또는 확인 시각',
-    multiline: false,
-  },
-  {
-    key: 'who',
-    label: '누가',
-    placeholder: '문제와 관련된 주체',
-    multiline: false,
-  },
-  {
-    key: 'how',
-    label: '어떻게',
-    placeholder: '문제가 발생한 방식 또는 현재 상태',
-    multiline: true,
-  },
-  {
-    key: 'why',
-    label: '왜',
-    placeholder: '문제가 위험하거나 조치가 필요한 이유',
-    multiline: true,
-  },
+  { key: 'summary', label: '요약', placeholder: '제보 내용을 한눈에 파악할 수 있도록 요약해주세요', multiline: true },
+  { key: 'what', label: '무엇을', placeholder: '발생한 문제 유형 또는 내용', multiline: true },
+  { key: 'where', label: '어디서', placeholder: '문제 발생 위치 설명', multiline: false },
+  { key: 'when', label: '언제', placeholder: '문제 발생 또는 확인 시각', multiline: false },
+  { key: 'who', label: '누가', placeholder: '문제와 관련된 주체', multiline: false },
+  { key: 'how', label: '어떻게', placeholder: '문제가 발생한 방식 또는 현재 상태', multiline: true },
+  { key: 'why', label: '왜', placeholder: '문제가 위험하거나 조치가 필요한 이유', multiline: true },
 ] as const;
 
 type ContentFieldKey = (typeof CONTENT_FIELDS)[number]['key'];
 
-export function MyReportEditSheet({
-  visible,
-  detail,
-  onClose,
-  onSaved,
-}: MyReportEditSheetProps) {
+export function MyReportEditSheet({ visible, detail, onClose, onSaved }: MyReportEditSheetProps) {
   const [title, setTitle] = useState('');
   const [visibility, setVisibility] = useState<ReportVisibility>('PUBLIC');
   const [contents, setContents] = useState<Record<ContentFieldKey, string>>({
@@ -145,10 +105,7 @@ export function MyReportEditSheet({
       let message = '민원 수정에 실패했습니다.';
       if (axios.isAxiosError(error)) {
         const apiMessage = error.response?.data?.message;
-        message =
-          typeof apiMessage === 'string'
-            ? apiMessage
-            : error.message || message;
+        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
       }
       setErrorMessage(message);
     } finally {
@@ -165,10 +122,8 @@ export function MyReportEditSheet({
         <Pressable style={styles.backdrop} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.sheetTitle}>민원 수정</Text>
-          <Text style={styles.sheetDescription}>
-            접수 전 상태에서만 수정할 수 있어요.
-          </Text>
+          <AppText variant="title" color={colors.ink}>민원 수정</AppText>
+          <AppText style={styles.sheetDescription}>접수 전 상태에서만 수정할 수 있어요.</AppText>
 
           <ScrollView
             style={styles.formScroll}
@@ -177,34 +132,32 @@ export function MyReportEditSheet({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>제목</Text>
+              <AppText style={styles.fieldLabel}>제목</AppText>
               <TextInput
                 style={styles.input}
                 value={title}
                 onChangeText={setTitle}
                 placeholder="제목을 입력해주세요"
-                placeholderTextColor="#B1B1BC"
+                placeholderTextColor={colors.faint}
               />
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>카테고리</Text>
+              <AppText style={styles.fieldLabel}>카테고리</AppText>
               <View style={styles.readOnlyField}>
-                <Text style={styles.readOnlyText}>{detail.category.categoryName}</Text>
+                <AppText style={styles.readOnlyText}>{detail.category.categoryName}</AppText>
               </View>
             </View>
 
             {CONTENT_FIELDS.map((field) => (
               <View key={field.key} style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>{field.label}</Text>
+                <AppText style={styles.fieldLabel}>{field.label}</AppText>
                 <TextInput
                   style={[styles.input, field.multiline ? styles.textArea : null]}
                   value={contents[field.key]}
-                  onChangeText={(value) =>
-                    setContents((prev) => ({ ...prev, [field.key]: value }))
-                  }
+                  onChangeText={(value) => setContents((prev) => ({ ...prev, [field.key]: value }))}
                   placeholder={field.placeholder}
-                  placeholderTextColor="#B1B1BC"
+                  placeholderTextColor={colors.faint}
                   multiline={field.multiline}
                   textAlignVertical={field.multiline ? 'top' : 'center'}
                 />
@@ -212,51 +165,37 @@ export function MyReportEditSheet({
             ))}
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>공개 범위</Text>
+              <AppText style={styles.fieldLabel}>공개 범위</AppText>
               <View style={styles.visibilityRow}>
-              {VISIBILITY_OPTIONS.map((option) => {
-                const isSelected = visibility === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={[
-                      styles.visibilityChip,
-                      isSelected ? styles.visibilityChipActive : null,
-                    ]}
-                    onPress={() => setVisibility(option.value)}
-                  >
-                    <Text
-                      style={[
-                        styles.visibilityChipText,
-                        isSelected ? styles.visibilityChipTextActive : null,
-                      ]}
+                {VISIBILITY_OPTIONS.map((option) => {
+                  const isSelected = visibility === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={[styles.visibilityChip, isSelected && styles.visibilityChipActive]}
+                      onPress={() => setVisibility(option.value)}
                     >
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <AppText
+                        style={[styles.visibilityChipText, isSelected && styles.visibilityChipTextActive]}
+                      >
+                        {option.label}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+            {errorMessage ? <AppText style={styles.errorText}>{errorMessage}</AppText> : null}
           </ScrollView>
 
           <View style={styles.actions}>
-            <Pressable style={styles.secondaryButton} onPress={onClose} disabled={isSaving}>
-              <Text style={styles.secondaryButtonText}>취소</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.primaryButton, isSaving ? styles.disabledButton : null]}
-              onPress={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>저장</Text>
-              )}
-            </Pressable>
+            <View style={styles.actionItem}>
+              <Button label="취소" variant="secondary" color={colors.muted} onPress={onClose} disabled={isSaving} />
+            </View>
+            <View style={styles.actionItem}>
+              <Button label="저장" onPress={handleSave} loading={isSaving} />
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -265,147 +204,60 @@ export function MyReportEditSheet({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17, 17, 25, 0.32)',
-  },
+  overlay: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(24,29,38,0.5)' },
   sheet: {
     maxHeight: '88%',
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: colors.canvas,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 14,
-    paddingBottom: 24,
+    paddingBottom: 28,
+    ...shadow.sheet,
   },
-  handle: {
-    alignSelf: 'center',
-    width: 48,
-    height: 5,
-    borderRadius: 999,
-    backgroundColor: '#D8D8E2',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#181820',
-  },
-  sheetDescription: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#6D6D78',
-  },
-  formScroll: {
-    marginTop: 16,
-  },
-  formContent: {
-    gap: 20,
-    paddingBottom: 12,
-  },
-  fieldGroup: {
-    gap: 10,
-  },
-  fieldLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#31313F',
-  },
+  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', marginBottom: 16 },
+  sheetDescription: { marginTop: 6, fontSize: 14, color: colors.muted },
+  formScroll: { marginTop: 16 },
+  formContent: { gap: 18, paddingBottom: 12 },
+  fieldGroup: { gap: 8 },
+  fieldLabel: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.body },
   input: {
-    minHeight: 52,
-    borderRadius: 16,
+    minHeight: 50,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#E2E3EB',
-    backgroundColor: '#F9F9FC',
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#232330',
+    borderColor: colors.hairline,
+    backgroundColor: colors.soft,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.ink,
   },
-  textArea: {
-    minHeight: 96,
-    paddingTop: 14,
-    paddingBottom: 14,
-  },
+  textArea: { minHeight: 92 },
   readOnlyField: {
-    minHeight: 52,
-    borderRadius: 16,
+    minHeight: 50,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#E7EAF0',
-    backgroundColor: '#F5F6FA',
-    paddingHorizontal: 16,
+    borderColor: colors.hairline,
+    backgroundColor: colors.soft2,
+    paddingHorizontal: 14,
     justifyContent: 'center',
   },
-  readOnlyText: {
-    fontSize: 16,
-    color: '#6D6D78',
-  },
-  visibilityRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  readOnlyText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
+  visibilityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   visibilityChip: {
-    borderRadius: 999,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colors.hairline,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.canvas,
   },
-  visibilityChipActive: {
-    borderColor: '#6257FF',
-    backgroundColor: '#F3F0FF',
-  },
-  visibilityChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555568',
-  },
-  visibilityChipTextActive: {
-    color: '#6257FF',
-  },
-  errorText: {
-    marginTop: 8,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#DC2626',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  secondaryButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#555568',
-  },
-  primaryButton: {
-    flex: 1,
-    minHeight: 56,
-    borderRadius: 18,
-    backgroundColor: '#6257FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledButton: {
-    opacity: 0.7,
-  },
-  primaryButtonText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
+  visibilityChipActive: { borderColor: colors.brand, backgroundColor: colors.brandSoft },
+  visibilityChipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
+  visibilityChipTextActive: { color: colors.brand },
+  errorText: { marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.accent },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  actionItem: { flex: 1 },
 });

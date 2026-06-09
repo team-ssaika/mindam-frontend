@@ -11,8 +11,12 @@ import {
 } from '../../../components/ui';
 import { colors, fonts, radius, statusColors, StatusKey } from '../../../theme';
 import { fetchMyReports } from '../../report/api/reportApi';
-import type { MyReportItem, ReportStatus } from '../../report/types/myReport';
-import { formatReportDate, getReportStatusLabel } from '../../report/utils/reportStatus';
+import type { MyReportItem } from '../../report/types/myReport';
+import {
+  formatReportDate,
+  getReportStatusLabel,
+  getReportStatusTone,
+} from '../../report/utils/reportStatus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { fetchMyProfile } from '../api/userApi';
 import { myPageMock } from '../mocks/myPageMock';
@@ -22,14 +26,6 @@ const STATUS_CARDS = [
   { key: 'prog' as StatusKey, label: '처리중', count: myPageMock.statusSummary.inProgress },
   { key: 'done' as StatusKey, label: '처리 완료', count: myPageMock.statusSummary.completed },
 ];
-
-function toStatusKey(status: ReportStatus): StatusKey {
-  if (status === 'COMPLETED') return 'done';
-  if (status === 'RECEIVED' || status === 'CHECKING' || status === 'IN_PROGRESS' || status === 'TRANSFERRED') {
-    return 'prog';
-  }
-  return 'wait';
-}
 
 export function MyPageScreen() {
   const router = useRouter();
@@ -169,7 +165,7 @@ function RecentRow({
         <AppText style={styles.recentTitle} numberOfLines={1}>{report.title}</AppText>
         <AppText style={styles.recentMeta}>{meta}</AppText>
       </View>
-      <StatusBadge status={toStatusKey(report.status)} size="sm" />
+      <StatusBadge status={getReportStatusTone(report.status)} size="sm" />
     </Pressable>
   );
 }

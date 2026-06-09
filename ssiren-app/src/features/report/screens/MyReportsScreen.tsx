@@ -1,17 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { AppBar, AppText, Button, Icon } from '../../../components/ui';
+import { colors } from '../../../theme';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { fetchMyReports } from '../api/reportApi';
 import { MyReportListItem } from '../components/MyReportListItem';
@@ -48,10 +40,7 @@ export function MyReportsScreen() {
       let message = '내 제보 목록을 불러오지 못했습니다.';
       if (axios.isAxiosError(error)) {
         const apiMessage = error.response?.data?.message;
-        message =
-          typeof apiMessage === 'string'
-            ? apiMessage
-            : error.message || message;
+        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
       } else if (error instanceof Error) {
         message = error.message;
       }
@@ -83,148 +72,75 @@ export function MyReportsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.headerButton}
-          onPress={() => router.replace('/(tabs)/profile')}
-        >
-          <Ionicons name="chevron-back" size={24} color="#1E1E25" />
-        </Pressable>
-        <Text style={styles.headerTitle}>내 민원함</Text>
-        <View style={styles.headerButton} />
-      </View>
+    <View style={styles.flex}>
+      <AppBar title="내 민원함" logo={false} onBack={() => router.replace('/(tabs)/profile')} />
 
       {isLoading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#6257FF" />
+          <ActivityIndicator size="large" color={colors.brand} />
         </View>
       ) : errorMessage ? (
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <Pressable style={styles.retryButton} onPress={() => loadReports({ refresh: true })}>
-            <Text style={styles.retryButtonText}>다시 시도</Text>
-          </Pressable>
+          <AppText style={styles.errorText}>{errorMessage}</AppText>
+          <View style={styles.retryWrap}>
+            <Button label="다시 시도" icon="refresh" onPress={() => loadReports({ refresh: true })} />
+          </View>
         </View>
       ) : (
         <FlatList
-          style={styles.list}
+          style={styles.flex}
           data={reports}
           keyExtractor={(item) => String(item.report.id)}
           renderItem={({ item }) => (
-            <MyReportListItem
-              item={item}
-              onPress={(reportId) => router.push(`/my-reports/${reportId}`)}
-            />
+            <MyReportListItem item={item} onPress={(reportId) => router.push(`/my-reports/${reportId}`)} />
           )}
           contentContainerStyle={[
             styles.listContent,
             reports.length === 0 ? styles.emptyListContent : null,
           ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={() => loadReports({ refresh: true })}
-              tintColor="#6257FF"
+              tintColor={colors.brand}
             />
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="document-text-outline" size={40} color="#B1B1BC" />
-              <Text style={styles.emptyTitle}>등록한 민원이 없어요</Text>
-              <Text style={styles.emptyDescription}>
+              <View style={styles.emptyIcon}>
+                <Icon name="doc" size={32} color={colors.faint} />
+              </View>
+              <AppText variant="heading" color={colors.ink}>등록한 민원이 없어요</AppText>
+              <AppText style={styles.emptyDescription}>
                 민원을 신고하면 이곳에서 처리 현황을 확인할 수 있어요.
-              </Text>
+              </AppText>
             </View>
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
-  },
-  header: {
-    height: 56,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E7EAF0',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
+  flex: { flex: 1, backgroundColor: colors.soft },
+  listContent: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 28 },
+  emptyListContent: { flexGrow: 1, justifyContent: 'center' },
+  separator: { height: 12 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
+  errorText: { fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
+  retryWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },
+  emptyState: { alignItems: 'center', gap: 10, paddingHorizontal: 20 },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.soft2,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111119',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  emptyListContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  separator: {
-    height: 12,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    gap: 16,
-  },
-  errorText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#6D6D78',
-    textAlign: 'center',
-  },
-  retryButton: {
-    minHeight: 44,
-    borderRadius: 12,
-    backgroundColor: '#6257FF',
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  emptyState: {
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 20,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#17171F',
-  },
-  emptyDescription: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#6D6D78',
-    textAlign: 'center',
-  },
+  emptyDescription: { fontSize: 14.5, lineHeight: 22, color: colors.muted, textAlign: 'center' },
 });
