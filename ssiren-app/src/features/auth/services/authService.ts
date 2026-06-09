@@ -9,6 +9,10 @@ import {
   persistApiAuthTokens,
   setApiAccessToken,
 } from '../../../lib/api/client';
+import {
+  deactivateStoredPushToken,
+  registerDevicePushToken,
+} from '../../notifications/services/pushNotificationService';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
   KakaoLoginResult,
@@ -75,9 +79,18 @@ async function persistBackendTokens(tokens: BackendTokenResponse) {
   await persistApiAuthTokens(tokens);
 }
 
+function registerPushTokenInBackground(logPrefix: string) {
+  registerDevicePushToken().catch((error: unknown) => {
+    console.log(`[Auth] push token ${logPrefix} skipped`, error);
+  });
+}
+
 export async function restoreAuthSession() {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
   setApiAccessToken(accessToken);
+  if (accessToken) {
+    registerPushTokenInBackground('restore');
+  }
   return accessToken;
 }
 
@@ -91,6 +104,7 @@ export async function clearStoredAuthSession() {
 
 export async function logout() {
   try {
+    await deactivateStoredPushToken();
     await apiClient.delete('/api/v1/auth/logout');
   } finally {
     await clearStoredAuthSession();
@@ -106,11 +120,16 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
 
   await persistBackendTokens(backendTokens);
 
+  if (!backendTokens.isNewUser) {
+    registerPushTokenInBackground('registration');
+  }
+
   return backendTokens;
 }
 
 export async function completeLogin(tokens: PendingLoginResult) {
   await persistBackendTokens(tokens);
+  registerPushTokenInBackground('registration');
 }
 
 export async function checkUserTermsAgreement(

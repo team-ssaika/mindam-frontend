@@ -47,7 +47,7 @@ export function resolveApiBaseUrl() {
   const configured = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
   const devHost = getDevMachineHost();
 
-  // Expo Go(실기기): localhost는 폰 자신을 가리켜 API 호출이 실패함 → Metro PC IP 사용
+  // Expo Go(실기기): localhost는 폰 자신을 가리켜 API 호출이 실패함 -> Metro PC IP 사용
   if (__DEV__ && Platform.OS !== 'web' && devHost) {
     if (!configured || isLocalhostUrl(configured)) {
       return `http://${devHost}:8080`;
@@ -91,6 +91,25 @@ export async function clearApiAuthTokens() {
     SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY),
     SecureStore.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY),
   ]);
+}
+
+async function getAccessToken() {
+  if (runtimeAccessToken) {
+    return runtimeAccessToken;
+  }
+
+  const envAccessToken = process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
+  if (envAccessToken) {
+    return envAccessToken;
+  }
+
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  const storedAccessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
+  runtimeAccessToken = storedAccessToken;
+  return storedAccessToken;
 }
 
 async function refreshAccessToken() {
@@ -141,14 +160,13 @@ function isAuthTokenOptionalRequest(config: InternalAxiosRequestConfig) {
   );
 }
 
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use(async (config) => {
   if (isAuthTokenOptionalRequest(config)) {
     delete config.headers.Authorization;
     return config;
   }
 
-  const accessToken =
-    runtimeAccessToken ?? process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
+  const accessToken = await getAccessToken();
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
