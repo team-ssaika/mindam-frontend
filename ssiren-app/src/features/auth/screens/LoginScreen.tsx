@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   checkUserTermsAgreement,
-  clearRuntimeAuthSession,
+  clearStoredAuthSession,
   kakaoLogin,
   submitTermsAgreement,
 } from '../services/authService';
@@ -153,7 +153,9 @@ export function LoginScreen() {
         onClose={() => {
           setIsTermsVisible(false);
           setPendingLoginResult(null);
-          clearRuntimeAuthSession();
+          clearStoredAuthSession().catch((error: unknown) => {
+            console.log('[Auth] clear pending auth session failed', error);
+          });
           setTermsState(INITIAL_TERMS_STATE);
         }}
         onSubmit={handleSubmitTerms}

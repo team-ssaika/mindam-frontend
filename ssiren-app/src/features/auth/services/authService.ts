@@ -2,7 +2,13 @@ import { getKeyHashAndroid, initializeKakaoSDK } from '@react-native-kakao/core'
 import { login as kakaoSdkLogin } from '@react-native-kakao/user';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { apiClient, setApiAccessToken } from '../../../lib/api/client';
+import {
+  ACCESS_TOKEN_STORAGE_KEY,
+  apiClient,
+  clearApiAuthTokens,
+  persistApiAuthTokens,
+  setApiAccessToken,
+} from '../../../lib/api/client';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
   KakaoLoginResult,
@@ -10,9 +16,6 @@ import type {
   TermsAgreementState,
   UserTermsStatus,
 } from '../types/auth.types';
-
-const ACCESS_TOKEN_STORAGE_KEY = 'ssiren.accessToken';
-const REFRESH_TOKEN_STORAGE_KEY = 'ssiren.refreshToken';
 
 type BackendTokenResponse = {
   accessToken: string;
@@ -69,11 +72,7 @@ async function loginToBackend(providerToken: string) {
 }
 
 async function persistBackendTokens(tokens: BackendTokenResponse) {
-  setApiAccessToken(tokens.accessToken);
-  await Promise.all([
-    SecureStore.setItemAsync(ACCESS_TOKEN_STORAGE_KEY, tokens.accessToken),
-    SecureStore.setItemAsync(REFRESH_TOKEN_STORAGE_KEY, tokens.refreshToken),
-  ]);
+  await persistApiAuthTokens(tokens);
 }
 
 export async function restoreAuthSession() {
@@ -86,12 +85,8 @@ export function clearRuntimeAuthSession() {
   setApiAccessToken(null);
 }
 
-async function clearStoredAuthSession() {
-  setApiAccessToken(null);
-  await Promise.all([
-    SecureStore.deleteItemAsync(ACCESS_TOKEN_STORAGE_KEY),
-    SecureStore.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY),
-  ]);
+export async function clearStoredAuthSession() {
+  await clearApiAuthTokens();
 }
 
 export async function logout() {
@@ -104,13 +99,12 @@ export async function logout() {
 
 export async function kakaoLogin(): Promise<PendingLoginResult> {
   ensureKakaoInitialized();
+  await clearStoredAuthSession();
 
   const kakaoToken = await kakaoSdkLogin();
   const backendTokens = await loginToBackend(kakaoToken.accessToken);
 
-  if (!backendTokens.isNewUser) {
-    await persistBackendTokens(backendTokens);
-  }
+  await persistBackendTokens(backendTokens);
 
   return backendTokens;
 }
