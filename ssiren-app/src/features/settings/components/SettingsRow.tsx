@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type SettingsRowProps = {
   label: string;
   onPress?: () => void;
   rightLabel?: string;
+  rightElement?: ReactNode;
   withChevron?: boolean;
   subtle?: boolean;
 };
@@ -13,6 +15,7 @@ export function SettingsRow({
   label,
   onPress,
   rightLabel,
+  rightElement,
   withChevron = false,
   subtle = false,
 }: SettingsRowProps) {
@@ -23,6 +26,7 @@ export function SettingsRow({
         {rightLabel ? (
           <Text style={[styles.rightLabel, subtle && styles.subtleLabel]}>{rightLabel}</Text>
         ) : null}
+        {rightElement}
         {withChevron ? (
           <Ionicons name="chevron-forward" size={22} color="#C5CAD4" />
         ) : null}

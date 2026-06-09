@@ -1,9 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
+import {
+  deactivateStoredPushToken,
+  registerDevicePushToken,
+} from '../../notifications/services/pushNotificationService';
+import { fetchMyProfile, updateMyProfile } from '../../profile/api/userApi';
 import { ConfirmBottomSheet } from '../components/ConfirmBottomSheet';
 import { SettingsCard } from '../components/SettingsCard';
 import { SettingsRow } from '../components/SettingsRow';
@@ -16,15 +30,75 @@ export function SettingsScreen() {
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
+  const [isAlarmLoading, setIsAlarmLoading] = useState(true);
+  const [isAlarmSaving, setIsAlarmSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    fetchMyProfile()
+      .then((profile) => {
+        if (!isMounted) {
+          return;
+        }
+        setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+      })
+      .catch((error: unknown) => {
+        console.log('[Settings] profile load error', error);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsAlarmLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handlePressNotification = () => {
-    // TODO: connect notification route when available
     console.log('[Settings] notification');
   };
 
-  const handlePressMenu = (menu: 'notification' | 'map') => {
-    // TODO: connect settings detail routes when available
+  const handlePressMenu = (menu: 'map') => {
     console.log(`[Settings] open ${menu}`);
+  };
+
+  const handleToggleAlarm = async (nextValue: boolean) => {
+    if (isAlarmSaving) {
+      return;
+    }
+
+    const previousValue = isAlarmEnabled;
+    setIsAlarmEnabled(nextValue);
+    setIsAlarmSaving(true);
+
+    try {
+      const updatedProfile = await updateMyProfile({ isAlarmEnabled: nextValue });
+      setIsAlarmEnabled(Boolean(updatedProfile.isAlarmEnabled));
+
+      if (nextValue) {
+        try {
+          await registerDevicePushToken();
+        } catch (error) {
+          console.log('[Settings] push token registration error', error);
+          Alert.alert(
+            '알림 설정은 저장됐어요.',
+            '다만 이 에뮬레이터에서 FCM 토큰 등록에 실패했어요. Firebase/에뮬레이터 설정을 확인해주세요.'
+          );
+        }
+      } else {
+        await deactivateStoredPushToken();
+      }
+    } catch (error) {
+      console.log('[Settings] alarm update error', error);
+      setIsAlarmEnabled(previousValue);
+      Alert.alert('알림 설정 변경 실패', '다시 시도해주세요.');
+    } finally {
+      setIsAlarmSaving(false);
+    }
   };
 
   const handleCloseSheet = () => {
@@ -101,14 +175,19 @@ export function SettingsScreen() {
           <SettingsCard>
             <SettingsRow
               label="알림"
-              withChevron
-              onPress={() => handlePressMenu('notification')}
+              rightElement={
+                isAlarmLoading ? (
+                  <ActivityIndicator size="small" color="#17171F" />
+                ) : (
+                  <Switch
+                    value={isAlarmEnabled}
+                    onValueChange={handleToggleAlarm}
+                    disabled={isAlarmSaving}
+                  />
+                )
+              }
             />
-            <SettingsRow
-              label="지도"
-              withChevron
-              onPress={() => handlePressMenu('map')}
-            />
+            <SettingsRow label="지도" withChevron onPress={() => handlePressMenu('map')} />
           </SettingsCard>
 
           <SettingsCard>
@@ -141,7 +220,7 @@ export function SettingsScreen() {
         visible={activeSheet === 'withdraw'}
         title="회원탈퇴"
         description={
-          '삭제된 데이터는 복구가 불가능 합니다.\n등록된 민원 제보는 탈퇴 후에도 유지되니\n필요에 따라 삭제 후 탈퇴하시길 바랍니다.'
+          '삭제된 데이터는 복구가 불가능합니다.\n등록된 민원 정보는 탈퇴 전에 확인해주세요.'
         }
         actionLabel="탈퇴하기"
         onClose={handleCloseSheet}

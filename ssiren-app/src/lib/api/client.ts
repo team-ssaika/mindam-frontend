@@ -1,7 +1,9 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+const ACCESS_TOKEN_STORAGE_KEY = 'ssiren.accessToken';
 let runtimeAccessToken: string | null = null;
 
 function getDevMachineHost() {
@@ -55,9 +57,27 @@ export function setApiAccessToken(accessToken: string | null) {
   runtimeAccessToken = accessToken;
 }
 
-apiClient.interceptors.request.use((config) => {
-  const accessToken =
-    runtimeAccessToken ?? process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
+async function getAccessToken() {
+  if (runtimeAccessToken) {
+    return runtimeAccessToken;
+  }
+
+  const envAccessToken = process.env.EXPO_PUBLIC_API_ACCESS_TOKEN?.trim();
+  if (envAccessToken) {
+    return envAccessToken;
+  }
+
+  if (Platform.OS === 'web') {
+    return null;
+  }
+
+  const storedAccessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
+  runtimeAccessToken = storedAccessToken;
+  return storedAccessToken;
+}
+
+apiClient.interceptors.request.use(async (config) => {
+  const accessToken = await getAccessToken();
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }

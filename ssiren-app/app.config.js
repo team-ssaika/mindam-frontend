@@ -46,6 +46,7 @@ module.exports = {
   android: {
     ...appJson.expo.android,
     package: 'com.ssaika.ssiren',
+    googleServicesFile: './google-services.json',
   },
   plugins: [
     'expo-router',

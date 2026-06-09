@@ -3,6 +3,10 @@ import { login as kakaoSdkLogin } from '@react-native-kakao/user';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { apiClient, setApiAccessToken } from '../../../lib/api/client';
+import {
+  deactivateStoredPushToken,
+  registerDevicePushToken,
+} from '../../notifications/services/pushNotificationService';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
   KakaoLoginResult,
@@ -79,6 +83,11 @@ async function persistBackendTokens(tokens: BackendTokenResponse) {
 export async function restoreAuthSession() {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
   setApiAccessToken(accessToken);
+  if (accessToken) {
+    registerDevicePushToken().catch((error: unknown) => {
+      console.log('[Auth] push token restore skipped', error);
+    });
+  }
   return accessToken;
 }
 
@@ -96,6 +105,7 @@ async function clearStoredAuthSession() {
 
 export async function logout() {
   try {
+    await deactivateStoredPushToken();
     await apiClient.delete('/api/v1/auth/logout');
   } finally {
     await clearStoredAuthSession();
@@ -110,6 +120,9 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
 
   if (!backendTokens.isNewUser) {
     await persistBackendTokens(backendTokens);
+    registerDevicePushToken().catch((error: unknown) => {
+      console.log('[Auth] push token registration skipped', error);
+    });
   }
 
   return backendTokens;
@@ -117,6 +130,9 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
 
 export async function completeLogin(tokens: PendingLoginResult) {
   await persistBackendTokens(tokens);
+  registerDevicePushToken().catch((error: unknown) => {
+    console.log('[Auth] push token registration skipped', error);
+  });
 }
 
 export async function checkUserTermsAgreement(
