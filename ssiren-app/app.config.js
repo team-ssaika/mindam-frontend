@@ -46,6 +46,11 @@ module.exports = {
   ios: {
     ...appJson.expo.ios,
     bundleIdentifier: 'com.ssaika.ssiren',
+    infoPlist: {
+      ...appJson.expo.ios.infoPlist,
+      NSLocationWhenInUseUsageDescription:
+        '현재 위치 주변의 이슈를 지도에서 확인하기 위해 위치 권한이 필요합니다.',
+    },
     config: {
       ...appJson.expo.ios.config,
       googleMapsApiKey,
@@ -55,6 +60,13 @@ module.exports = {
     ...appJson.expo.android,
     package: 'com.ssaika.ssiren',
     googleServicesFile: './google-services.json',
+    permissions: [
+      ...new Set([
+        ...(appJson.expo.android.permissions ?? []),
+        'ACCESS_COARSE_LOCATION',
+        'ACCESS_FINE_LOCATION',
+      ]),
+    ],
     config: {
       ...appJson.expo.android.config,
       googleMaps: { apiKey: googleMapsApiKey },

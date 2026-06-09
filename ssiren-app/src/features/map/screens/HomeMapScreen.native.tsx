@@ -18,12 +18,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { fetchPublicReports } from '../../report/api/reportApi';
+import { fetchIssueDetail, fetchIssues } from '../../report/api/issueApi';
 import { ReportMapMarker } from '../../report/components/ReportMapMarker';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import type { ReportDetail } from '../../report/types/reportDetail';
 import {
+  hasValidIssueCoordinate,
   hasValidReportCoordinate,
+  issueDetailToPublicReportItem,
+  issueToPublicReportItem,
   toMapReportDetail,
 } from '../../report/utils/publicReportMap';
 import { AppText, CatChip, Icon, StatusBadge, Tag } from '../../../components/ui';
@@ -62,9 +65,28 @@ function formatDistance(meters: number): string {
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
 }
 
+function buildIssueQuery(region: Region, userLocation: LatLng | null) {
+  if (userLocation && distanceMeters(userLocation, region) < 100) {
+    return {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      radiusMeters: 5000,
+    };
+  }
+
+  return {
+    swLat: region.latitude - region.latitudeDelta / 2,
+    swLng: region.longitude - region.longitudeDelta / 2,
+    neLat: region.latitude + region.latitudeDelta / 2,
+    neLng: region.longitude + region.longitudeDelta / 2,
+  };
+}
+
 export default function HomeMapScreen() {
   const { contentOffset: tabBarOffset, insets } = useTabBarMetrics();
   const mapRef = useRef<MapView | null>(null);
+  const ignoreRegionChangeUntilRef = useRef(0);
+  const isUserDraggingMapRef = useRef(false);
   const [isResolvingCurrentLocation, setIsResolvingCurrentLocation] = useState(false);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -103,11 +125,29 @@ export default function HomeMapScreen() {
     );
   }, [publicReports, userLocation]);
 
+  const syncMapRegion = (nextRegion: Region, duration = 700) => {
+    ignoreRegionChangeUntilRef.current = Date.now() + duration + 500;
+    setCurrentRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, duration);
+  };
+
+  const handleRegionChangeComplete = (region: Region) => {
+    if (Date.now() < ignoreRegionChangeUntilRef.current) {
+      return;
+    }
+
+    if (!isUserDraggingMapRef.current) {
+      return;
+    }
+
+    isUserDraggingMapRef.current = false;
+    setCurrentRegion(region);
+  };
+
   const moveToCoordinate = (latitude: number, longitude: number, title: string) => {
     const nextRegion: Region = { latitude, longitude, ...DEFAULT_DELTA };
     setSearchMarker({ latitude, longitude, title });
-    setCurrentRegion(nextRegion);
-    mapRef.current?.animateToRegion(nextRegion, 700);
+    syncMapRegion(nextRegion);
   };
 
   const moveToCurrentLocation = async () => {
@@ -128,10 +168,10 @@ export default function HomeMapScreen() {
       const { coords } = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+      console.log('[Map] current location', coords.latitude, coords.longitude);
       setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
       const nextRegion: Region = { latitude: coords.latitude, longitude: coords.longitude, ...DEFAULT_DELTA };
-      setCurrentRegion(nextRegion);
-      mapRef.current?.animateToRegion(nextRegion, 700);
+      syncMapRegion(nextRegion);
     } catch (error) {
       Alert.alert('위치 조회 실패', `현재 위치를 가져오지 못했습니다.\n${String(error)}`);
     } finally {
@@ -146,14 +186,20 @@ export default function HomeMapScreen() {
   useEffect(() => {
     let isMounted = true;
 
-    fetchPublicReports({ page: 0, size: 50, sort: 'createdAt,desc' })
+    fetchIssues(buildIssueQuery(currentRegion, userLocation))
       .then((data) => {
         if (!isMounted) return;
-        setPublicReports(
-          Array.isArray(data.contents) ? data.contents.filter(hasValidReportCoordinate) : []
-        );
+        const reports = Array.isArray(data.issues)
+          ? data.issues
+              .filter(hasValidIssueCoordinate)
+              .map(issueToPublicReportItem)
+              .filter((item): item is PublicReportItem => item != null)
+              .filter(hasValidReportCoordinate)
+          : [];
+        setPublicReports(reports);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.log('[Issues] fetch error', error);
         if (!isMounted) return;
         setPublicReports([]);
       });
@@ -161,10 +207,18 @@ export default function HomeMapScreen() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentRegion, userLocation]);
 
-  const openReportSheet = (item: PublicReportItem) => {
-    setSelectedReport(item);
+  const openReportSheet = async (item: PublicReportItem) => {
+    try {
+      const detail = await fetchIssueDetail(item.issueGroup.id);
+      const detailedItem = issueDetailToPublicReportItem(detail);
+      setSelectedReport(detailedItem ?? item);
+    } catch (error) {
+      console.log('[Issues] detail fetch error', error);
+      setSelectedReport(item);
+    }
+
     backdropOpacity.setValue(1);
     sheetTranslateY.setValue(SCREEN_HEIGHT);
     setIsReportSheetVisible(true);
@@ -178,9 +232,8 @@ export default function HomeMapScreen() {
       longitude: item.report.longitude,
       ...DEFAULT_DELTA,
     };
-    setCurrentRegion(region);
-    mapRef.current?.animateToRegion(region, 600);
-    openReportSheet(item);
+    syncMapRegion(region, 600);
+    void openReportSheet(item);
   };
 
   const closeReportSheet = () => {
@@ -204,6 +257,11 @@ export default function HomeMapScreen() {
           provider={PROVIDER_GOOGLE}
           style={styles.mapContainer}
           initialRegion={currentRegion}
+          region={currentRegion}
+          onPanDrag={() => {
+            isUserDraggingMapRef.current = true;
+          }}
+          onRegionChangeComplete={handleRegionChangeComplete}
           showsUserLocation
           showsMyLocationButton={false}
         >
@@ -211,7 +269,9 @@ export default function HomeMapScreen() {
             <Marker
               key={item.report.id}
               coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
-              onPress={() => openReportSheet(item)}
+              onPress={() => {
+                void openReportSheet(item);
+              }}
             >
               <ReportMapMarker />
             </Marker>

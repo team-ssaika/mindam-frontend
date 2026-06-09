@@ -94,6 +94,11 @@ export async function restoreAuthSession() {
   return accessToken;
 }
 
+export async function hasStoredAuthSession() {
+  const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
+  return Boolean(accessToken);
+}
+
 export function clearRuntimeAuthSession() {
   setApiAccessToken(null);
 }
@@ -106,6 +111,8 @@ export async function logout() {
   try {
     await deactivateStoredPushToken();
     await apiClient.delete('/api/v1/auth/logout');
+  } catch (error) {
+    console.log('[Auth] backend logout skipped', error);
   } finally {
     await clearStoredAuthSession();
   }
