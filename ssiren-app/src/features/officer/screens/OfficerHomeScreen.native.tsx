@@ -193,11 +193,11 @@ const styles = StyleSheet.create({
   },
   bellCount: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: colors.coral,
     alignItems: 'center',
     justifyContent: 'center',
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.canvas,
   },
-  bellCountText: { fontFamily: fonts.bold, fontSize: 10, color: colors.white },
+  bellCountText: { fontFamily: fonts.bold, fontSize: 10.5, lineHeight: 14, color: colors.white },
 
   chipRow: { paddingHorizontal: 16, paddingTop: 12 },
   jurisChip: {
