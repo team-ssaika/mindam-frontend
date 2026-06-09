@@ -60,7 +60,7 @@ export function OfficerProfileScreen() {
 
         {/* avg time */}
         <View style={styles.avgCard}>
-          <View style={styles.flex}>
+          <View style={styles.avgText}>
             <AppText style={styles.avgLabel}>평균 처리 시간</AppText>
             <View style={styles.avgValueRow}>
               <AppText style={styles.avgValue}>1.8일</AppText>
@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
+  avgText: { flex: 1 },
   avgLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.forest },
   avgValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 },
   avgValue: { fontFamily: fonts.bold, fontSize: 26, color: colors.forest, letterSpacing: -0.6 },
