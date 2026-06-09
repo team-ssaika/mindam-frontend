@@ -151,6 +151,7 @@ export function SettingsScreen() {
         <SGroup title="기타">
           <ListRow icon="info" label="버전 정보" value="1.32" first />
           <ListRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
+          <ListRow icon="building" label="담당자 모드" onPress={() => router.replace('/(officer)')} />
         </SGroup>
 
         <SGroup title="계정">

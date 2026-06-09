@@ -38,8 +38,10 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(officer)" />
       <Stack.Screen name="auth/login" />
       <Stack.Screen name="my-reports" />
+      <Stack.Screen name="officer-report" />
     </Stack>
   );
 }
