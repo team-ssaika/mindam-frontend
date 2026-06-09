@@ -15,17 +15,12 @@ type ButtonProps = Omit<PressableProps, 'style'> & {
   label: string;
   variant?: Variant;
   icon?: IconName;
-  /** Override background (primary) — e.g. accent coral for emphasis. */
   bg?: string;
   color?: string;
   loading?: boolean;
   disabled?: boolean;
 };
 
-/**
- * Primary (filled, ink) / Secondary (outline) action button.
- * 52px tall, full-width by default — matches PrimaryBtn/SecondaryBtn in ds.jsx.
- */
 export default function Button({
   label,
   variant = 'primary',
@@ -37,9 +32,13 @@ export default function Button({
   ...rest
 }: ButtonProps) {
   const isPrimary = variant === 'primary';
-  const background = isPrimary ? bg ?? colors.brand : colors.canvas;
-  const fg = color ?? (isPrimary ? colors.white : colors.ink);
   const inactive = disabled || loading;
+  const background = isPrimary
+    ? inactive
+      ? colors.buttonDisabled
+      : bg ?? colors.brand
+    : colors.canvas;
+  const fg = color ?? (isPrimary ? colors.buttonDisabledText : colors.ink);
 
   return (
     <Pressable
@@ -50,7 +49,6 @@ export default function Button({
         { backgroundColor: background },
         !isPrimary && styles.outline,
         pressed && !inactive && styles.pressed,
-        inactive && styles.inactive,
       ]}
       {...rest}
     >
@@ -68,9 +66,9 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 52,
+    height: 56,
     width: '100%',
-    borderRadius: radius.md,
+    borderRadius: radius['2xl'],
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -84,14 +82,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontFamily: fonts.semibold,
-    fontSize: 16,
+    fontFamily: fonts.bold,
+    fontSize: 17,
     letterSpacing: -0.2,
   },
   pressed: {
-    opacity: 0.88,
-  },
-  inactive: {
-    opacity: 0.45,
+    opacity: 0.9,
   },
 });

@@ -98,7 +98,6 @@ export function MyReportsScreen() {
             styles.listContent,
             reports.length === 0 ? styles.emptyListContent : null,
           ]}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -128,7 +127,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
   listContent: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 28 },
   emptyListContent: { flexGrow: 1, justifyContent: 'center' },
-  separator: { height: 12 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   errorText: { fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
   retryWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },

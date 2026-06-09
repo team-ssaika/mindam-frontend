@@ -43,6 +43,10 @@ export const ICON_PATHS = {
     'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3ZM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z',
   doc: 'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',
   marker: 'M12 2c-3.9 0-7 3-7 6.8C5 14 12 22 12 22s7-8 7-13.2C19 5 15.9 2 12 2Z',
+  megaphone: 'M4 10v4h4l5 4V6L8 10H4ZM15 8.5a4 4 0 0 1 0 7',
+  shield: 'M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3Z',
+  radioOn: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z',
+  radioOff: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

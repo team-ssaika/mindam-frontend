@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, Card, ListRow } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { AppBar, AppText, ListRow } from '../../../components/ui';
+import { colors, fonts, layout } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -19,7 +19,7 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.group}>
       <AppText style={styles.groupTitle}>{title}</AppText>
-      <Card padded={false}>{children}</Card>
+      <View style={styles.groupList}>{children}</View>
     </View>
   );
 }
@@ -157,6 +157,7 @@ export function SettingsScreen() {
             label="푸시 알림"
             sub="제보 상태 변경·주변 제보 소식"
             first
+            size="lg"
             toggle
             on={isAlarmEnabled}
             onToggle={handleToggleAlarm}
@@ -166,23 +167,23 @@ export function SettingsScreen() {
               ) : undefined
             }
           />
-          <ListRow icon="pin" label="지도" onPress={() => console.log('[Settings] open map')} />
+          <ListRow icon="pin" label="지도" size="lg" onPress={() => console.log('[Settings] open map')} />
         </SGroup>
 
         <SGroup title="기타">
-          <ListRow icon="info" label="버전 정보" value="1.32" first />
-          <ListRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
-          <ListRow icon="building" label="담당자 모드" onPress={() => router.replace('/(officer)')} />
+          <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
+          <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
+          <ListRow icon="building" label="담당자 모드" size="lg" onPress={() => router.replace('/(officer)')} />
         </SGroup>
 
         <SGroup title="계정">
           {isAuthenticated ? (
             <>
-              <ListRow icon="arrowL" label="로그아웃" danger first onPress={() => setActiveSheet('logout')} />
-              <ListRow icon="x" label="회원탈퇴" danger onPress={() => setActiveSheet('withdraw')} />
+              <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
+              <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
             </>
           ) : (
-            <ListRow icon="arrowL" label="로그인하기" first onPress={() => router.replace('/auth/login')} />
+            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={() => router.replace('/auth/login')} />
           )}
         </SGroup>
 
@@ -216,11 +217,21 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.soft },
-  content: { paddingTop: 18, paddingHorizontal: 18, gap: 18 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingTop: 8, gap: 28 },
   group: { gap: 8 },
-  groupTitle: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted, marginLeft: 4 },
-  footer: { alignItems: 'center', paddingTop: 6, gap: 8 },
+  groupTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: colors.muted,
+    paddingHorizontal: layout.screenPadding,
+  },
+  groupList: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.hairline,
+  },
+  footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
   footerLinks: { fontSize: 12.5, color: colors.muted, fontFamily: fonts.medium },
   footerVersion: { fontSize: 11.5, color: colors.faint },
 });

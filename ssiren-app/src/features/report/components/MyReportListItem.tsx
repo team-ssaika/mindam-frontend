@@ -14,7 +14,7 @@ export function MyReportListItem({ item, onPress }: MyReportListItemProps) {
 
   return (
     <Pressable onPress={() => onPress?.(report.id)}>
-      <Card style={styles.card}>
+      <Card bordered={false} style={styles.card}>
         <View style={styles.topRow}>
           <CatChip icon="alert" label={category.categoryName} color={colors.coral} />
           <StatusBadge status={getReportStatusTone(report.status)} size="sm" />
@@ -42,7 +42,7 @@ export function MyReportListItem({ item, onPress }: MyReportListItemProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 10 },
+  card: { gap: 10, marginBottom: 14 },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { lineHeight: 22 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

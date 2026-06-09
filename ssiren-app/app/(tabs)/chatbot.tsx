@@ -137,15 +137,15 @@ export default function Chatbot() {
             returnKeyType="send"
             onSubmitEditing={handleSend}
           />
+          <Pressable
+            onPress={handleSend}
+            disabled={!inputText.trim()}
+            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+            accessibilityLabel="전송"
+          >
+            <Icon name="send" size={18} color={colors.white} fill />
+          </Pressable>
         </View>
-        <Pressable
-          onPress={handleSend}
-          disabled={!inputText.trim()}
-          style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-          accessibilityLabel="전송"
-        >
-          <Icon name="send" size={20} color={colors.white} fill />
-        </Pressable>
       </View>
 
       {showCopyToast ? (
@@ -176,30 +176,39 @@ const styles = StyleSheet.create({
     borderTopColor: colors.hairline,
   },
   cameraButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    backgroundColor: colors.canvas,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: colors.hairline,
+    backgroundColor: colors.canvas,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inputPill: {
     flex: 1,
     height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.canvas,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.hairline,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 6,
+    gap: 8,
   },
-  input: { fontFamily: fonts.regular, fontSize: 14.5, color: colors.ink, paddingVertical: 0 },
+  input: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    color: colors.ink,
+    paddingVertical: 0,
+  },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
