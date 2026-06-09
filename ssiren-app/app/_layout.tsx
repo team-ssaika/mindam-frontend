@@ -1,8 +1,10 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Image, Platform } from 'react-native';
 import { restoreAuthSession } from '../src/features/auth/services/authService';
+import { queryClient } from '../src/lib/api/queryClient';
 import { fontAssets } from '../src/theme';
 
 export default function RootLayout() {
@@ -36,12 +38,14 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(officer)" />
-      <Stack.Screen name="auth/login" />
-      <Stack.Screen name="my-reports" />
-      <Stack.Screen name="officer-report" />
-    </Stack>
+    <QueryClientProvider client={queryClient}>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(officer)" />
+        <Stack.Screen name="auth/login" />
+        <Stack.Screen name="my-reports" />
+        <Stack.Screen name="officer-report" />
+      </Stack>
+    </QueryClientProvider>
   );
 }

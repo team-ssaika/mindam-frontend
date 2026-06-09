@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -12,7 +11,8 @@ import {
 } from 'react-native';
 import { AppText, Button } from '../../../components/ui';
 import { colors, fonts, radius, shadow } from '../../../theme';
-import { updateMyReport } from '../api/reportApi';
+import { getApiErrorMessage } from '../../../lib/api/errorMessage';
+import { useUpdateMyReport } from '../api/reportQueries';
 import type { MyReportDetail } from '../types/myReportDetail';
 import type { ReportVisibility } from '../types/myReportUpdate';
 
@@ -53,8 +53,9 @@ export function MyReportEditSheet({ visible, detail, onClose, onSaved }: MyRepor
     how: '',
     why: '',
   });
-  const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const updateMutation = useUpdateMyReport();
+  const isSaving = updateMutation.isPending;
 
   useEffect(() => {
     if (!visible) return;
@@ -74,43 +75,40 @@ export function MyReportEditSheet({ visible, detail, onClose, onSaved }: MyRepor
     setErrorMessage(null);
   }, [visible, detail]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
       setErrorMessage('제목을 입력해주세요.');
       return;
     }
 
-    setIsSaving(true);
     setErrorMessage(null);
-
-    try {
-      await updateMyReport(detail.report.id, {
-        title: trimmedTitle,
-        contents: {
-          who: contents.who.trim() || undefined,
-          when: contents.when.trim() || undefined,
-          where: contents.where.trim() || undefined,
-          what: contents.what.trim() || undefined,
-          how: contents.how.trim() || undefined,
-          why: contents.why.trim() || undefined,
-          summary: contents.summary.trim() || undefined,
+    updateMutation.mutate(
+      {
+        reportId: detail.report.id,
+        body: {
+          title: trimmedTitle,
+          contents: {
+            who: contents.who.trim() || undefined,
+            when: contents.when.trim() || undefined,
+            where: contents.where.trim() || undefined,
+            what: contents.what.trim() || undefined,
+            how: contents.how.trim() || undefined,
+            why: contents.why.trim() || undefined,
+            summary: contents.summary.trim() || undefined,
+          },
+          visibility,
+          categoryId: detail.category.id,
         },
-        visibility,
-        categoryId: detail.category.id,
-      });
-      onSaved();
-      onClose();
-    } catch (error) {
-      let message = '민원 수정에 실패했습니다.';
-      if (axios.isAxiosError(error)) {
-        const apiMessage = error.response?.data?.message;
-        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
+      },
+      {
+        onSuccess: () => {
+          onSaved();
+          onClose();
+        },
+        onError: (error) => setErrorMessage(getApiErrorMessage(error, '민원 수정에 실패했습니다.')),
       }
-      setErrorMessage(message);
-    } finally {
-      setIsSaving(false);
-    }
+    );
   };
 
   return (

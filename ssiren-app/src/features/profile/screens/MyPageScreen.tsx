@@ -1,5 +1,5 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   AppBar,
@@ -10,15 +10,16 @@ import {
   StatusBadge,
 } from '../../../components/ui';
 import { colors, fonts, radius, statusColors, StatusKey } from '../../../theme';
-import { fetchMyReports } from '../../report/api/reportApi';
+import { useMyReports } from '../../report/api/reportQueries';
 import type { MyReportItem } from '../../report/types/myReport';
 import {
   formatReportDate,
   getReportStatusLabel,
   getReportStatusTone,
 } from '../../report/utils/reportStatus';
+import { useRefetchOnFocus } from '../../../lib/api/useRefetchOnFocus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
-import { fetchMyProfile } from '../api/userApi';
+import { useMyProfile } from '../api/userQueries';
 import { myPageMock } from '../mocks/myPageMock';
 
 const STATUS_CARDS = [
@@ -30,41 +31,23 @@ const STATUS_CARDS = [
 export function MyPageScreen() {
   const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
-  const [name, setName] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
-  const [recent, setRecent] = useState<MyReportItem[]>([]);
+  const { data: profile, refetch: refetchProfile } = useMyProfile();
+  const { data: recentPage, refetch: refetchRecent } = useMyReports({
+    page: 0,
+    size: 3,
+    sort: 'createdAt,desc',
+  });
 
-  const loadProfile = useCallback(() => {
-    let isMounted = true;
+  const name = profile ? profile.nickname || profile.email : null;
+  const email = profile?.email ?? null;
+  const recent: MyReportItem[] = recentPage?.contents ?? [];
 
-    fetchMyProfile()
-      .then((data) => {
-        if (!isMounted) return;
-        setName(data.nickname || data.email);
-        setEmail(data.email);
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        console.log('[Profile] failed to fetch /api/v1/users/me', error);
-      });
-
-    fetchMyReports({ page: 0, size: 3, sort: 'createdAt,desc' })
-      .then((page) => {
-        if (!isMounted) return;
-        setRecent(page?.contents ?? []);
-      })
-      .catch((error) => {
-        if (!isMounted) return;
-        console.log('[Profile] failed to fetch recent reports', error);
-        setRecent([]);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useFocusEffect(loadProfile);
+  useRefetchOnFocus(
+    useCallback(() => {
+      refetchProfile();
+      refetchRecent();
+    }, [refetchProfile, refetchRecent])
+  );
 
   const goMyReports = () => {
     if (Platform.OS === 'web') {
