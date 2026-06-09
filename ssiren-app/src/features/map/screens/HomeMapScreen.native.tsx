@@ -269,6 +269,7 @@ export default function HomeMapScreen() {
             <Marker
               key={item.report.id}
               coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
+              tracksViewChanges={false}
               onPress={() => {
                 void openReportSheet(item);
               }}
