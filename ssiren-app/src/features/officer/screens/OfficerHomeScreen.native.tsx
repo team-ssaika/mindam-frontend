@@ -2,6 +2,8 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,6 +30,8 @@ import {
 
 const CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
+const PEEK_LIST_HEIGHT = 124;
+const PEEK_COLLAPSE_DRAG_THRESHOLD = 24;
 
 function distanceMeters(
   a: { latitude: number; longitude: number },
@@ -77,6 +81,66 @@ export default function OfficerHomeScreen() {
   );
   const [region, setRegion] = useState<Region>({ ...CITY_HALL, ...DEFAULT_DELTA });
   const [issues, setIssues] = useState<AdminIssueItem[]>([]);
+  const [isPeekExpanded, setIsPeekExpanded] = useState(true);
+  const peekExpandAnim = useRef(new Animated.Value(1)).current;
+  const peekDragStart = useRef(1);
+
+  const setPeekExpanded = (expanded: boolean) => {
+    setIsPeekExpanded(expanded);
+    Animated.spring(peekExpandAnim, {
+      toValue: expanded ? 1 : 0,
+      useNativeDriver: false,
+      tension: 90,
+      friction: 14,
+    }).start();
+  };
+
+  const peekPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        peekExpandAnim.stopAnimation((value) => {
+          peekDragStart.current = value;
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        const next = Math.min(
+          1,
+          Math.max(0, peekDragStart.current - gesture.dy / PEEK_LIST_HEIGHT)
+        );
+        peekExpandAnim.setValue(next);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.vy > 0.35 || gesture.dy > PEEK_COLLAPSE_DRAG_THRESHOLD) {
+          setPeekExpanded(false);
+          return;
+        }
+        if (gesture.vy < -0.35 || gesture.dy < -PEEK_COLLAPSE_DRAG_THRESHOLD) {
+          setPeekExpanded(true);
+          return;
+        }
+        peekExpandAnim.stopAnimation((value) => {
+          setPeekExpanded(value >= 0.5);
+        });
+      },
+    })
+  ).current;
+
+  const peekListHeight = peekExpandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, PEEK_LIST_HEIGHT],
+  });
+  const peekListOpacity = peekExpandAnim.interpolate({
+    inputRange: [0, 0.35, 1],
+    outputRange: [0, 0, 1],
+  });
+  const fabBottom = peekExpandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [tabBarOffset + 96, tabBarOffset + 168],
+  });
 
   const mapReports = useMemo(
     () =>
@@ -258,7 +322,7 @@ export default function OfficerHomeScreen() {
         </View>
       </SafeAreaView>
 
-      <View style={[styles.fabColumn, { bottom: tabBarOffset + 168 }]} pointerEvents="box-none">
+      <Animated.View style={[styles.fabColumn, { bottom: fabBottom }]} pointerEvents="box-none">
         <View style={styles.fab}>
           <Icon name="filter" size={21} color={colors.ink} />
         </View>
@@ -273,90 +337,103 @@ export default function OfficerHomeScreen() {
             <Icon name="location" size={22} color={colors.white} />
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      <View style={styles.peek} pointerEvents="box-none">
-        <View style={styles.peekHandle} />
-        <View style={styles.peekHeader}>
-          <View style={styles.peekHeaderMain}>
-            <AppText variant="section" color={colors.ink}>
-              {isLoadingIssues ? '관할 제보 불러오는 중...' : `내 관할 제보 ${summary.total}건`}
-            </AppText>
-            <View style={styles.countsRow}>
-              <Count tone="wait" label="대기" n={summary.wait} />
-              <Count tone="prog" label="처리중" n={summary.prog} />
-              <Count tone="done" label="완료" n={summary.done} />
+      <View style={styles.peek}>
+        <View style={styles.peekDragZone} {...peekPanResponder.panHandlers}>
+          <View style={styles.peekHandle} />
+          <View style={styles.peekHeader}>
+            <View style={styles.peekHeaderMain}>
+              <AppText variant="section" color={colors.ink}>
+                {isLoadingIssues ? '관할 제보 불러오는 중...' : `내 관할 제보 ${summary.total}건`}
+              </AppText>
+              <View style={styles.countsRow}>
+                <Count tone="wait" label="대기" n={summary.wait} />
+                <Count tone="prog" label="처리중" n={summary.prog} />
+                <Count tone="done" label="완료" n={summary.done} />
+              </View>
             </View>
+            <Pressable style={styles.inboxLink} onPress={() => router.push('/(officer)/inbox')}>
+              <AppText style={styles.inboxLinkText}>제보함</AppText>
+              <Icon name="chevR" size={16} color={colors.brand} />
+            </Pressable>
           </View>
-          <Pressable style={styles.inboxLink} onPress={() => router.push('/(officer)/inbox')}>
-            <AppText style={styles.inboxLinkText}>제보함</AppText>
-            <Icon name="chevR" size={16} color={colors.brand} />
-          </Pressable>
         </View>
 
-        {isLoadingIssues ? (
-          <View style={styles.peekLoading}>
-            <ActivityIndicator size="small" color={colors.brand} />
-          </View>
-        ) : sortedIssues.length === 0 ? (
-          <AppText style={styles.peekEmpty}>현재 지도 영역에 관할 제보가 없어요.</AppText>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.peekListContent}
-          >
-            {sortedIssues.map((item) => {
-              const report = item.representativeReport.report;
-              const reportStatus = report.status as ReportStatus;
-              const dist = userLocation
-                ? formatDistance(
-                    distanceMeters(userLocation, {
-                      latitude: item.issueGroup.groupLatitude,
-                      longitude: item.issueGroup.groupLongitude,
-                    })
-                  )
-                : null;
+        <Animated.View
+          style={[
+            styles.peekListWrap,
+            { height: peekListHeight, opacity: peekListOpacity },
+          ]}
+          pointerEvents={isPeekExpanded ? 'auto' : 'none'}
+          {...peekPanResponder.panHandlers}
+        >
+          {isLoadingIssues ? (
+            <View style={styles.peekLoading}>
+              <ActivityIndicator size="small" color={colors.brand} />
+            </View>
+          ) : sortedIssues.length === 0 ? (
+            <AppText style={styles.peekEmpty}>현재 지도 영역에 관할 제보가 없어요.</AppText>
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.peekListContent}
+            >
+              {sortedIssues.map((item) => {
+                const report = item.representativeReport.report;
+                const reportStatus = report.status as ReportStatus;
+                const dist = userLocation
+                  ? formatDistance(
+                      distanceMeters(userLocation, {
+                        latitude: item.issueGroup.groupLatitude,
+                        longitude: item.issueGroup.groupLongitude,
+                      })
+                    )
+                  : null;
 
-              return (
-                <Pressable
-                  key={item.issueGroup.id}
-                  style={styles.peekCard}
-                  onPress={() => {
-                    focusIssue(item);
-                    openIssueDetail(item);
-                  }}
-                >
-                  <View style={styles.peekCardTop}>
-                    <CatChip
-                      icon="alert"
-                      label={item.category.categoryName}
-                      color={colors.brand}
-                    />
-                    <StatusBadge
-                      status={getReportStatusTone(reportStatus)}
-                      size="sm"
-                      label={getReportStatusLabel(reportStatus)}
-                    />
-                  </View>
-                  <AppText style={styles.peekCardTitle} numberOfLines={2}>
-                    {item.issueGroup.title || report.title}
-                  </AppText>
-                  <View style={styles.peekCardMeta}>
-                    <AppText style={styles.peekCardCount}>제보 {item.issueGroup.reportCount}건</AppText>
-                    {dist ? (
-                      <>
-                        <AppText style={styles.peekCardDot}>·</AppText>
-                        <Icon name="location" size={13} color={colors.faint} />
-                        <AppText style={styles.peekCardDist}>{dist}</AppText>
-                      </>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+                return (
+                  <Pressable
+                    key={item.issueGroup.id}
+                    style={styles.peekCard}
+                    onPress={() => {
+                      focusIssue(item);
+                      openIssueDetail(item);
+                    }}
+                  >
+                    <View style={styles.peekCardTop}>
+                      <CatChip
+                        icon="alert"
+                        label={item.category.categoryName}
+                        color={colors.brand}
+                      />
+                      <StatusBadge
+                        status={getReportStatusTone(reportStatus)}
+                        size="sm"
+                        label={getReportStatusLabel(reportStatus)}
+                      />
+                    </View>
+                    <AppText style={styles.peekCardTitle} numberOfLines={2}>
+                      {item.issueGroup.title || report.title}
+                    </AppText>
+                    <View style={styles.peekCardMeta}>
+                      <AppText style={styles.peekCardCount}>
+                        제보 {item.issueGroup.reportCount}건
+                      </AppText>
+                      {dist ? (
+                        <>
+                          <AppText style={styles.peekCardDot}>·</AppText>
+                          <Icon name="location" size={13} color={colors.faint} />
+                          <AppText style={styles.peekCardDist}>{dist}</AppText>
+                        </>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </Animated.View>
       </View>
     </View>
   );
@@ -452,6 +529,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     ...shadow.sheet,
   },
+  peekDragZone: {
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
   peekHandle: {
     width: 38,
     height: 5,
@@ -459,6 +540,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#d8dbe1',
     alignSelf: 'center',
     marginBottom: 12,
+  },
+  peekListWrap: {
+    overflow: 'hidden',
   },
   peekHeader: {
     flexDirection: 'row',
