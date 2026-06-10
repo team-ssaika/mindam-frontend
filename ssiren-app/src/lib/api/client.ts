@@ -160,9 +160,56 @@ function isAuthTokenOptionalRequest(config: InternalAxiosRequestConfig) {
   );
 }
 
+function formatApiUrl(config: InternalAxiosRequestConfig) {
+  const base = (config.baseURL ?? '').replace(/\/$/, '');
+  const path = config.url ?? '';
+  return path.startsWith('http') ? path : `${base}${path}`;
+}
+
+function logApiRequest(config: InternalAxiosRequestConfig) {
+  if (!__DEV__) {
+    return;
+  }
+
+  const method = (config.method ?? 'get').toUpperCase();
+  const hasAuth = Boolean(config.headers.Authorization);
+
+  console.log(`[API] → ${method} ${formatApiUrl(config)}`, {
+    params: config.params ?? undefined,
+    body: config.data ?? undefined,
+    auth: hasAuth ? 'Bearer ***' : undefined,
+  });
+}
+
+function logApiResponse(response: { config: InternalAxiosRequestConfig; status: number; data: unknown }) {
+  if (!__DEV__) {
+    return;
+  }
+
+  const method = (response.config.method ?? 'get').toUpperCase();
+  console.log(`[API] ← ${response.status} ${method} ${formatApiUrl(response.config)}`, response.data);
+}
+
+function logApiError(error: AxiosError) {
+  if (!__DEV__) {
+    return;
+  }
+
+  const config = error.config;
+  const method = (config?.method ?? 'get').toUpperCase();
+  const url = config ? formatApiUrl(config) : 'unknown';
+  const status = error.response?.status ?? 'NETWORK';
+
+  console.log(`[API] ✕ ${status} ${method} ${url}`, {
+    message: error.message,
+    data: error.response?.data,
+  });
+}
+
 apiClient.interceptors.request.use(async (config) => {
   if (isAuthTokenOptionalRequest(config)) {
     delete config.headers.Authorization;
+    logApiRequest(config);
     return config;
   }
 
@@ -170,11 +217,15 @@ apiClient.interceptors.request.use(async (config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
+  logApiRequest(config);
   return config;
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    logApiResponse(response);
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
 
@@ -184,6 +235,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry ||
       isTokenRefreshRequest(originalRequest)
     ) {
+      logApiError(error);
       return Promise.reject(error);
     }
 
@@ -192,6 +244,7 @@ apiClient.interceptors.response.use(
     const accessToken = await getRefreshTokenRequest();
 
     if (!accessToken) {
+      logApiError(error);
       return Promise.reject(error);
     }
 

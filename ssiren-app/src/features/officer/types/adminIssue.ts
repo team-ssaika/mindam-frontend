@@ -58,6 +58,27 @@ export type AdminIssuesResponse = {
   issues: AdminIssueItem[];
 };
 
+export type AdminUpdatableReportStatus =
+  | 'RECEIVED'
+  | 'CHECKING'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'REJECTED';
+
+export type AdminIssueStatusUpdateRequest = {
+  status: AdminUpdatableReportStatus;
+  reason: string;
+  notifyReporter?: boolean;
+};
+
+export type AdminIssueStatusUpdateResponse = {
+  issueGroupId: number;
+  issueGroupStatus: IssueGroupStatus;
+  reportStatus: AdminUpdatableReportStatus;
+  changedReportCount: number;
+  changedReportIds: number[];
+};
+
 export type AdminIssuesQuery = {
   latitude?: number;
   longitude?: number;

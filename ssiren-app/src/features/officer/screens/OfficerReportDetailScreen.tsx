@@ -3,7 +3,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,9 +17,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fonts, radius, statusColors, type StatusKey } from '../../../theme';
-import { fetchAdminIssueDetail } from '../api/adminIssueApi';
-import type { AdminIssueDetail } from '../types/adminIssue';
+import { colors, fonts, radius, statusColors } from '../../../theme';
+import { fetchAdminIssueDetail, updateAdminIssueStatus } from '../api/adminIssueApi';
+import type { AdminIssueDetail, AdminUpdatableReportStatus } from '../types/adminIssue';
 import type { ReportStatus } from '../../report/types/myReport';
 import {
   formatReportDateTime,
@@ -24,8 +28,7 @@ import {
   getReportStatusTone,
   sortStatusHistories,
 } from '../../report/utils/reportStatus';
-
-const STATUS_OPTIONS: StatusKey[] = ['wait', 'prog', 'done'];
+import { ADMIN_UPDATABLE_STATUSES, toAdminUpdatableStatus } from '../utils/adminIssueStatus';
 
 export function OfficerReportDetailScreen() {
   const router = useRouter();
@@ -34,12 +37,59 @@ export function OfficerReportDetailScreen() {
   const [detail, setDetail] = useState<AdminIssueDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [status, setStatus] = useState<StatusKey>('wait');
-  const [note, setNote] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<AdminUpdatableReportStatus>('RECEIVED');
+  const [reason, setReason] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const reasonSectionRef = useRef<View | null>(null);
+  const scrollYRef = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const footerHeight = 72 + insets.bottom;
 
-  const loadDetail = useCallback(async () => {
+  const ensureReasonVisible = useCallback(
+    (keyboardInset: number) => {
+      if (!keyboardInset || !scrollRef.current || !reasonSectionRef.current) {
+        return;
+      }
+
+      reasonSectionRef.current.measureInWindow((_x, y, _width, height) => {
+        const keyboardTop = Dimensions.get('window').height - keyboardInset;
+        const sectionBottom = y + height;
+        const overlap = sectionBottom - keyboardTop + footerHeight + 12;
+
+        if (overlap > 0) {
+          scrollRef.current?.scrollTo({
+            y: scrollYRef.current + overlap,
+            animated: true,
+          });
+        }
+      });
+    },
+    [footerHeight]
+  );
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      const nextHeight = event.endCoordinates?.height ?? 0;
+      setKeyboardHeight(nextHeight);
+      setTimeout(() => ensureReasonVisible(nextHeight), Platform.OS === 'ios' ? 250 : 80);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [ensureReasonVisible]);
+
+  const loadDetail = useCallback(async (options?: { silent?: boolean }) => {
     const id = Number(issueGroupId);
     if (!Number.isFinite(id)) {
       setErrorMessage('유효하지 않은 이슈 그룹 ID입니다.');
@@ -47,13 +97,17 @@ export function OfficerReportDetailScreen() {
       return;
     }
 
-    setIsLoading(true);
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
     setErrorMessage(null);
 
     try {
       const data = await fetchAdminIssueDetail(id);
       setDetail(data);
-      setStatus(getReportStatusTone(data.representativeReport.report.status as ReportStatus));
+      setSelectedStatus(
+        toAdminUpdatableStatus(data.representativeReport.report.status as ReportStatus)
+      );
     } catch (error) {
       let message = '이슈 상세를 불러오지 못했습니다.';
       if (axios.isAxiosError(error)) {
@@ -68,7 +122,9 @@ export function OfficerReportDetailScreen() {
       setDetail(null);
       setErrorMessage(message);
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, [issueGroupId]);
 
@@ -76,12 +132,49 @@ export function OfficerReportDetailScreen() {
     loadDetail();
   }, [loadDetail]);
 
-  const handleUpdate = () => {
-    setToast(`'${statusColors[status].label}'(으)로 변경되었습니다`);
+  const showToast = (message: string) => {
+    setToast(message);
     if (toastTimer.current) {
       clearTimeout(toastTimer.current);
     }
     toastTimer.current = setTimeout(() => setToast(null), 2200);
+  };
+
+  const handleUpdate = async () => {
+    if (!detail || isUpdating) {
+      return;
+    }
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      Alert.alert('처리 사유 필요', '상태 변경 사유를 입력해 주세요.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      const result = await updateAdminIssueStatus(detail.issueGroup.id, {
+        status: selectedStatus,
+        reason: trimmedReason,
+        notifyReporter: true,
+      });
+      setReason('');
+      await loadDetail({ silent: true });
+      showToast(
+        `${getReportStatusLabel(result.reportStatus)}(으)로 변경되었습니다 (${result.changedReportCount}건)`
+      );
+    } catch (error) {
+      let message = '처리 상태 변경에 실패했습니다.';
+      if (axios.isAxiosError(error)) {
+        const apiMessage = error.response?.data?.message;
+        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      Alert.alert('변경 실패', message);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const goBack = () => {
@@ -139,11 +232,17 @@ export function OfficerReportDetailScreen() {
           </View>
         </View>
       ) : detail && representativeReport ? (
-        <>
+        <View style={styles.flex}>
           <ScrollView
+            ref={scrollRef}
             style={styles.flex}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, { paddingBottom: 24 + footerHeight }]}
+            keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={(event) => {
+              scrollYRef.current = event.nativeEvent.contentOffset.y;
+            }}
           >
             {representativeImages.length > 0 ? (
               <ScrollView
@@ -263,13 +362,14 @@ export function OfficerReportDetailScreen() {
               <AppText style={styles.sectionLabel}>상태 변경</AppText>
               <AppText style={styles.sectionHint}>변경 시 시민에게 알림이 전송돼요</AppText>
               <View style={styles.statusRow}>
-                {STATUS_OPTIONS.map((s) => {
-                  const st = statusColors[s];
-                  const on = s === status;
+                {ADMIN_UPDATABLE_STATUSES.map((statusOption) => {
+                  const tone = getReportStatusTone(statusOption);
+                  const st = statusColors[tone];
+                  const on = statusOption === selectedStatus;
                   return (
                     <Pressable
-                      key={s}
-                      onPress={() => setStatus(s)}
+                      key={statusOption}
+                      onPress={() => setSelectedStatus(statusOption)}
                       style={[
                         styles.statusBtn,
                         {
@@ -279,7 +379,7 @@ export function OfficerReportDetailScreen() {
                       ]}
                     >
                       <AppText style={[styles.statusBtnText, { color: on ? st.fg : colors.muted }]}>
-                        {st.label}
+                        {getReportStatusLabel(statusOption)}
                       </AppText>
                     </Pressable>
                   );
@@ -287,30 +387,50 @@ export function OfficerReportDetailScreen() {
               </View>
             </View>
 
-            <View>
-              <AppText style={styles.sectionLabel}>처리 내용 등록</AppText>
+            <View ref={reasonSectionRef}>
+              <AppText style={styles.sectionLabel}>처리 사유</AppText>
               <View style={styles.noteRow}>
                 <Pressable style={styles.photoSlot}>
                   <Icon name="camera" size={20} color={colors.muted} />
                   <AppText style={styles.photoSlotText}>처리 사진</AppText>
                 </Pressable>
                 <TextInput
-                  value={note}
-                  onChangeText={setNote}
-                  placeholder="처리 내용을 입력하세요…"
+                  value={reason}
+                  onChangeText={setReason}
+                  placeholder="상태 변경 사유를 입력하세요…"
                   placeholderTextColor={colors.faint}
                   multiline
                   textAlignVertical="top"
                   style={styles.noteInput}
+                  onFocus={() => {
+                    if (keyboardHeight > 0) {
+                      ensureReasonVisible(keyboardHeight);
+                    }
+                  }}
                 />
               </View>
             </View>
           </ScrollView>
 
-          <SafeAreaView edges={['bottom']} style={styles.footer}>
-            <Button label="업데이트" icon="check" onPress={handleUpdate} />
+          <SafeAreaView
+            edges={['bottom']}
+            style={[
+              styles.footer,
+              {
+                marginBottom:
+                  keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0,
+              },
+            ]}
+          >
+            <Button
+              label="업데이트"
+              icon="check"
+              onPress={handleUpdate}
+              loading={isUpdating}
+              disabled={isUpdating || !reason.trim()}
+            />
           </SafeAreaView>
-        </>
+        </View>
       ) : null}
 
       {toast ? (
@@ -371,9 +491,17 @@ const styles = StyleSheet.create({
 
   sectionLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink, marginBottom: 8 },
   sectionHint: { fontSize: 12.5, color: colors.muted, marginTop: -4, marginBottom: 10 },
-  statusRow: { flexDirection: 'row', gap: 7 },
-  statusBtn: { flex: 1, borderRadius: radius.sm, paddingVertical: 11, alignItems: 'center', borderWidth: 1.5 },
-  statusBtnText: { fontFamily: fonts.bold, fontSize: 13 },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  statusBtn: {
+    minWidth: '30%',
+    flexGrow: 1,
+    borderRadius: radius.sm,
+    paddingVertical: 11,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  statusBtnText: { fontFamily: fonts.bold, fontSize: 12.5, textAlign: 'center' },
 
   noteRow: { flexDirection: 'row', gap: 10 },
   photoSlot: {
