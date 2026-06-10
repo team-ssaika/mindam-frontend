@@ -198,7 +198,11 @@ function RecentRow({
         <AppText style={styles.recentTitle} numberOfLines={1}>{report.title}</AppText>
         <AppText style={styles.recentMeta}>{meta}</AppText>
       </View>
-      <StatusBadge status={getReportStatusTone(report.status)} size="sm" />
+      <StatusBadge
+        status={getReportStatusTone(report.status)}
+        size="sm"
+        label={getReportStatusLabel(report.status)}
+      />
     </Pressable>
   );
 }

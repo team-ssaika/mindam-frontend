@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, Card, CatChip, Icon, StatusBadge } from '../../../components/ui';
 import { colors, fonts } from '../../../theme';
 import type { MyReportItem } from '../types/myReport';
-import { formatReportDate, getReportStatusTone } from '../utils/reportStatus';
+import { formatReportDate, getReportStatusLabel, getReportStatusTone } from '../utils/reportStatus';
 
 type MyReportListItemProps = {
   item: MyReportItem;
@@ -17,7 +17,11 @@ export function MyReportListItem({ item, onPress }: MyReportListItemProps) {
       <Card bordered={false} style={styles.card}>
         <View style={styles.topRow}>
           <CatChip icon="alert" label={category.categoryName} color={colors.coral} />
-          <StatusBadge status={getReportStatusTone(report.status)} size="sm" />
+          <StatusBadge
+            status={getReportStatusTone(report.status)}
+            size="sm"
+            label={getReportStatusLabel(report.status)}
+          />
         </View>
 
         <AppText variant="section" color={colors.ink} numberOfLines={2} style={styles.title}>

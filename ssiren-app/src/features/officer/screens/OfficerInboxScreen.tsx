@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -92,9 +92,19 @@ export function OfficerInboxScreen() {
     }
   }, [keyword, sort, reportStatus]);
 
-  useEffect(() => {
-    loadIssues();
-  }, [loadIssues]);
+  const isFirstFocusRef = useRef(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false;
+        loadIssues();
+        return;
+      }
+
+      loadIssues();
+    }, [loadIssues])
+  );
 
   const sortLabel = SORT_OPTIONS.find((option) => option.value === sort)?.label ?? '최신순';
   const statusLabel =
