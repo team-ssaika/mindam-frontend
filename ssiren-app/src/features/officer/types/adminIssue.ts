@@ -38,11 +38,20 @@ export type AdminDepartment = {
   };
 };
 
+export type AdminIssueReportBundle = {
+  report: MyReportItem['report'];
+  reportImages: MyReportItem['reportImages'];
+};
+
 export type AdminIssueItem = {
   issueGroup: MyReportItem['issueGroup'] & { status: IssueGroupStatus };
   representativeReport: AdminRepresentativeReport;
   category: AdminCategory;
   department: AdminDepartment;
+};
+
+export type AdminIssueDetail = AdminIssueItem & {
+  reports: AdminIssueReportBundle[];
 };
 
 export type AdminIssuesResponse = {

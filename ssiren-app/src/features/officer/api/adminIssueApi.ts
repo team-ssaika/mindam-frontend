@@ -1,6 +1,10 @@
 import { apiClient } from '../../../lib/api/client';
 import type { ApiResponse } from '../../../lib/api/types';
-import type { AdminIssueItem, AdminIssuesQuery, AdminIssuesResponse } from '../types/adminIssue';
+import type {
+  AdminIssueDetail,
+  AdminIssuesQuery,
+  AdminIssuesResponse,
+} from '../types/adminIssue';
 
 export async function fetchAdminIssues(params?: AdminIssuesQuery) {
   const response = await apiClient.get<ApiResponse<AdminIssuesResponse>>('/api/v1/admin/issues', {
@@ -11,7 +15,7 @@ export async function fetchAdminIssues(params?: AdminIssuesQuery) {
 }
 
 export async function fetchAdminIssueDetail(issueGroupId: number) {
-  const response = await apiClient.get<ApiResponse<AdminIssueItem>>(
+  const response = await apiClient.get<ApiResponse<AdminIssueDetail>>(
     `/api/v1/admin/issues/${issueGroupId}`
   );
 

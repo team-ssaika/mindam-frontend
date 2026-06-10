@@ -208,9 +208,7 @@ export default function OfficerHomeScreen() {
   };
 
   const openIssueDetail = (item: AdminIssueItem) => {
-    const reportId = item.representativeReport?.report?.id;
-    if (!reportId) return;
-    router.push(`/officer-report/${reportId}`);
+    router.push(`/officer-report/${item.issueGroup.id}`);
   };
 
   const moveToCurrentLocation = async () => {
@@ -289,7 +287,7 @@ export default function OfficerHomeScreen() {
             key={item.issueGroup.id}
             coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
             tracksViewChanges={false}
-            onPress={() => router.push(`/officer-report/${item.report.id}`)}
+            onPress={() => router.push(`/officer-report/${item.issueGroup.id}`)}
           >
             <OfficerIssueMapMarker reportCount={item.issueGroup.reportCount} />
           </Marker>
