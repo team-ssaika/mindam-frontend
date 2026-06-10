@@ -1,5 +1,6 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter, useSegments } from 'expo-router';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, ListRow } from '../../../components/ui';
 import { colors, fonts, layout } from '../../../theme';
@@ -24,10 +25,6 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function isOfficerAccountRole(role: string | null | undefined) {
-  return role === 'OFFICER' || role === 'ADMIN';
-}
-
 export function SettingsScreen() {
   const router = useRouter();
   const segments = useSegments();
@@ -39,43 +36,32 @@ export function SettingsScreen() {
   const [isAlarmLoading, setIsAlarmLoading] = useState(true);
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadSettings = useCallback(async () => {
+    setIsAlarmLoading(true);
 
-    hasStoredAuthSession()
-      .then((hasSession) => {
-        if (!isMounted) return null;
-        setIsAuthenticated(hasSession);
+    try {
+      const hasSession = await hasStoredAuthSession();
+      setIsAuthenticated(hasSession);
 
-        if (!hasSession) {
-          setIsAlarmLoading(false);
-          return null;
-        }
+      if (!hasSession) {
+        return;
+      }
 
-        return fetchMyProfile()
-          .then((profile) => {
-            if (!isMounted) return;
-            setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
-            setUserRole(profile.role);
-          })
-          .catch((error: unknown) => {
-            console.log('[Settings] profile load error', error);
-          })
-          .finally(() => {
-            if (isMounted) setIsAlarmLoading(false);
-          });
-      })
-      .catch((error: unknown) => {
-        console.log('[Settings] auth session check error', error);
-        if (isMounted) setIsAlarmLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
+      const profile = await fetchMyProfile();
+      setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+    } catch (error) {
+      console.log('[Settings] profile load error', error);
+    } finally {
+      setIsAlarmLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [loadSettings])
+  );
 
   const handleToggleAlarm = async (nextValue: boolean) => {
     if (isAlarmSaving) return;
@@ -151,8 +137,6 @@ export function SettingsScreen() {
     }
   };
 
-  const canSwitchToOfficerMode = isAuthenticated && isOfficerAccountRole(userRole);
-
   const handleSwitchToCitizenMode = () => {
     router.replace('/(tabs)');
   };
@@ -199,7 +183,7 @@ export function SettingsScreen() {
               size="lg"
               onPress={handleSwitchToCitizenMode}
             />
-          ) : canSwitchToOfficerMode ? (
+          ) : (
             <ListRow
               icon="building"
               label="담당자 모드"
@@ -207,7 +191,7 @@ export function SettingsScreen() {
               size="lg"
               onPress={handleSwitchToOfficerMode}
             />
-          ) : null}
+          )}
         </SGroup>
 
         <SGroup title="계정">
