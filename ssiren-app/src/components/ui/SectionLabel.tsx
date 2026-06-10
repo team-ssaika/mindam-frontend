@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { colors } from '../../theme';
 import AppText from './AppText';
 
@@ -6,15 +6,22 @@ type SectionLabelProps = {
   title: string;
   /** Optional right-aligned secondary text (e.g. "전체 17건 ›"). */
   right?: string;
+  onPressRight?: () => void;
 };
 
 /** Section header row: bold title left, muted meta right. */
-export default function SectionLabel({ title, right }: SectionLabelProps) {
+export default function SectionLabel({ title, right, onPressRight }: SectionLabelProps) {
   return (
     <View style={styles.row}>
       <AppText variant="section" color={colors.ink}>{title}</AppText>
       {right ? (
-        <AppText style={styles.right}>{right}</AppText>
+        onPressRight ? (
+          <Pressable onPress={onPressRight} hitSlop={8} accessibilityRole="button">
+            <AppText style={styles.right}>{right}</AppText>
+          </Pressable>
+        ) : (
+          <AppText style={styles.right}>{right}</AppText>
+        )
       ) : null}
     </View>
   );

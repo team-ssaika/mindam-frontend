@@ -1,4 +1,4 @@
-// Design-system UI kit (tone B · 잉크 코랄). Import from '../components/ui'.
+// Design-system UI kit (tone A · 소프트 퍼플). Import from '../components/ui'.
 export { default as Icon, ICON_PATHS } from './Icon';
 export type { IconName } from './Icon';
 export { default as AppText } from './AppText';

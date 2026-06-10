@@ -17,6 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
+import {
+  getAppCurrentPosition,
+  getDefaultMapCenter,
+  requestAppLocationPermission,
+  USE_DEV_MOCK_LOCATION,
+} from '../../../lib/location/appLocation';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { fetchIssueDetail, fetchIssues } from '../../report/api/issueApi';
 import { ReportMapMarker } from '../../report/components/ReportMapMarker';
@@ -34,10 +40,7 @@ import { colors, fonts, radius, shadow } from '../../../theme';
 import { getReportStatusTone } from '../../report/utils/reportStatus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 
-const CITY_HALL = {
-  latitude: 37.5665,
-  longitude: 126.978,
-};
+const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 
 const DEFAULT_DELTA = {
   latitudeDelta: 0.01,
@@ -93,7 +96,7 @@ export default function HomeMapScreen() {
     longitude: number;
   } | null>(null);
   const [currentRegion, setCurrentRegion] = useState<Region>({
-    ...CITY_HALL,
+    ...DEFAULT_MAP_CENTER,
     ...DEFAULT_DELTA,
   });
   const [searchMarker, setSearchMarker] = useState<{
@@ -153,25 +156,24 @@ export default function HomeMapScreen() {
   const moveToCurrentLocation = async () => {
     try {
       setIsResolvingCurrentLocation(true);
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled) {
-        Alert.alert('위치 서비스 꺼짐', '기기 위치 서비스를 먼저 켜주세요.');
-        return;
+      if (!USE_DEV_MOCK_LOCATION) {
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (!servicesEnabled) {
+          Alert.alert('위치 서비스 꺼짐', '기기 위치 서비스를 먼저 켜주세요.');
+          return;
+        }
       }
 
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
         Alert.alert('위치 권한 필요', '위치 권한을 허용해야 현재 위치를 표시할 수 있습니다.');
         return;
       }
 
-      const { coords } = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      console.log('[Map] current location', coords.latitude, coords.longitude);
-      setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
-      const nextRegion: Region = { latitude: coords.latitude, longitude: coords.longitude, ...DEFAULT_DELTA };
-      syncMapRegion(nextRegion);
+      const position = await getAppCurrentPosition();
+      console.log('[Map] current location', position.latitude, position.longitude);
+      setUserLocation(position);
+      syncMapRegion({ ...position, ...DEFAULT_DELTA });
     } catch (error) {
       Alert.alert('위치 조회 실패', `현재 위치를 가져오지 못했습니다.\n${String(error)}`);
     } finally {
@@ -267,13 +269,14 @@ export default function HomeMapScreen() {
         >
           {publicReports.map((item) => (
             <Marker
-              key={item.report.id}
+              key={item.issueGroup.id}
               coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
+              tracksViewChanges={false}
               onPress={() => {
                 void openReportSheet(item);
               }}
             >
-              <ReportMapMarker />
+              <ReportMapMarker reportCount={item.issueGroup.reportCount} />
             </Marker>
           ))}
           {searchMarker ? (

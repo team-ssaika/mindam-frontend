@@ -1,56 +1,60 @@
 /**
- * Design tokens — tone "B · 잉크 코랄" (ink + coral).
- * Ported from the ssaika-design design system (ds.jsx `SS`).
- * Single source of truth for color, radius, spacing, typography, and shadow.
+ * Design tokens — tone "A · 소프트 퍼플".
+ * Lavender-tinted neutrals + #6C63FF brand family.
  */
 
 export const colors = {
-  // text
-  ink: '#181d26',
-  body: '#333840',
-  muted: '#6b7280',
-  faint: '#9aa0aa',
-  // surfaces
+  // text (purple-gray undertone)
+  ink: '#1C1B26',
+  body: '#3F3D50',
+  muted: '#7B7894',
+  faint: '#B3B0C4',
+  // surfaces (lavender tint)
   canvas: '#ffffff',
-  soft: '#f7f6f4',
-  soft2: '#efedea',
-  hairline: '#e7e4df',
-  // brand (ink) + accent (coral)
-  brand: '#181d26',
-  brandActive: '#0d1218',
-  brandSoft: '#f1ebe7',
-  accent: '#aa2d00',
-  accentSoft: '#f7ece7',
-  accentActive: '#8a2400',
-  // supporting palette
-  coral: '#aa2d00',
-  forest: '#0a2e0e',
-  cream: '#f5e9d4',
-  peach: '#fcab79',
-  mint: '#a8d8c4',
-  yellow: '#f4d35e',
-  mustard: '#d9a441',
+  soft: '#F9F8FD',
+  soft2: '#EEECF8',
+  hairline: '#E6E4F2',
+  // brand (purple)
+  brand: '#6C63FF',
+  brandActive: '#5A52E8',
+  brandSoft: '#EEEAFF',
+  accent: '#6C63FF',
+  accentSoft: '#E8E4FF',
+  accentActive: '#5A52E8',
+  // buttons
+  buttonDisabled: '#DDD9F0',
+  buttonDisabledText: '#FFFFFF',
+  // supporting palette (harmonized with brand)
+  coral: '#6C63FF',
+  forest: '#3D8B62',
+  cream: '#F5F2FF',
+  peach: '#A89FFF',
+  mint: '#D8EDE4',
+  yellow: '#D4CCFF',
+  mustard: '#8B83F0',
   // misc
   white: '#ffffff',
   black: '#000000',
+  danger: '#E45B5B',
 } as const;
 
 export type ColorToken = keyof typeof colors;
 
-/** Report status palette (접수 대기 / 처리중 / 처리 완료). */
+/** Report status palette — gray wait, amber prog, soft green done. */
 export const statusColors = {
-  wait: { bg: '#eef0f3', fg: '#586070', dot: '#9297a0', label: '접수 대기' },
-  prog: { bg: '#fbeccb', fg: '#8a6612', dot: '#d9a441', label: '처리중' },
-  done: { bg: '#dcefe1', fg: '#1f6b32', dot: '#2e8b46', label: '처리 완료' },
+  wait: { bg: '#DDE1EF', fg: '#4A4F63', dot: '#72789A', label: '접수 대기' },
+  prog: { bg: '#FEF3C7', fg: '#92400E', dot: '#D97706', label: '처리중' },
+  done: { bg: '#E6F4EC', fg: '#2F6B4A', dot: '#3D8B62', label: '처리 완료' },
 } as const;
 
 export type StatusKey = keyof typeof statusColors;
 
 export const radius = {
   sm: 8,
-  md: 10,
-  lg: 14,
-  xl: 20,
+  md: 12,
+  lg: 18,
+  xl: 22,
+  '2xl': 28,
   pill: 999,
 } as const;
 
@@ -61,16 +65,16 @@ export const spacing = {
   sm: 8,
   md: 12,
   lg: 16,
-  xl: 18,
+  xl: 20,
   '2xl': 24,
   '3xl': 32,
 } as const;
 
-/**
- * Pretendard family names — must match the keys passed to `useFonts`.
- * RN custom fonts do not respond to numeric fontWeight, so the weight is
- * selected by swapping the family.
- */
+/** Horizontal screen padding used across flows. */
+export const layout = {
+  screenPadding: 20,
+} as const;
+
 export const fonts = {
   regular: 'Pretendard-Regular',
   medium: 'Pretendard-Medium',
@@ -80,7 +84,6 @@ export const fonts = {
 
 export type FontWeightToken = keyof typeof fonts;
 
-/** Map a CSS-ish weight number to the matching Pretendard family. */
 export function fontByWeight(weight: 400 | 500 | 600 | 700): string {
   switch (weight) {
     case 700:
@@ -94,49 +97,44 @@ export function fontByWeight(weight: 400 | 500 | 600 | 700): string {
   }
 }
 
-/** RN shadows (iOS shadow* + Android elevation). */
 export const shadow = {
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.07,
-    shadowRadius: 24,
-    elevation: 3,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 2,
   },
   sheet: {
-    shadowColor: '#000',
+    shadowColor: '#3F3D50',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 12,
   },
   fab: {
-    shadowColor: '#000',
+    shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.3,
     shadowRadius: 18,
     elevation: 8,
   },
   float: {
-    shadowColor: '#000',
+    shadowColor: '#3F3D50',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
 } as const;
 
-/**
- * Typography presets — each returns an RN text style (family + size + spacing).
- * Line height is expressed in absolute px to match the design.
- */
 export const typography = {
-  display: { fontFamily: fonts.bold, fontSize: 23, lineHeight: 31, letterSpacing: -0.5 },
-  title: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, letterSpacing: -0.4 },
-  heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 23, letterSpacing: -0.3 },
-  section: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.3 },
-  body: { fontFamily: fonts.regular, fontSize: 14.5, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 14.5, lineHeight: 22 },
+  display: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 36, letterSpacing: -0.6 },
+  title: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30, letterSpacing: -0.4 },
+  heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24, letterSpacing: -0.3 },
+  section: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
   label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
   caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, color: colors.muted },
   mono: { fontFamily: 'ui-monospace', fontSize: 12.5, letterSpacing: 0.2 },

@@ -1,16 +1,31 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Alert, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Icon } from '../../src/components/ui';
 import { colors } from '../../src/theme';
 import { TAB_BAR_TOP_PADDING } from '../../src/constants/layout';
 import { useTabBarMetrics } from '../../src/hooks/useTabBarMetrics';
+import { hasStoredAuthSession } from '../../src/features/auth/services/authService';
 
 function PlusButton() {
   const router = useRouter();
+  const handlePress = async () => {
+    const hasSession = await hasStoredAuthSession();
+
+    if (!hasSession) {
+      Alert.alert('로그인이 필요해요.', '제보하려면 먼저 로그인해주세요.', [
+        { text: '취소', style: 'cancel' },
+        { text: '로그인하기', onPress: () => router.push('/auth/login') },
+      ]);
+      return;
+    }
+
+    router.push('/(tabs)/plus');
+  };
+
   return (
     <TouchableOpacity
       style={styles.plusButtonWrapper}
-      onPress={() => router.push('/(tabs)/plus')}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel="제보하기"
     >
@@ -95,7 +110,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     bottom: 12,
-    borderRadius: 18,
+    borderRadius: 28,
     backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
-import { ReactNode, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useSegments } from 'expo-router';
+import { ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, Card, ListRow } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { AppBar, AppText, ListRow } from '../../../components/ui';
+import { colors, fonts, layout } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -19,14 +20,16 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.group}>
       <AppText style={styles.groupTitle}>{title}</AppText>
-      <Card padded={false}>{children}</Card>
+      <View style={styles.groupList}>{children}</View>
     </View>
   );
 }
 
 export function SettingsScreen() {
   const router = useRouter();
+  const segments = useSegments();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
+  const isOfficerMode = segments[0] === '(officer)';
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
@@ -34,40 +37,35 @@ export function SettingsScreen() {
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const goToStartSelection = () => {
+    router.replace('/auth/role-select');
+  };
 
-    hasStoredAuthSession()
-      .then((hasSession) => {
-        if (!isMounted) return null;
-        setIsAuthenticated(hasSession);
+  const loadSettings = useCallback(async () => {
+    setIsAlarmLoading(true);
 
-        if (!hasSession) {
-          setIsAlarmLoading(false);
-          return null;
-        }
+    try {
+      const hasSession = await hasStoredAuthSession();
+      setIsAuthenticated(hasSession);
 
-        return fetchMyProfile()
-          .then((profile) => {
-            if (!isMounted) return;
-            setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
-          })
-          .catch((error: unknown) => {
-            console.log('[Settings] profile load error', error);
-          })
-          .finally(() => {
-            if (isMounted) setIsAlarmLoading(false);
-          });
-      })
-      .catch((error: unknown) => {
-        console.log('[Settings] auth session check error', error);
-        if (isMounted) setIsAlarmLoading(false);
-      });
+      if (!hasSession) {
+        return;
+      }
 
-    return () => {
-      isMounted = false;
-    };
+      const profile = await fetchMyProfile();
+      setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+    } catch (error) {
+      console.log('[Settings] profile load error', error);
+    } finally {
+      setIsAlarmLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [loadSettings])
+  );
 
   const handleToggleAlarm = async (nextValue: boolean) => {
     if (isAlarmSaving) return;
@@ -118,7 +116,7 @@ export function SettingsScreen() {
     try {
       await logoutUser();
       setActiveSheet(null);
-      router.replace('/auth/login');
+      goToStartSelection();
     } catch (error) {
       console.log('[Settings] logout error', error);
       Alert.alert('로그아웃 중 문제가 발생했어요.', '다시 시도해주세요.');
@@ -134,13 +132,21 @@ export function SettingsScreen() {
     try {
       await withdrawUser();
       setActiveSheet(null);
-      router.replace('/auth/login');
+      goToStartSelection();
     } catch (error) {
       console.log('[Settings] withdraw error', error);
       Alert.alert('회원탈퇴 처리 중 문제가 발생했어요.', '다시 시도해주세요.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSwitchToCitizenMode = () => {
+    router.replace('/(tabs)');
+  };
+
+  const handleSwitchToOfficerMode = () => {
+    router.replace('/(officer)');
   };
 
   return (
@@ -157,6 +163,7 @@ export function SettingsScreen() {
             label="푸시 알림"
             sub="제보 상태 변경·주변 제보 소식"
             first
+            size="lg"
             toggle
             on={isAlarmEnabled}
             onToggle={handleToggleAlarm}
@@ -166,23 +173,39 @@ export function SettingsScreen() {
               ) : undefined
             }
           />
-          <ListRow icon="pin" label="지도" onPress={() => console.log('[Settings] open map')} />
+          <ListRow icon="pin" label="지도" size="lg" onPress={() => console.log('[Settings] open map')} />
         </SGroup>
 
         <SGroup title="기타">
-          <ListRow icon="info" label="버전 정보" value="1.32" first />
-          <ListRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
-          <ListRow icon="building" label="담당자 모드" onPress={() => router.replace('/(officer)')} />
+          <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
+          <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
+          {isOfficerMode ? (
+            <ListRow
+              icon="megaphone"
+              label="민원인 모드"
+              sub="시민 제보 화면으로 이동"
+              size="lg"
+              onPress={handleSwitchToCitizenMode}
+            />
+          ) : (
+            <ListRow
+              icon="building"
+              label="담당자 모드"
+              sub="관할 제보 처리 화면으로 이동"
+              size="lg"
+              onPress={handleSwitchToOfficerMode}
+            />
+          )}
         </SGroup>
 
         <SGroup title="계정">
           {isAuthenticated ? (
             <>
-              <ListRow icon="arrowL" label="로그아웃" danger first onPress={() => setActiveSheet('logout')} />
-              <ListRow icon="x" label="회원탈퇴" danger onPress={() => setActiveSheet('withdraw')} />
+              <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
+              <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
             </>
           ) : (
-            <ListRow icon="arrowL" label="로그인하기" first onPress={() => router.replace('/auth/login')} />
+            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={goToStartSelection} />
           )}
         </SGroup>
 
@@ -216,11 +239,21 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.soft },
-  content: { paddingTop: 18, paddingHorizontal: 18, gap: 18 },
+  flex: { flex: 1, backgroundColor: colors.canvas },
+  content: { paddingTop: 8, gap: 28 },
   group: { gap: 8 },
-  groupTitle: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted, marginLeft: 4 },
-  footer: { alignItems: 'center', paddingTop: 6, gap: 8 },
+  groupTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    color: colors.muted,
+    paddingHorizontal: layout.screenPadding,
+  },
+  groupList: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.hairline,
+  },
+  footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
   footerLinks: { fontSize: 12.5, color: colors.muted, fontFamily: fonts.medium },
   footerVersion: { fontSize: 11.5, color: colors.faint },
 });

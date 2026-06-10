@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import { colors, fonts, radius } from '../../../theme';
 import type { TermsAgreementState, TermsItem } from '../types/auth.types';
 import { TermsAgreementItem } from './TermsAgreementItem';
 
 const TERMS_ITEMS: TermsItem[] = [
-  { key: 'service', label: '서비스 이용약관' },
-  { key: 'location', label: '위치기반 서비스 이용약관' },
-  { key: 'privacy', label: '개인정보 처리방침' },
+  { key: 'service', label: '서비스 이용약관 (필수)' },
+  { key: 'location', label: '위치기반 서비스 이용약관 (필수)' },
+  { key: 'privacy', label: '개인정보 처리방침 (필수)' },
 ];
 
 type TermsAgreementBottomSheetProps = {
@@ -31,21 +32,23 @@ export function TermsAgreementBottomSheet({
   state,
   visible,
 }: TermsAgreementBottomSheetProps) {
-  const isAllChecked = useMemo(
-    () => Object.values(state).every(Boolean),
-    [state]
-  );
-
+  const isAllChecked = useMemo(() => Object.values(state).every(Boolean), [state]);
   const isConfirmEnabled = isAllChecked && !isSubmitting;
 
   const handlePressDetail = (label: string) => {
-    // TODO: replace with terms detail screen or WebView route
     console.log(`[Auth] open terms detail: ${label}`);
-    Alert.alert('준비 중', `${label} 상세 보기는 추후 연결할 예정이에요.`);
+    Alert.alert('준비 중', `${label} 상세 화면은 추후 연결 예정입니다.`);
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      backdropOpacity={0.68}
+      minHeight="48%"
+      showHandle={false}
+      containerStyle={styles.sheetContainer}
+    >
       <View style={styles.content}>
         <Text style={styles.title}>이용 약관 동의</Text>
 
@@ -79,12 +82,7 @@ export function TermsAgreementBottomSheet({
             isConfirmEnabled ? styles.confirmButtonEnabled : styles.confirmButtonDisabled,
           ]}
         >
-          <Text
-            style={[
-              styles.confirmButtonText,
-              !isConfirmEnabled && styles.confirmButtonTextDisabled,
-            ]}
-          >
+          <Text style={styles.confirmButtonText}>
             {isSubmitting ? '처리 중...' : '확인'}
           </Text>
         </TouchableOpacity>
@@ -94,43 +92,47 @@ export function TermsAgreementBottomSheet({
 }
 
 const styles = StyleSheet.create({
+  sheetContainer: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 26,
+    paddingTop: 40,
+  },
   content: {
+    flex: 1,
     paddingBottom: 8,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111119',
-    marginBottom: 28,
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: '#000000',
+    marginBottom: 34,
   },
   list: {
-    gap: 12,
+    gap: 14,
   },
   errorText: {
     marginTop: 16,
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#E25353',
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.danger,
   },
   confirmButton: {
-    height: 54,
-    borderRadius: 16,
+    height: 56,
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 28,
+    marginTop: 'auto',
   },
   confirmButtonEnabled: {
-    backgroundColor: '#6257FF',
+    backgroundColor: colors.brand,
   },
   confirmButtonDisabled: {
-    backgroundColor: '#D4D6DC',
+    backgroundColor: '#B5B5B5',
   },
   confirmButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  confirmButtonTextDisabled: {
-    color: '#FFFFFF',
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.white,
   },
 });

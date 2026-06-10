@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { useRouter } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AxiosError } from 'axios';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AppBar,
@@ -30,13 +32,21 @@ import {
   Tag,
 } from '../../../components/ui';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
+import { createReport, createReportDraft } from '../api/reportApi';
 import { reportSubmissionMock } from '../mocks/reportSubmissionMock';
+import type {
+  CreateReportRequest,
+  CreateReportResponse,
+  ReportDraftResponse,
+} from '../types/reportSubmission';
 
 type FlowStep = 1 | 2 | 3;
 
 type ReportImage = {
   id: string;
   uri: string;
+  name?: string | null;
+  type?: string | null;
 };
 
 type DetailFieldKey = 'title' | 'category' | 'location' | 'occurredAt' | 'issue' | 'risk';
@@ -88,6 +98,75 @@ function makeReviewState(): EditableReviewData {
   };
 }
 
+function toLocalDateTimeString(date: Date) {
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 19);
+}
+
+function getSummary(contents: ReportDraftResponse['reportDraft']['contents']) {
+  return contents.summary ?? contents.what ?? contents.how ?? '';
+}
+
+function makeReviewStateFromDraft(data: ReportDraftResponse): EditableReviewData {
+  const { reportDraft, category, department, agencyType, analysis } = data;
+  const contents = reportDraft.contents ?? {};
+
+  return {
+    aiSummary: getSummary(contents),
+    title: reportDraft.title,
+    category: category?.categoryName ?? '',
+    location: {
+      address: reportDraft.roadAddress ?? '',
+      detail: reportDraft.jibunAddress ?? '',
+    },
+    details: {
+      occurredAt: reportDraft.occurredAt,
+      issue: contents.what ?? contents.how ?? contents.summary ?? '',
+      risk: contents.why ?? `위험 점수 ${reportDraft.riskScore}`,
+    },
+    detectedTags: analysis?.detectedObjects ?? [],
+    completion: {
+      reportId: '',
+      organization: agencyType?.name ?? '',
+      department: department?.name ?? '',
+      receiptNumber: '',
+      eta: '처리 상태는 내 제보에서 확인해주세요.',
+      assignmentReason: analysis?.falseReport?.reason ?? '',
+    },
+  };
+}
+
+function makeCompletionFromCreateResponse(data: CreateReportResponse): EditableReviewData['completion'] {
+  return {
+    reportId: `#${data.report.id}`,
+    organization: data.agencyType?.name ?? '',
+    department: data.department?.name ?? '',
+    receiptNumber: `SR-${data.report.id}`,
+    eta: '처리 상태는 내 제보에서 확인해주세요.',
+    assignmentReason: data.issueGroup?.title ?? data.category?.categoryName ?? '',
+  };
+}
+
+function parseRiskScore(value: string, fallback: number) {
+  const parsed = Number(value.replace(/[^\d.]/g, ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getApiErrorMessage(error: unknown) {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { message?: string } | undefined;
+    return data?.message ?? error.message;
+  }
+
+  return error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+}
+
+function isUnclearEtcCategory(draft: ReportDraftResponse | null) {
+  const categoryCode = draft?.category?.categoryCode?.toUpperCase() ?? '';
+
+  return categoryCode === 'ETC_OTHER' || categoryCode.includes('ETC') || categoryCode.includes('OTHER');
+}
+
 export function ReportCreateFlowScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -99,13 +178,13 @@ export function ReportCreateFlowScreen() {
   const [isExitConfirmVisible, setIsExitConfirmVisible] = useState(false);
   const [isScreenshotToastVisible, setIsScreenshotToastVisible] = useState(false);
   const [editableReview, setEditableReview] = useState<EditableReviewData>(makeReviewState);
+  const [reportDraft, setReportDraft] = useState<ReportDraftResponse | null>(null);
   const [activeEditor, setActiveEditor] = useState<DetailFieldKey | null>(null);
   const [editDraft, setEditDraft] = useState<EditDraft>({ primary: '', secondary: '' });
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const screenshotToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const analyzeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const isNextEnabled = content.trim().length > 0;
+  const isReportBlockedByCategory = isUnclearEtcCategory(reportDraft);
 
   const resetFlow = () => {
     setStep(1);
@@ -114,6 +193,7 @@ export function ReportCreateFlowScreen() {
     setImages([]);
     setIsExitConfirmVisible(false);
     setEditableReview(makeReviewState());
+    setReportDraft(null);
     setActiveEditor(null);
     setEditDraft({ primary: '', secondary: '' });
     setIsResolvingLocation(false);
@@ -176,6 +256,8 @@ export function ReportCreateFlowScreen() {
     const nextImages = result.assets.map((asset, index) => ({
       id: `${asset.assetId ?? asset.uri}-${Date.now()}-${index}`,
       uri: asset.uri,
+      name: asset.fileName,
+      type: asset.mimeType,
     }));
 
     setImages((prev) => [...prev, ...nextImages].slice(0, MAX_IMAGES));
@@ -185,19 +267,42 @@ export function ReportCreateFlowScreen() {
     setImages((prev) => prev.filter((image) => image.id !== id));
   };
 
-  const handleNext = () => {
+  const handleCreateDraft = async () => {
     if (!isNextEnabled) {
       Alert.alert('내용을 입력해주세요.', '상황을 간단히 적어주시면 다음 단계로 넘어갈 수 있어요.');
       return;
     }
 
     Keyboard.dismiss();
-    // AI 정리중 화면을 보여준 뒤 검토 단계로 전환한다.
     setIsAnalyzing(true);
-    analyzeTimerRef.current = setTimeout(() => {
-      setIsAnalyzing(false);
+
+    try {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
+        Alert.alert('위치 권한이 필요해요.', '제보 위치를 확인하려면 위치 권한을 허용해주세요.');
+        return;
+      }
+
+      const position = await getAppCurrentPosition();
+
+      const draft = await createReportDraft({
+        images,
+        content: content.trim(),
+        latitude: position.latitude,
+        longitude: position.longitude,
+        occurredAt: toLocalDateTimeString(new Date()),
+      });
+
+      console.log('[ReportFlow] draft created', draft.reportDraft.title, draft.category?.categoryCode);
+      setReportDraft(draft);
+      setEditableReview(makeReviewStateFromDraft(draft));
       setStep(2);
-    }, ANALYZE_DURATION);
+    } catch (error) {
+      console.log('[ReportFlow] draft create error', error);
+      Alert.alert('AI 정리 실패', '제보 초안을 생성하지 못했습니다. 로그인/네트워크 상태를 확인하고 다시 시도해주세요.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleEditField = (field: DetailFieldKey) => {
@@ -258,19 +363,17 @@ export function ReportCreateFlowScreen() {
     try {
       setIsResolvingLocation(true);
 
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
         Alert.alert('위치 권한이 필요해요.', '현재 위치를 불러오려면 위치 권한을 허용해주세요.');
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await getAppCurrentPosition();
 
       const [address] = await Location.reverseGeocodeAsync({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: position.latitude,
+        longitude: position.longitude,
       });
 
       const primaryAddress = address
@@ -300,8 +403,64 @@ export function ReportCreateFlowScreen() {
     }
   };
 
-  const handleSubmit = () => {
-    setStep(3);
+  const handleCreateReport = async () => {
+    if (!reportDraft) {
+      Alert.alert('AI 정리 정보가 없어요.', '다시 AI 정리를 시도해주세요.');
+      setStep(1);
+      return;
+    }
+
+    setIsAnalyzing(true);
+
+    try {
+      if (isUnclearEtcCategory(reportDraft)) {
+        setIsAnalyzing(false);
+        Alert.alert('등록할 수 없는 제보예요.', '내용 확인이 어려운 기타 제보로 분류되어 바로 등록할 수 없어요. 내용을 더 구체적으로 작성한 뒤 다시 AI 정리를 진행해주세요.');
+        return;
+      }
+
+      const draft = reportDraft.reportDraft;
+      const request: CreateReportRequest = {
+        title: editableReview.title,
+        contents: {
+          ...draft.contents,
+          summary: editableReview.aiSummary || draft.contents.summary,
+          what: editableReview.details.issue || draft.contents.what,
+          why: editableReview.details.risk || draft.contents.why,
+        },
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        roadAddress: editableReview.location.address || draft.roadAddress,
+        jibunAddress: editableReview.location.detail || draft.jibunAddress,
+        sido: draft.sido,
+        sigungu: draft.sigungu,
+        eupmyeondong: draft.eupmyeondong,
+        occurredAt: editableReview.details.occurredAt || draft.occurredAt,
+        riskScore: parseRiskScore(editableReview.details.risk, draft.riskScore),
+        visibility: draft.visibility,
+        categoryId: draft.categoryId,
+        departmentId: draft.departmentId,
+        issueGroupId: draft.issueGroupId,
+        embedding: draft.embedding,
+      };
+
+      const createdReport = await createReport({
+        images,
+        request,
+      });
+
+      console.log('[ReportFlow] report created', createdReport.report.id);
+      setEditableReview((prev) => ({
+        ...prev,
+        completion: makeCompletionFromCreateResponse(createdReport),
+      }));
+      setStep(3);
+    } catch (error) {
+      console.log('[ReportFlow] report create error', getApiErrorMessage(error), error);
+      Alert.alert('제보 등록 실패', '제보를 등록하지 못했습니다. 로그인/네트워크 상태를 확인하고 다시 시도해주세요.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleGoToInbox = () => {
@@ -369,29 +528,22 @@ export function ReportCreateFlowScreen() {
     };
   }, []);
 
-  useEffect(
-    () => () => {
-      if (analyzeTimerRef.current) {
-        clearTimeout(analyzeTimerRef.current);
-      }
-    },
-    []
-  );
-
   if (isAnalyzing) {
     return <AnalyzingScreen onBack={handleBack} />;
   }
 
   const tinted = step === 2 || step === 3;
-  const stepLabel = step === 1 ? '1 / 2' : step === 2 ? '2 / 2' : '완료';
-
   return (
     <View style={[styles.flex, tinted && styles.tinted]}>
       <AppBar
-        title={step === 2 ? 'AI 정리 확인' : '제보하기'}
+        title={step === 2 ? 'AI 정리 확인' : '민원 신고 작성'}
         logo={false}
         onBack={step === 3 ? undefined : handleBack}
-        right={<AppText style={styles.stepBadge}>{stepLabel}</AppText>}
+        right={
+          <Pressable accessibilityRole="button" hitSlop={8}>
+            <Icon name="bell" size={22} color={colors.ink} />
+          </Pressable>
+        }
       />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -400,7 +552,11 @@ export function ReportCreateFlowScreen() {
         <View style={styles.flex}>
           {step !== 3 ? (
             <View style={styles.stepperWrap}>
-              <Stepper step={step} total={2} />
+              <Stepper
+                step={step}
+                total={3}
+                labels={['작성', '확인/수정', '완료']}
+              />
             </View>
           ) : null}
           <ScrollView
@@ -429,11 +585,24 @@ export function ReportCreateFlowScreen() {
               <Button
                 label="AI로 정리하기"
                 icon="sparkle"
-                onPress={handleNext}
+                onPress={handleCreateDraft}
                 disabled={!isNextEnabled}
               />
             ) : null}
-            {step === 2 ? <Button label="이대로 제보하기" onPress={handleSubmit} /> : null}
+            {step === 2 ? (
+              <View style={styles.footerStack}>
+                {isReportBlockedByCategory ? (
+                  <AppText style={styles.blockedSubmitText}>
+                    내용 확인이 어려운 기타 제보로 분류되어 바로 등록할 수 없어요. 내용을 더 구체적으로 수정한 뒤 다시 AI 정리를 진행해주세요.
+                  </AppText>
+                ) : null}
+                <Button
+                  label="이대로 제보하기"
+                  onPress={handleCreateReport}
+                  disabled={isReportBlockedByCategory}
+                />
+              </View>
+            ) : null}
             {step === 3 ? (
               <View style={styles.footerStack}>
                 <Button label="내 민원함 보기" onPress={handleGoToInbox} />
@@ -590,10 +759,14 @@ function WriteStep({
       </View>
       <AppText style={styles.counter}>{content.length} / {MAX_CONTENT_LENGTH}</AppText>
 
-      <View style={styles.attachHeader}>
-        <AppText variant="section" color={colors.ink}>사진 첨부</AppText>
-        <AppText style={styles.attachOptional}> (선택)</AppText>
-      </View>
+      <Pressable style={styles.attachRow} onPress={onPickImages}>
+        <View style={styles.attachLeft}>
+          <Icon name="image" size={20} color={colors.ink} />
+          <AppText variant="section" color={colors.ink}>사진</AppText>
+          <AppText style={styles.attachOptional}>선택</AppText>
+        </View>
+        <Icon name="chevD" size={18} color={colors.muted} />
+      </Pressable>
       <View style={styles.imageRow}>
         {images.map((image) => (
           <View key={image.id} style={styles.imageCard}>
@@ -911,25 +1084,30 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   tinted: { backgroundColor: colors.soft },
   stepBadge: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted },
-  stepperWrap: { paddingHorizontal: 18, paddingTop: 12 },
-  scroll: { paddingHorizontal: 18, paddingTop: 14 },
+  stepperWrap: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
+  scroll: { paddingHorizontal: 20, paddingTop: 8 },
   stepContent: { gap: 12 },
 
   // write step
   heroSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22 },
   textAreaWrap: {
     marginTop: 8,
-    backgroundColor: colors.soft,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: 16,
     minHeight: 130,
+    paddingVertical: 4,
   },
-  textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 98 },
+  textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 120 },
   counter: { textAlign: 'right', fontSize: 12, color: colors.faint, marginTop: 6 },
-  attachHeader: { flexDirection: 'row', alignItems: 'baseline', marginTop: 8 },
-  attachOptional: { fontSize: 13, color: colors.muted },
+  attachRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+  },
+  attachLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachOptional: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
   imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   imageCard: { width: 92, height: 92, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.soft2 },
   imageThumb: { width: '100%', height: '100%' },
@@ -1047,11 +1225,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.canvas,
   },
   footerStack: { gap: 10 },
+  blockedSubmitText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.accent,
+    textAlign: 'center',
+  },
 
   // exit modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(24,29,38,0.5)', alignItems: 'center', justifyContent: 'center', padding: 22 },
