@@ -1,17 +1,15 @@
+import axios from 'axios';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, Card, CatChip, Icon, ImageSlot, StatusBadge } from '../../../components/ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } from '../../../components/ui';
+import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { colors, fonts, radius } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
-import { officerReports, type OfficerReport } from '../mocks/officerMock';
-
-const CAT_COLOR: Record<string, string> = {
-  coral: colors.coral,
-  mustard: colors.mustard,
-  brand: colors.brand,
-  mint: colors.mint,
-};
+import { fetchAdminIssues } from '../api/adminIssueApi';
+import type { AdminIssueItem } from '../types/adminIssue';
+import type { ReportStatus } from '../../report/types/myReport';
+import { formatReportDateTime, getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
 
 type ViewMode = 'list' | 'grid';
 
@@ -19,9 +17,51 @@ export function OfficerInboxScreen() {
   const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [view, setView] = useState<ViewMode>('list');
+  const [issues, setIssues] = useState<AdminIssueItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const openDetail = (id: string) => {
-    router.push(`/officer-report/${encodeURIComponent(id)}`);
+  const loadIssues = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const data = await fetchAdminIssues({ myDepartmentOnly: true });
+      setIssues(data.issues);
+    } catch (error) {
+      let message = '제보 목록을 불러오지 못했습니다.';
+      if (axios.isAxiosError(error)) {
+        const apiMessage = error.response?.data?.message;
+        message = typeof apiMessage === 'string' ? apiMessage : error.message || message;
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+      if (axios.isAxiosError(error) && !error.response) {
+        message = `${message}\n\n요청 주소: ${resolveApiBaseUrl()}`;
+      }
+      setIssues([]);
+      setErrorMessage(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadIssues();
+  }, [loadIssues]);
+
+  const sortedIssues = useMemo(
+    () =>
+      [...issues].sort(
+        (a, b) =>
+          new Date(b.issueGroup.recentReportedAt).getTime() -
+          new Date(a.issueGroup.recentReportedAt).getTime()
+      ),
+    [issues]
+  );
+
+  const openDetail = (issueGroupId: number) => {
+    router.push(`/officer-report/${issueGroupId}`);
   };
 
   return (
@@ -44,18 +84,40 @@ export function OfficerInboxScreen() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[
-          view === 'list' ? styles.listContent : styles.gridContent,
-          { paddingBottom: tabBarOffset + 24 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {view === 'list'
-          ? officerReports.map((r) => <ListCard key={r.id} report={r} onPress={() => openDetail(r.id)} />)
-          : officerReports.map((r) => <GridCard key={r.id} report={r} onPress={() => openDetail(r.id)} />)}
-      </ScrollView>
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.brand} />
+        </View>
+      ) : errorMessage ? (
+        <View style={styles.centered}>
+          <AppText style={styles.errorText}>{errorMessage}</AppText>
+          <View style={styles.retryWrap}>
+            <Button label="다시 시도" icon="refresh" onPress={loadIssues} />
+          </View>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[
+            view === 'list' ? styles.listContent : styles.gridContent,
+            { paddingBottom: tabBarOffset + 24 },
+            sortedIssues.length === 0 && styles.emptyContent,
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          {sortedIssues.length === 0 ? (
+            <AppText style={styles.emptyText}>관할 제보가 없어요.</AppText>
+          ) : view === 'list' ? (
+            sortedIssues.map((item) => (
+              <ListCard key={item.issueGroup.id} item={item} onPress={() => openDetail(item.issueGroup.id)} />
+            ))
+          ) : (
+            sortedIssues.map((item) => (
+              <GridCard key={item.issueGroup.id} item={item} onPress={() => openDetail(item.issueGroup.id)} />
+            ))
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -78,36 +140,60 @@ function ViewButton({ icon, on, onPress }: { icon: 'list' | 'grid'; on: boolean;
   );
 }
 
-function ListCard({ report, onPress }: { report: OfficerReport; onPress: () => void }) {
+function ListCard({ item, onPress }: { item: AdminIssueItem; onPress: () => void }) {
+  const report = item.representativeReport.report;
+  const reportStatus = report.status as ReportStatus;
+  const location =
+    report.roadAddress || `${report.sigungu} ${report.eupmyeondong}`.trim() || '위치 정보 없음';
+
   return (
     <Pressable onPress={onPress}>
       <Card style={styles.listCard}>
         <View style={styles.listTop}>
-          <AppText style={styles.mono}>{report.id}</AppText>
-          <StatusBadge status={report.status} size="sm" />
+          <AppText style={styles.mono}>#{item.issueGroup.id}</AppText>
+          <StatusBadge
+            status={getReportStatusTone(reportStatus)}
+            size="sm"
+            label={getReportStatusLabel(reportStatus)}
+          />
         </View>
-        <AppText style={styles.listTitle}>{report.title}</AppText>
+        <AppText style={styles.listTitle}>{item.issueGroup.title || report.title}</AppText>
         <View style={styles.listMeta}>
           <View style={styles.locRow}>
             <Icon name="location" size={14} color={colors.faint} />
-            <AppText style={styles.locText}>{report.location}</AppText>
+            <AppText style={styles.locText} numberOfLines={1}>
+              {location}
+            </AppText>
           </View>
-          <CatChip icon={report.cat} label={report.type} color={CAT_COLOR[report.catColor]} />
+          <CatChip icon="alert" label={item.category.categoryName} color={colors.brand} />
         </View>
+        <AppText style={styles.listSubMeta}>
+          제보 {item.issueGroup.reportCount}건 · {formatReportDateTime(item.issueGroup.recentReportedAt)}
+        </AppText>
       </Card>
     </Pressable>
   );
 }
 
-function GridCard({ report, onPress }: { report: OfficerReport; onPress: () => void }) {
+function GridCard({ item, onPress }: { item: AdminIssueItem; onPress: () => void }) {
+  const report = item.representativeReport.report;
+  const reportStatus = report.status as ReportStatus;
+  const thumb = item.representativeReport.reportImages[0]?.imageUrl;
+
   return (
     <Pressable onPress={onPress} style={styles.gridItem}>
       <Card padded={false} style={styles.gridCard}>
-        <ImageSlot height={78} label="" />
+        <ImageSlot height={78} label="" uri={thumb} />
         <View style={styles.gridBody}>
-          <StatusBadge status={report.status} size="sm" />
-          <AppText style={styles.gridTitle} numberOfLines={2}>{report.title}</AppText>
-          <CatChip icon={report.cat} label={report.type} color={CAT_COLOR[report.catColor]} />
+          <StatusBadge
+            status={getReportStatusTone(reportStatus)}
+            size="sm"
+            label={getReportStatusLabel(reportStatus)}
+          />
+          <AppText style={styles.gridTitle} numberOfLines={2}>
+            {item.issueGroup.title || report.title}
+          </AppText>
+          <CatChip icon="alert" label={item.category.categoryName} color={colors.brand} />
         </View>
       </Card>
     </Pressable>
@@ -116,6 +202,11 @@ function GridCard({ report, onPress }: { report: OfficerReport; onPress: () => v
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
+  errorText: { fontSize: 14.5, color: colors.muted, textAlign: 'center', lineHeight: 21 },
+  retryWrap: { width: '100%', maxWidth: 220 },
+  emptyContent: { flexGrow: 1, justifyContent: 'center' },
+  emptyText: { fontSize: 14.5, color: colors.muted, textAlign: 'center' },
 
   controls: {
     paddingHorizontal: 16,
@@ -167,8 +258,9 @@ const styles = StyleSheet.create({
   mono: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted },
   listTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink, lineHeight: 20 },
   listMeta: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 9 },
-  locRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  locText: { fontSize: 12.5, color: colors.muted },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  locText: { fontSize: 12.5, color: colors.muted, flex: 1 },
+  listSubMeta: { fontSize: 12, color: colors.faint, marginTop: 8 },
 
   gridContent: { paddingHorizontal: 16, paddingTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   gridItem: { width: '47.5%' },

@@ -267,14 +267,14 @@ export default function HomeMapScreen() {
         >
           {publicReports.map((item) => (
             <Marker
-              key={item.report.id}
+              key={item.issueGroup.id}
               coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
               tracksViewChanges={false}
               onPress={() => {
                 void openReportSheet(item);
               }}
             >
-              <ReportMapMarker />
+              <ReportMapMarker reportCount={item.issueGroup.reportCount} />
             </Marker>
           ))}
           {searchMarker ? (
