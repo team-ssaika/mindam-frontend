@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { ReactNode, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, ListRow } from '../../../components/ui';
@@ -24,15 +24,22 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function isOfficerAccountRole(role: string | null | undefined) {
+  return role === 'OFFICER' || role === 'ADMIN';
+}
+
 export function SettingsScreen() {
   const router = useRouter();
+  const segments = useSegments();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
+  const isOfficerMode = segments[0] === '(officer)';
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
   const [isAlarmLoading, setIsAlarmLoading] = useState(true);
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -51,6 +58,7 @@ export function SettingsScreen() {
           .then((profile) => {
             if (!isMounted) return;
             setIsAlarmEnabled(Boolean(profile.isAlarmEnabled));
+            setUserRole(profile.role);
           })
           .catch((error: unknown) => {
             console.log('[Settings] profile load error', error);
@@ -143,6 +151,16 @@ export function SettingsScreen() {
     }
   };
 
+  const canSwitchToOfficerMode = isAuthenticated && isOfficerAccountRole(userRole);
+
+  const handleSwitchToCitizenMode = () => {
+    router.replace('/(tabs)');
+  };
+
+  const handleSwitchToOfficerMode = () => {
+    router.replace('/(officer)');
+  };
+
   return (
     <View style={styles.flex}>
       <AppBar title="설정" logo={false} border={false} />
@@ -173,7 +191,23 @@ export function SettingsScreen() {
         <SGroup title="기타">
           <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
           <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
-          <ListRow icon="building" label="담당자 모드" size="lg" onPress={() => router.replace('/(officer)')} />
+          {isOfficerMode ? (
+            <ListRow
+              icon="megaphone"
+              label="민원인 모드"
+              sub="시민 제보 화면으로 이동"
+              size="lg"
+              onPress={handleSwitchToCitizenMode}
+            />
+          ) : canSwitchToOfficerMode ? (
+            <ListRow
+              icon="building"
+              label="담당자 모드"
+              sub="관할 제보 처리 화면으로 이동"
+              size="lg"
+              onPress={handleSwitchToOfficerMode}
+            />
+          ) : null}
         </SGroup>
 
         <SGroup title="계정">
