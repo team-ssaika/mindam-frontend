@@ -161,10 +161,10 @@ function getApiErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
 }
 
-function isUnclearEtcCategory(draft: ReportDraftResponse | null) {
+function isInsufficientCategory(draft: ReportDraftResponse | null) {
   const categoryCode = draft?.category?.categoryCode?.toUpperCase() ?? '';
 
-  return categoryCode === 'ETC_OTHER' || categoryCode.includes('ETC') || categoryCode.includes('OTHER');
+  return categoryCode === 'INSUFFICIENT';
 }
 
 export function ReportCreateFlowScreen() {
@@ -184,7 +184,7 @@ export function ReportCreateFlowScreen() {
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const screenshotToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isNextEnabled = content.trim().length > 0;
-  const isReportBlockedByCategory = isUnclearEtcCategory(reportDraft);
+  const isReportBlockedByInsufficient = isInsufficientCategory(reportDraft);
 
   const resetFlow = () => {
     setStep(1);
@@ -413,9 +413,9 @@ export function ReportCreateFlowScreen() {
     setIsAnalyzing(true);
 
     try {
-      if (isUnclearEtcCategory(reportDraft)) {
+      if (isInsufficientCategory(reportDraft)) {
         setIsAnalyzing(false);
-        Alert.alert('등록할 수 없는 제보예요.', '내용 확인이 어려운 기타 제보로 분류되어 바로 등록할 수 없어요. 내용을 더 구체적으로 작성한 뒤 다시 AI 정리를 진행해주세요.');
+        Alert.alert('제보로 접수하기엔 내용이 부족해요.', '상황, 위치, 발생 내용을 조금 더 구체적으로 작성한 뒤 다시 AI 정리를 진행해 주세요.');
         return;
       }
 
@@ -467,8 +467,8 @@ export function ReportCreateFlowScreen() {
     router.push('/my-reports');
   };
 
-  const handleGoHome = () => {
-    router.push('/(tabs)');
+  const handleStartNewReport = () => {
+    resetFlow();
   };
 
   const showScreenshotToast = () => {
@@ -591,22 +591,22 @@ export function ReportCreateFlowScreen() {
             ) : null}
             {step === 2 ? (
               <View style={styles.footerStack}>
-                {isReportBlockedByCategory ? (
+                {isReportBlockedByInsufficient ? (
                   <AppText style={styles.blockedSubmitText}>
-                    내용 확인이 어려운 기타 제보로 분류되어 바로 등록할 수 없어요. 내용을 더 구체적으로 수정한 뒤 다시 AI 정리를 진행해주세요.
+                    제보로 접수하기엔 내용이 부족해요. 내용을 더 구체적으로 작성한 뒤 다시 AI 정리를 진행해 주세요.
                   </AppText>
                 ) : null}
                 <Button
                   label="이대로 제보하기"
                   onPress={handleCreateReport}
-                  disabled={isReportBlockedByCategory}
+                  disabled={isReportBlockedByInsufficient}
                 />
               </View>
             ) : null}
             {step === 3 ? (
               <View style={styles.footerStack}>
                 <Button label="내 민원함 보기" onPress={handleGoToInbox} />
-                <Button label="홈으로" variant="secondary" color={colors.muted} onPress={handleGoHome} />
+                <Button label="새 제보하기" variant="secondary" color={colors.muted} onPress={handleStartNewReport} />
               </View>
             ) : null}
           </View>
