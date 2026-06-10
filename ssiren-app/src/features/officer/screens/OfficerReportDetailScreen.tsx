@@ -28,7 +28,11 @@ import {
   getReportStatusTone,
   sortStatusHistories,
 } from '../../report/utils/reportStatus';
-import { ADMIN_UPDATABLE_STATUSES, toAdminUpdatableStatus } from '../utils/adminIssueStatus';
+import {
+  ADMIN_UPDATABLE_STATUSES,
+  isAdminStatusOptionSelectable,
+  toAdminUpdatableStatus,
+} from '../utils/adminIssueStatus';
 
 export function OfficerReportDetailScreen() {
   const router = useRouter();
@@ -132,12 +136,12 @@ export function OfficerReportDetailScreen() {
     loadDetail();
   }, [loadDetail]);
 
-  const showToast = (message: string) => {
-    setToast(message);
-    if (toastTimer.current) {
-      clearTimeout(toastTimer.current);
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
     }
-    toastTimer.current = setTimeout(() => setToast(null), 2200);
+    router.replace('/(officer)/inbox');
   };
 
   const handleUpdate = async () => {
@@ -153,16 +157,13 @@ export function OfficerReportDetailScreen() {
 
     setIsUpdating(true);
     try {
-      const result = await updateAdminIssueStatus(detail.issueGroup.id, {
+      await updateAdminIssueStatus(detail.issueGroup.id, {
         status: selectedStatus,
         reason: trimmedReason,
         notifyReporter: true,
       });
       setReason('');
-      await loadDetail({ silent: true });
-      showToast(
-        `${getReportStatusLabel(result.reportStatus)}(으)로 변경되었습니다 (${result.changedReportCount}건)`
-      );
+      goBack();
     } catch (error) {
       let message = '처리 상태 변경에 실패했습니다.';
       if (axios.isAxiosError(error)) {
@@ -175,14 +176,6 @@ export function OfficerReportDetailScreen() {
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const goBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace('/(officer)/inbox');
   };
 
   const representative = detail?.representativeReport;
@@ -366,19 +359,32 @@ export function OfficerReportDetailScreen() {
                   const tone = getReportStatusTone(statusOption);
                   const st = statusColors[tone];
                   const on = statusOption === selectedStatus;
+                  const selectable = representativeReport
+                    ? isAdminStatusOptionSelectable(
+                        representativeReport.status as ReportStatus,
+                        statusOption
+                      )
+                    : true;
                   return (
                     <Pressable
                       key={statusOption}
+                      disabled={!selectable}
                       onPress={() => setSelectedStatus(statusOption)}
                       style={[
                         styles.statusBtn,
+                        !selectable && styles.statusBtnDisabled,
                         {
                           borderColor: on ? st.dot : colors.hairline,
                           backgroundColor: on ? st.bg : colors.canvas,
                         },
                       ]}
                     >
-                      <AppText style={[styles.statusBtnText, { color: on ? st.fg : colors.muted }]}>
+                      <AppText
+                        style={[
+                          styles.statusBtnText,
+                          { color: on ? st.fg : selectable ? colors.muted : colors.faint },
+                        ]}
+                      >
                         {getReportStatusLabel(statusOption)}
                       </AppText>
                     </Pressable>
@@ -501,6 +507,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
   },
+  statusBtnDisabled: { opacity: 0.4 },
   statusBtnText: { fontFamily: fonts.bold, fontSize: 12.5, textAlign: 'center' },
 
   noteRow: { flexDirection: 'row', gap: 10 },
