@@ -1,5 +1,5 @@
-import { RoleSelectionScreen } from '../../src/features/auth/screens/RoleSelectionScreen';
+import { StartSelectionScreen } from '../../src/features/auth/screens/StartSelectionScreen';
 
 export default function RoleSelectRoute() {
-  return <RoleSelectionScreen />;
+  return <StartSelectionScreen />;
 }

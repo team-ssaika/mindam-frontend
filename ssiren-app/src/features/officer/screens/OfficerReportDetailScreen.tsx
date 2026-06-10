@@ -221,7 +221,7 @@ export function OfficerReportDetailScreen() {
         <View style={styles.centered}>
           <AppText style={styles.errorText}>{errorMessage}</AppText>
           <View style={styles.retryWrap}>
-            <Button label="다시 시도" icon="refresh" onPress={loadDetail} />
+            <Button label="다시 시도" icon="refresh" onPress={() => loadDetail()} />
           </View>
         </View>
       ) : detail && representativeReport ? (

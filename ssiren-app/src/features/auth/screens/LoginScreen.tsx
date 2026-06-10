@@ -1,8 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppText, Icon } from '../../../components/ui';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { AppText } from '../../../components/ui';
 import { colors, fonts } from '../../../theme';
 import {
   checkUserTermsAgreement,
@@ -12,8 +11,12 @@ import {
 } from '../services/authService';
 import type { PendingLoginResult, TermsAgreementState, TermsKey } from '../types/auth.types';
 import { TermsAgreementBottomSheet } from '../components/TermsAgreementBottomSheet';
-
-const LOGO_IMAGE = require('../../../assets/ssiren-login.png');
+import {
+  AuthButton,
+  AuthHero,
+  AuthScreen,
+  KakaoGlyph,
+} from '../components/AuthPrimitives';
 
 const INITIAL_TERMS_STATE: TermsAgreementState = {
   service: false,
@@ -30,6 +33,10 @@ export function LoginScreen() {
   const [termsErrorMessage, setTermsErrorMessage] = useState<string | null>(null);
   const [pendingLoginResult, setPendingLoginResult] = useState<PendingLoginResult | null>(null);
 
+  const goCitizenHome = () => {
+    router.replace('/(tabs)');
+  };
+
   const handlePressBrowse = async () => {
     try {
       await clearStoredAuthSession();
@@ -37,7 +44,7 @@ export function LoginScreen() {
       console.log('[Auth] clear auth session for guest failed', error);
     } finally {
       console.log('[Auth] continue as guest');
-      router.replace('/(tabs)');
+      goCitizenHome();
     }
   };
 
@@ -60,10 +67,10 @@ export function LoginScreen() {
         return;
       }
 
-      router.replace('/(tabs)');
+      goCitizenHome();
     } catch (error) {
       console.log('[Auth] kakao login error', error);
-      Alert.alert('로그인에 실패했어요.', '잠시 후 다시 시도해주세요.');
+      Alert.alert('로그인에 실패했어요', '잠시 후 다시 시도해 주세요.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -103,49 +110,42 @@ export function LoginScreen() {
       await submitTermsAgreement(pendingLoginResult, termsState);
       setPendingLoginResult(null);
       setIsTermsVisible(false);
-      router.replace('/(tabs)');
+      goCitizenHome();
     } catch (error) {
       console.log('[Auth] submit terms error', error);
-      setTermsErrorMessage('약관 동의 처리 중 문제가 발생했어요. 다시 시도해주세요.');
+      setTermsErrorMessage('약관 동의 처리 중 문제가 발생했어요. 다시 시도해 주세요.');
     } finally {
       setIsSubmittingTerms(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.logoSection}>
-          <Image
-            source={LOGO_IMAGE}
-            defaultSource={LOGO_IMAGE}
-            fadeDuration={0}
-            style={styles.logoImage}
-            resizeMode="contain"
+    <>
+      <AuthScreen onBack={() => router.replace('/')}>
+        <View style={styles.content}>
+          <AuthHero
+            title="시민제보"
+            subtitle="간편한 제보 하나로, 우리 동네를 더 안전하게"
+            topPadding={58}
           />
-          <AppText style={styles.logoText}>시민제보</AppText>
-          <AppText style={styles.tagline}>사진 한 장으로 시작하는 우리 동네 제보</AppText>
-        </View>
 
-        <View style={styles.bottomSection}>
-          <TouchableOpacity
-            onPress={handlePressKakaoLogin}
-            disabled={isLoggingIn}
-            style={[styles.kakaoButton, isLoggingIn && styles.kakaoButtonDisabled]}
-          >
-            <Icon name="chat" size={18} color="#111111" fill />
-            <AppText style={styles.kakaoButtonText}>
-              {isLoggingIn ? '카카오 로그인 중...' : '카카오톡으로 로그인'}
-            </AppText>
-          </TouchableOpacity>
+          <View style={styles.actions}>
+            <AuthButton
+              label="카카오톡으로 로그인"
+              variant="kakao"
+              icon={<KakaoGlyph />}
+              loading={isLoggingIn}
+              onPress={handlePressKakaoLogin}
+            />
 
-          <Pressable onPress={handlePressBrowse} style={styles.browseButton}>
-            <AppText style={styles.browseText}>
-              회원가입 없이 <AppText style={styles.browseAccent}>둘러보기</AppText>
-            </AppText>
-          </Pressable>
+            <Pressable onPress={handlePressBrowse} style={styles.browseButton}>
+              <AppText style={styles.browseText}>
+                회원가입 없이 <AppText style={styles.browseAccent}>둘러보기</AppText>
+              </AppText>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </AuthScreen>
 
       <TermsAgreementBottomSheet
         visible={isTermsVisible}
@@ -164,77 +164,33 @@ export function LoginScreen() {
         isSubmitting={isSubmittingTerms}
         errorMessage={termsErrorMessage}
       />
-    </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  content: {
     flex: 1,
-    backgroundColor: colors.canvas,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 24,
-    justifyContent: 'space-between',
-  },
-  logoSection: {
-    flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 24,
+    gap: 84,
+    paddingBottom: 34,
   },
-  logoImage: {
-    width: 132,
-    height: 132,
-  },
-  logoText: {
-    marginTop: 12,
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    letterSpacing: -0.6,
-    color: colors.ink,
-  },
-  tagline: {
-    marginTop: 8,
-    fontFamily: fonts.medium,
-    fontSize: 14.5,
-    color: colors.muted,
-  },
-  bottomSection: {
-    paddingBottom: 44,
+  actions: {
     gap: 16,
-  },
-  kakaoButton: {
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FEE500',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  kakaoButtonDisabled: {
-    opacity: 0.68,
-  },
-  kakaoButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: 16,
-    color: '#111111',
   },
   browseButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   browseText: {
     fontFamily: fonts.medium,
-    fontSize: 14.5,
-    color: colors.body,
+    fontSize: 13,
+    color: '#111111',
   },
   browseAccent: {
     fontFamily: fonts.bold,
-    color: colors.accent,
+    fontSize: 13,
+    color: '#8B7561',
   },
 });

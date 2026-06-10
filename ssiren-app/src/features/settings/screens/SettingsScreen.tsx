@@ -37,6 +37,10 @@ export function SettingsScreen() {
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const goToStartSelection = () => {
+    router.replace('/auth/role-select');
+  };
+
   const loadSettings = useCallback(async () => {
     setIsAlarmLoading(true);
 
@@ -112,7 +116,7 @@ export function SettingsScreen() {
     try {
       await logoutUser();
       setActiveSheet(null);
-      router.replace('/auth/login');
+      goToStartSelection();
     } catch (error) {
       console.log('[Settings] logout error', error);
       Alert.alert('로그아웃 중 문제가 발생했어요.', '다시 시도해주세요.');
@@ -128,7 +132,7 @@ export function SettingsScreen() {
     try {
       await withdrawUser();
       setActiveSheet(null);
-      router.replace('/auth/login');
+      goToStartSelection();
     } catch (error) {
       console.log('[Settings] withdraw error', error);
       Alert.alert('회원탈퇴 처리 중 문제가 발생했어요.', '다시 시도해주세요.');
@@ -201,7 +205,7 @@ export function SettingsScreen() {
               <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
             </>
           ) : (
-            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={() => router.replace('/auth/login')} />
+            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={goToStartSelection} />
           )}
         </SGroup>
 
