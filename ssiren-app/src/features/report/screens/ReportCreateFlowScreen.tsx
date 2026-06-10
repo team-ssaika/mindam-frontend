@@ -1,5 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { useRouter } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
 import { useEffect, useRef, useState } from 'react';
@@ -276,21 +277,19 @@ export function ReportCreateFlowScreen() {
     setIsAnalyzing(true);
 
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
         Alert.alert('위치 권한이 필요해요.', '제보 위치를 확인하려면 위치 권한을 허용해주세요.');
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await getAppCurrentPosition();
 
       const draft = await createReportDraft({
         images,
         content: content.trim(),
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: position.latitude,
+        longitude: position.longitude,
         occurredAt: toLocalDateTimeString(new Date()),
       });
 
@@ -364,19 +363,17 @@ export function ReportCreateFlowScreen() {
     try {
       setIsResolvingLocation(true);
 
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
         Alert.alert('위치 권한이 필요해요.', '현재 위치를 불러오려면 위치 권한을 허용해주세요.');
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const position = await getAppCurrentPosition();
 
       const [address] = await Location.reverseGeocodeAsync({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+        latitude: position.latitude,
+        longitude: position.longitude,
       });
 
       const primaryAddress = address
