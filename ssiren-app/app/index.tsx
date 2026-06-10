@@ -1,5 +1,5 @@
-import { LoginScreen } from '../src/features/auth/screens/LoginScreen';
+import { StartSelectionScreen } from '../src/features/auth/screens/StartSelectionScreen';
 
 export default function IndexRoute() {
-  return <LoginScreen />;
+  return <StartSelectionScreen />;
 }
