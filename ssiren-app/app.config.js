@@ -40,6 +40,8 @@ const googleMapsApiKey =
   process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
   localEnv.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
   '';
+const googleServicesFile = path.join(__dirname, 'google-services.json');
+const hasGoogleServicesFile = fs.existsSync(googleServicesFile);
 
 module.exports = {
   ...appJson.expo,
@@ -59,7 +61,7 @@ module.exports = {
   android: {
     ...appJson.expo.android,
     package: 'com.ssaika.ssiren',
-    googleServicesFile: './google-services.json',
+    ...(hasGoogleServicesFile ? { googleServicesFile: './google-services.json' } : {}),
     permissions: [
       ...new Set([
         ...(appJson.expo.android.permissions ?? []),

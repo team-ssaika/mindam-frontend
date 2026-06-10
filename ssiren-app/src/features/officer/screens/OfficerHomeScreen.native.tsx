@@ -1,28 +1,153 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { AppText, Icon } from '../../../components/ui';
+import { AppText, CatChip, Icon, StatusBadge } from '../../../components/ui';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
-import { fetchPublicReports } from '../../report/api/reportApi';
-import { ReportMapMarker } from '../../report/components/ReportMapMarker';
-import type { PublicReportItem } from '../../report/types/publicReport';
+import { OfficerIssueMapMarker } from '../components/OfficerIssueMapMarker';
+import type { ReportStatus } from '../../report/types/myReport';
+import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
 import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
-import { officerProfile, officerSummary } from '../mocks/officerMock';
+import { fetchAdminIssues } from '../api/adminIssueApi';
+import type { AdminIssueItem } from '../types/adminIssue';
+import {
+  adminIssueToPublicReportItem,
+  buildAdminIssueQuery,
+  hasValidAdminIssueCoordinate,
+} from '../utils/adminIssueMap';
 
 const CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
+
+function distanceMeters(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+) {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function formatDistance(meters: number) {
+  return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
+}
+
+function summarizeIssues(issues: AdminIssueItem[]) {
+  return issues.reduce(
+    (acc, item) => {
+      const status = item.representativeReport?.report?.status as ReportStatus | undefined;
+      if (!status) {
+        return acc;
+      }
+      const tone = getReportStatusTone(status);
+      acc.total += 1;
+      acc[tone] += 1;
+      return acc;
+    },
+    { total: 0, wait: 0, prog: 0, done: 0 }
+  );
+}
 
 export default function OfficerHomeScreen() {
   const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const mapRef = useRef<MapView | null>(null);
+  const ignoreRegionChangeUntilRef = useRef(0);
+  const isUserDraggingMapRef = useRef(false);
   const [resolving, setResolving] = useState(false);
+  const [isLoadingIssues, setIsLoadingIssues] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
+    null
+  );
   const [region, setRegion] = useState<Region>({ ...CITY_HALL, ...DEFAULT_DELTA });
-  const [reports, setReports] = useState<PublicReportItem[]>([]);
+  const [issues, setIssues] = useState<AdminIssueItem[]>([]);
+
+  const mapReports = useMemo(
+    () =>
+      issues
+        .filter(hasValidAdminIssueCoordinate)
+        .map(adminIssueToPublicReportItem)
+        .filter((item): item is NonNullable<typeof item> => item != null)
+        .filter(hasValidReportCoordinate),
+    [issues]
+  );
+
+  const summary = useMemo(() => summarizeIssues(issues), [issues]);
+
+  const sortedIssues = useMemo(() => {
+    const visible = issues.filter(hasValidAdminIssueCoordinate);
+    if (!userLocation) {
+      return [...visible].sort(
+        (a, b) => (b.issueGroup.riskScore ?? 0) - (a.issueGroup.riskScore ?? 0)
+      );
+    }
+    return [...visible].sort(
+      (a, b) =>
+        distanceMeters(userLocation, {
+          latitude: a.issueGroup.groupLatitude,
+          longitude: a.issueGroup.groupLongitude,
+        }) -
+        distanceMeters(userLocation, {
+          latitude: b.issueGroup.groupLatitude,
+          longitude: b.issueGroup.groupLongitude,
+        })
+    );
+  }, [issues, userLocation]);
+
+  const jurisdictionLabel = useMemo(() => {
+    const department = issues[0]?.department;
+    if (!department) {
+      return '내 관할 제보';
+    }
+    return `${department.agencyType.name} · ${department.name} 관할`;
+  }, [issues]);
+
+  const syncMapRegion = (nextRegion: Region, duration = 600) => {
+    ignoreRegionChangeUntilRef.current = Date.now() + duration + 500;
+    setRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, duration);
+  };
+
+  const handleRegionChangeComplete = (nextRegion: Region) => {
+    if (Date.now() < ignoreRegionChangeUntilRef.current) {
+      return;
+    }
+    if (!isUserDraggingMapRef.current) {
+      return;
+    }
+    isUserDraggingMapRef.current = false;
+    setRegion(nextRegion);
+  };
+
+  const focusIssue = (item: AdminIssueItem) => {
+    const { groupLatitude, groupLongitude } = item.issueGroup;
+    syncMapRegion(
+      { latitude: groupLatitude, longitude: groupLongitude, ...DEFAULT_DELTA },
+      500
+    );
+  };
+
+  const openIssueDetail = (item: AdminIssueItem) => {
+    const reportId = item.representativeReport?.report?.id;
+    if (!reportId) return;
+    router.push(`/officer-report/${reportId}`);
+  };
 
   const moveToCurrentLocation = async () => {
     try {
@@ -31,10 +156,16 @@ export default function OfficerHomeScreen() {
       if (status !== 'granted') {
         return;
       }
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const next: Region = { latitude: coords.latitude, longitude: coords.longitude, ...DEFAULT_DELTA };
-      setRegion(next);
-      mapRef.current?.animateToRegion(next, 600);
+      const { coords } = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
+      const next: Region = {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        ...DEFAULT_DELTA,
+      };
+      syncMapRegion(next);
     } catch {
       // ignore
     } finally {
@@ -48,16 +179,29 @@ export default function OfficerHomeScreen() {
 
   useEffect(() => {
     let mounted = true;
-    fetchPublicReports({ page: 0, size: 50, sort: 'createdAt,desc' })
+    setIsLoadingIssues(true);
+
+    fetchAdminIssues({
+      ...buildAdminIssueQuery(region, userLocation),
+      myDepartmentOnly: true,
+    })
       .then((data) => {
         if (!mounted) return;
-        setReports(Array.isArray(data.contents) ? data.contents.filter(hasValidReportCoordinate) : []);
+        setIssues(Array.isArray(data.issues) ? data.issues : []);
       })
-      .catch(() => mounted && setReports([]));
+      .catch((error) => {
+        console.log('[OfficerMap] fetch admin issues error', error);
+        if (!mounted) return;
+        setIssues([]);
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingIssues(false);
+      });
+
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [region, userLocation]);
 
   return (
     <View style={styles.container}>
@@ -68,15 +212,22 @@ export default function OfficerHomeScreen() {
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={region}
+        region={region}
+        onPanDrag={() => {
+          isUserDraggingMapRef.current = true;
+        }}
+        onRegionChangeComplete={handleRegionChangeComplete}
         showsUserLocation
         showsMyLocationButton={false}
       >
-        {reports.map((item) => (
+        {mapReports.map((item) => (
           <Marker
-            key={item.report.id}
+            key={item.issueGroup.id}
             coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
+            tracksViewChanges={false}
+            onPress={() => router.push(`/officer-report/${item.report.id}`)}
           >
-            <ReportMapMarker />
+            <OfficerIssueMapMarker reportCount={item.issueGroup.reportCount} />
           </Marker>
         ))}
       </MapView>
@@ -87,33 +238,35 @@ export default function OfficerHomeScreen() {
             <View style={styles.logoMark}>
               <Icon name="marker" size={15} color={colors.white} fill />
             </View>
-            <AppText variant="heading" color={colors.ink}>시민제보</AppText>
+            <AppText variant="heading" color={colors.ink}>
+              시민제보
+            </AppText>
             <View style={styles.roleBadge}>
               <AppText style={styles.roleBadgeText}>담당자</AppText>
             </View>
           </View>
           <Pressable style={styles.bellButton} accessibilityLabel="알림">
             <Icon name="bell" size={22} color={colors.ink} />
-            <View style={styles.bellCount}>
-              <AppText style={styles.bellCountText}>5</AppText>
-            </View>
           </Pressable>
         </View>
 
         <View style={styles.chipRow} pointerEvents="box-none">
           <View style={styles.jurisChip}>
             <Icon name="building" size={16} color={colors.brand} />
-            <AppText style={styles.jurisText}>{officerProfile.jurisdiction}</AppText>
+            <AppText style={styles.jurisText}>{jurisdictionLabel}</AppText>
           </View>
         </View>
       </SafeAreaView>
 
-      {/* controls */}
-      <View style={[styles.fabColumn, { bottom: tabBarOffset + 150 }]} pointerEvents="box-none">
+      <View style={[styles.fabColumn, { bottom: tabBarOffset + 168 }]} pointerEvents="box-none">
         <View style={styles.fab}>
           <Icon name="filter" size={21} color={colors.ink} />
         </View>
-        <TouchableOpacity style={[styles.fab, styles.fabPrimary]} onPress={moveToCurrentLocation} disabled={resolving}>
+        <TouchableOpacity
+          style={[styles.fab, styles.fabPrimary]}
+          onPress={moveToCurrentLocation}
+          disabled={resolving}
+        >
           {resolving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
@@ -122,23 +275,88 @@ export default function OfficerHomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* peek summary */}
-      <View style={[styles.peek, { paddingBottom: 16 }]} pointerEvents="box-none">
+      <View style={styles.peek} pointerEvents="box-none">
         <View style={styles.peekHandle} />
-        <Pressable style={styles.peekRow} onPress={() => router.push('/(officer)/inbox')}>
-          <View>
-            <AppText variant="section" color={colors.ink}>내 관할 제보 {officerSummary.total}건</AppText>
+        <View style={styles.peekHeader}>
+          <View style={styles.peekHeaderMain}>
+            <AppText variant="section" color={colors.ink}>
+              {isLoadingIssues ? '관할 제보 불러오는 중...' : `내 관할 제보 ${summary.total}건`}
+            </AppText>
             <View style={styles.countsRow}>
-              <Count tone="wait" label="대기" n={officerSummary.wait} />
-              <Count tone="prog" label="처리중" n={officerSummary.prog} />
-              <Count tone="done" label="완료" n={officerSummary.done} />
+              <Count tone="wait" label="대기" n={summary.wait} />
+              <Count tone="prog" label="처리중" n={summary.prog} />
+              <Count tone="done" label="완료" n={summary.done} />
             </View>
           </View>
-          <View style={styles.inboxLink}>
+          <Pressable style={styles.inboxLink} onPress={() => router.push('/(officer)/inbox')}>
             <AppText style={styles.inboxLinkText}>제보함</AppText>
             <Icon name="chevR" size={16} color={colors.brand} />
+          </Pressable>
+        </View>
+
+        {isLoadingIssues ? (
+          <View style={styles.peekLoading}>
+            <ActivityIndicator size="small" color={colors.brand} />
           </View>
-        </Pressable>
+        ) : sortedIssues.length === 0 ? (
+          <AppText style={styles.peekEmpty}>현재 지도 영역에 관할 제보가 없어요.</AppText>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.peekListContent}
+          >
+            {sortedIssues.map((item) => {
+              const report = item.representativeReport.report;
+              const reportStatus = report.status as ReportStatus;
+              const dist = userLocation
+                ? formatDistance(
+                    distanceMeters(userLocation, {
+                      latitude: item.issueGroup.groupLatitude,
+                      longitude: item.issueGroup.groupLongitude,
+                    })
+                  )
+                : null;
+
+              return (
+                <Pressable
+                  key={item.issueGroup.id}
+                  style={styles.peekCard}
+                  onPress={() => {
+                    focusIssue(item);
+                    openIssueDetail(item);
+                  }}
+                >
+                  <View style={styles.peekCardTop}>
+                    <CatChip
+                      icon="alert"
+                      label={item.category.categoryName}
+                      color={colors.brand}
+                    />
+                    <StatusBadge
+                      status={getReportStatusTone(reportStatus)}
+                      size="sm"
+                      label={getReportStatusLabel(reportStatus)}
+                    />
+                  </View>
+                  <AppText style={styles.peekCardTitle} numberOfLines={2}>
+                    {item.issueGroup.title || report.title}
+                  </AppText>
+                  <View style={styles.peekCardMeta}>
+                    <AppText style={styles.peekCardCount}>제보 {item.issueGroup.reportCount}건</AppText>
+                    {dist ? (
+                      <>
+                        <AppText style={styles.peekCardDot}>·</AppText>
+                        <Icon name="location" size={13} color={colors.faint} />
+                        <AppText style={styles.peekCardDist}>{dist}</AppText>
+                      </>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
       </View>
     </View>
   );
@@ -146,7 +364,9 @@ export default function OfficerHomeScreen() {
 
 function Count({ tone, label, n }: { tone: 'wait' | 'prog' | 'done'; label: string; n: number }) {
   return (
-    <AppText style={[styles.count, { color: statusColors[tone].dot }]}>● {label} {n}</AppText>
+    <AppText style={[styles.count, { color: statusColors[tone].dot }]}>
+      ● {label} {n}
+    </AppText>
   );
 }
 
@@ -191,22 +411,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow.float,
   },
-  bellCount: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: colors.coral,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: colors.canvas,
-  },
-  bellCountText: { fontFamily: fonts.bold, fontSize: 10.5, lineHeight: 14, color: colors.white },
-
   chipRow: { paddingHorizontal: 16, paddingTop: 12 },
   jurisChip: {
     alignSelf: 'flex-start',
@@ -245,12 +449,44 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 18,
     paddingTop: 16,
+    paddingBottom: 12,
     ...shadow.sheet,
   },
-  peekHandle: { width: 38, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', alignSelf: 'center', marginBottom: 12 },
-  peekRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  peekHandle: {
+    width: 38,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#d8dbe1',
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  peekHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  peekHeaderMain: { flex: 1 },
   countsRow: { flexDirection: 'row', gap: 12, marginTop: 6 },
   count: { fontFamily: fonts.semibold, fontSize: 12.5 },
-  inboxLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  inboxLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 2 },
   inboxLinkText: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.brand },
+  peekLoading: { paddingTop: 12, paddingBottom: 0, alignItems: 'center' },
+  peekEmpty: { fontSize: 13.5, color: colors.muted, paddingTop: 12, paddingBottom: 0 },
+  peekListContent: { gap: 10, paddingTop: 12, paddingBottom: 0, paddingRight: 4 },
+  peekCard: {
+    width: 228,
+    backgroundColor: colors.soft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    padding: 13,
+    gap: 8,
+  },
+  peekCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  peekCardTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, lineHeight: 19 },
+  peekCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  peekCardCount: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
+  peekCardDot: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.faint },
+  peekCardDist: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
 });
