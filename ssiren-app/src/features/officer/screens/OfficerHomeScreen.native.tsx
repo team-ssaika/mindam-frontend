@@ -12,11 +12,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
-import * as Location from 'expo-location';
+import { getAppCurrentPosition, getDefaultMapCenter, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { AppText, CatChip, Icon, StatusBadge } from '../../../components/ui';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
+import { OfficerDenseAreaLegend } from '../components/OfficerDenseAreaLegend';
+import { OfficerDenseAreaOverlay } from '../components/OfficerDenseAreaOverlay';
 import { OfficerIssueMapMarker } from '../components/OfficerIssueMapMarker';
+import { useOfficerDenseAreas } from '../hooks/useOfficerDenseAreas';
+import {
+  resolveDenseAreaCenter,
+  resolveDenseAreaRadius,
+} from '../utils/officerDenseArea';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
 import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
@@ -28,7 +35,7 @@ import {
   hasValidAdminIssueCoordinate,
 } from '../utils/adminIssueMap';
 
-const CITY_HALL = { latitude: 37.5665, longitude: 126.978 };
+const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 const PEEK_LIST_HEIGHT = 124;
 const PEEK_COLLAPSE_DRAG_THRESHOLD = 24;
@@ -79,9 +86,10 @@ export default function OfficerHomeScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
     null
   );
-  const [region, setRegion] = useState<Region>({ ...CITY_HALL, ...DEFAULT_DELTA });
+  const [region, setRegion] = useState<Region>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
   const [issues, setIssues] = useState<AdminIssueItem[]>([]);
   const [isPeekExpanded, setIsPeekExpanded] = useState(true);
+  const [showDenseAreas, setShowDenseAreas] = useState(true);
   const peekExpandAnim = useRef(new Animated.Value(1)).current;
   const peekDragStart = useRef(1);
 
@@ -154,6 +162,21 @@ export default function OfficerHomeScreen() {
 
   const summary = useMemo(() => summarizeIssues(issues), [issues]);
 
+  const denseAreaCenter = useMemo(
+    () => resolveDenseAreaCenter(region, userLocation),
+    [region, userLocation]
+  );
+  const denseAreaRadius = useMemo(
+    () => resolveDenseAreaRadius(region, userLocation),
+    [region, userLocation]
+  );
+  const { denseAreas, isLoading: isLoadingDenseAreas } = useOfficerDenseAreas({
+    latitude: denseAreaCenter.latitude,
+    longitude: denseAreaCenter.longitude,
+    radiusMeters: denseAreaRadius,
+    myDepartmentOnly: true,
+  });
+
   const sortedIssues = useMemo(() => {
     const visible = issues.filter(hasValidAdminIssueCoordinate);
     if (!userLocation) {
@@ -199,12 +222,13 @@ export default function OfficerHomeScreen() {
     setRegion(nextRegion);
   };
 
+  const focusCoordinate = (latitude: number, longitude: number) => {
+    syncMapRegion({ latitude, longitude, ...DEFAULT_DELTA }, 500);
+  };
+
   const focusIssue = (item: AdminIssueItem) => {
     const { groupLatitude, groupLongitude } = item.issueGroup;
-    syncMapRegion(
-      { latitude: groupLatitude, longitude: groupLongitude, ...DEFAULT_DELTA },
-      500
-    );
+    focusCoordinate(groupLatitude, groupLongitude);
   };
 
   const openIssueDetail = (item: AdminIssueItem) => {
@@ -214,20 +238,13 @@ export default function OfficerHomeScreen() {
   const moveToCurrentLocation = async () => {
     try {
       setResolving(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
+      const granted = await requestAppLocationPermission();
+      if (!granted) {
         return;
       }
-      const { coords } = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
-      const next: Region = {
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        ...DEFAULT_DELTA,
-      };
-      syncMapRegion(next);
+      const position = await getAppCurrentPosition();
+      setUserLocation(position);
+      syncMapRegion({ ...position, ...DEFAULT_DELTA });
     } catch {
       // ignore
     } finally {
@@ -282,6 +299,7 @@ export default function OfficerHomeScreen() {
         showsUserLocation
         showsMyLocationButton={false}
       >
+        {showDenseAreas ? <OfficerDenseAreaOverlay denseAreas={denseAreas} /> : null}
         {mapReports.map((item) => (
           <Marker
             key={item.issueGroup.id}
@@ -317,13 +335,22 @@ export default function OfficerHomeScreen() {
             <Icon name="building" size={16} color={colors.brand} />
             <AppText style={styles.jurisText}>{jurisdictionLabel}</AppText>
           </View>
+          {showDenseAreas ? (
+            <OfficerDenseAreaLegend
+              areaCount={isLoadingDenseAreas ? undefined : denseAreas.length}
+            />
+          ) : null}
         </View>
       </SafeAreaView>
 
       <Animated.View style={[styles.fabColumn, { bottom: fabBottom }]} pointerEvents="box-none">
-        <View style={styles.fab}>
-          <Icon name="filter" size={21} color={colors.ink} />
-        </View>
+        <TouchableOpacity
+          style={[styles.fab, showDenseAreas && styles.fabActive]}
+          onPress={() => setShowDenseAreas((prev) => !prev)}
+          accessibilityLabel="밀집 구역 표시"
+        >
+          <Icon name="layers" size={21} color={showDenseAreas ? colors.brand : colors.ink} />
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.fab, styles.fabPrimary]}
           onPress={moveToCurrentLocation}
@@ -486,7 +513,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadow.float,
   },
-  chipRow: { paddingHorizontal: 16, paddingTop: 12 },
+  chipRow: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },
   jurisChip: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -513,6 +540,7 @@ const styles = StyleSheet.create({
     ...shadow.float,
   },
   fabPrimary: { backgroundColor: colors.brand, borderWidth: 0 },
+  fabActive: { borderColor: colors.brandSoft, backgroundColor: colors.brandSoft },
 
   peek: {
     position: 'absolute',

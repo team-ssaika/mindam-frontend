@@ -30,6 +30,7 @@ import {
   canEditReport,
   formatReportDateTime,
   formatStatusTransition,
+  getReportStatusLabel,
   getReportStatusTone,
   sortStatusHistories,
 } from '../utils/reportStatus';
@@ -184,7 +185,11 @@ export function MyReportDetailScreen() {
           >
             <View style={styles.topRow}>
               <CatChip icon="alert" label={detail.category.categoryName} color={colors.coral} />
-              <StatusBadge status={getReportStatusTone(detail.report.status)} size="sm" />
+              <StatusBadge
+                status={getReportStatusTone(detail.report.status)}
+                size="sm"
+                label={getReportStatusLabel(detail.report.status)}
+              />
             </View>
             <AppText variant="title" color={colors.ink} style={styles.title}>
               {detail.report.title}

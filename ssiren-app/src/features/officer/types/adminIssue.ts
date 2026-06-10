@@ -79,7 +79,11 @@ export type AdminIssueStatusUpdateResponse = {
   changedReportIds: number[];
 };
 
+export type AdminIssueSortType = 'LATEST' | 'RISK_DESC';
+
 export type AdminIssuesQuery = {
+  keyword?: string;
+  sort?: AdminIssueSortType;
   latitude?: number;
   longitude?: number;
   radiusMeters?: number;
