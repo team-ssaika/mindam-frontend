@@ -1,8 +1,8 @@
-import type { Region } from 'react-native-maps';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import type { AdminIssueItem } from '../types/adminIssue';
 
 type LatLng = { latitude: number; longitude: number };
+type Region = LatLng & { latitudeDelta: number; longitudeDelta: number };
 
 function distanceMeters(a: LatLng, b: LatLng): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
