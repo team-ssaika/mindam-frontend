@@ -11,16 +11,22 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import { getAppCurrentPosition, getDefaultMapCenter, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { AppText, CatChip, Icon, StatusBadge } from '../../../components/ui';
+import {
+  KakaoMapView,
+  type KakaoMapRegion,
+  type KakaoMapViewHandle,
+} from '../../../components/map/KakaoMapView';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { OfficerDenseAreaLegend } from '../components/OfficerDenseAreaLegend';
-import { OfficerDenseAreaOverlay } from '../components/OfficerDenseAreaOverlay';
-import { OfficerIssueMapMarker } from '../components/OfficerIssueMapMarker';
 import { useOfficerDenseAreas } from '../hooks/useOfficerDenseAreas';
 import {
+  denseAreaKey,
+  denseAreaPolygonCoordinates,
+  getDenseAreaColors,
+  getMaxDenseAreaCount,
   resolveDenseAreaCenter,
   resolveDenseAreaRadius,
 } from '../utils/officerDenseArea';
@@ -78,7 +84,8 @@ function summarizeIssues(issues: AdminIssueItem[]) {
 export default function OfficerHomeScreen() {
   const router = useRouter();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<KakaoMapViewHandle | null>(null);
+  const initialMapRegionRef = useRef<KakaoMapRegion>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
   const ignoreRegionChangeUntilRef = useRef(0);
   const isUserDraggingMapRef = useRef(false);
   const [resolving, setResolving] = useState(false);
@@ -86,7 +93,7 @@ export default function OfficerHomeScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
     null
   );
-  const [region, setRegion] = useState<Region>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
+  const [region, setRegion] = useState<KakaoMapRegion>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
   const [issues, setIssues] = useState<AdminIssueItem[]>([]);
   const [isPeekExpanded, setIsPeekExpanded] = useState(true);
   const [showDenseAreas, setShowDenseAreas] = useState(true);
@@ -160,6 +167,18 @@ export default function OfficerHomeScreen() {
     [issues]
   );
 
+  const mapMarkers = useMemo(
+    () =>
+      mapReports.map((item) => ({
+        id: String(item.issueGroup.id),
+        latitude: item.report.latitude,
+        longitude: item.report.longitude,
+        kind: 'officer' as const,
+        reportCount: item.issueGroup.reportCount,
+      })),
+    [mapReports]
+  );
+
   const summary = useMemo(() => summarizeIssues(issues), [issues]);
 
   const denseAreaCenter = useMemo(
@@ -176,6 +195,23 @@ export default function OfficerHomeScreen() {
     radiusMeters: denseAreaRadius,
     myDepartmentOnly: true,
   });
+
+  const denseAreaPolygons = useMemo(() => {
+    if (!showDenseAreas) {
+      return [];
+    }
+
+    const maxCount = getMaxDenseAreaCount(denseAreas);
+    return denseAreas.map((area, index) => {
+      const { fill, stroke } = getDenseAreaColors(area.issueGroupCount, maxCount);
+      return {
+        id: denseAreaKey(area, index),
+        coordinates: denseAreaPolygonCoordinates(area),
+        fillColor: fill,
+        strokeColor: stroke,
+      };
+    });
+  }, [denseAreas, showDenseAreas]);
 
   const sortedIssues = useMemo(() => {
     const visible = issues.filter(hasValidAdminIssueCoordinate);
@@ -205,13 +241,13 @@ export default function OfficerHomeScreen() {
     return `${department.agencyType.name} · ${department.name} 관할`;
   }, [issues]);
 
-  const syncMapRegion = (nextRegion: Region, duration = 600) => {
+  const syncMapRegion = (nextRegion: KakaoMapRegion, duration = 600) => {
     ignoreRegionChangeUntilRef.current = Date.now() + duration + 500;
     setRegion(nextRegion);
     mapRef.current?.animateToRegion(nextRegion, duration);
   };
 
-  const handleRegionChangeComplete = (nextRegion: Region) => {
+  const handleRegionChangeComplete = (nextRegion: KakaoMapRegion) => {
     if (Date.now() < ignoreRegionChangeUntilRef.current) {
       return;
     }
@@ -284,33 +320,23 @@ export default function OfficerHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
-        ref={(ref) => {
-          mapRef.current = ref;
-        }}
-        provider={PROVIDER_GOOGLE}
+      <KakaoMapView
+        ref={mapRef}
         style={styles.map}
-        initialRegion={region}
+        initialRegion={initialMapRegionRef.current}
         region={region}
-        onPanDrag={() => {
+        markers={mapMarkers}
+        polygons={denseAreaPolygons}
+        userLocation={userLocation}
+        showsUserLocation
+        onMapDragStart={() => {
           isUserDraggingMapRef.current = true;
         }}
         onRegionChangeComplete={handleRegionChangeComplete}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        {showDenseAreas ? <OfficerDenseAreaOverlay denseAreas={denseAreas} /> : null}
-        {mapReports.map((item) => (
-          <Marker
-            key={item.issueGroup.id}
-            coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
-            tracksViewChanges={false}
-            onPress={() => router.push(`/officer-report/${item.issueGroup.id}`)}
-          >
-            <OfficerIssueMapMarker reportCount={item.issueGroup.reportCount} />
-          </Marker>
-        ))}
-      </MapView>
+        onMarkerPress={(markerId) => {
+          router.push(`/officer-report/${markerId}`);
+        }}
+      />
 
       <SafeAreaView edges={['top']} style={styles.topSafe} pointerEvents="box-none">
         <View style={styles.topBar} pointerEvents="box-none">

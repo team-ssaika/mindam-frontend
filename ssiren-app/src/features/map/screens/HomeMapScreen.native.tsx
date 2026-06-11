@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,13 +9,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import MapView, { Marker, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import {
   getAppCurrentPosition,
@@ -23,9 +22,7 @@ import {
   requestAppLocationPermission,
   USE_DEV_MOCK_LOCATION,
 } from '../../../lib/location/appLocation';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { fetchIssueDetail, fetchIssues } from '../../report/api/issueApi';
-import { ReportMapMarker } from '../../report/components/ReportMapMarker';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import type { ReportDetail } from '../../report/types/reportDetail';
 import {
@@ -36,6 +33,12 @@ import {
   toMapReportDetail,
 } from '../../report/utils/publicReportMap';
 import { AppText, CatChip, Icon, StatusBadge, Tag } from '../../../components/ui';
+import {
+  KakaoMapView,
+  type KakaoMapRegion,
+  type KakaoMapViewHandle,
+  type KakaoPlaceSearchResult,
+} from '../../../components/map/KakaoMapView';
 import { colors, fonts, radius, shadow } from '../../../theme';
 import { getReportStatusTone } from '../../report/utils/reportStatus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
@@ -68,7 +71,7 @@ function formatDistance(meters: number): string {
   return meters < 1000 ? `${Math.round(meters)}m` : `${(meters / 1000).toFixed(1)}km`;
 }
 
-function buildIssueQuery(region: Region, userLocation: LatLng | null) {
+function buildIssueQuery(region: KakaoMapRegion, userLocation: LatLng | null) {
   if (userLocation && distanceMeters(userLocation, region) < 100) {
     return {
       latitude: userLocation.latitude,
@@ -87,7 +90,11 @@ function buildIssueQuery(region: Region, userLocation: LatLng | null) {
 
 export default function HomeMapScreen() {
   const { contentOffset: tabBarOffset, insets } = useTabBarMetrics();
-  const mapRef = useRef<MapView | null>(null);
+  const mapRef = useRef<KakaoMapViewHandle | null>(null);
+  const initialMapRegionRef = useRef<KakaoMapRegion>({
+    ...DEFAULT_MAP_CENTER,
+    ...DEFAULT_DELTA,
+  });
   const ignoreRegionChangeUntilRef = useRef(0);
   const isUserDraggingMapRef = useRef(false);
   const [isResolvingCurrentLocation, setIsResolvingCurrentLocation] = useState(false);
@@ -95,7 +102,7 @@ export default function HomeMapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<Region>({
+  const [currentRegion, setCurrentRegion] = useState<KakaoMapRegion>({
     ...DEFAULT_MAP_CENTER,
     ...DEFAULT_DELTA,
   });
@@ -105,13 +112,14 @@ export default function HomeMapScreen() {
     title: string;
   } | null>(null);
   const [publicReports, setPublicReports] = useState<PublicReportItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<KakaoPlaceSearchResult[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
   const [selectedReport, setSelectedReport] = useState<PublicReportItem | null>(null);
   const [isReportSheetVisible, setIsReportSheetVisible] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const googlePlacesApiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ?? googleMapsApiKey;
   const selectedReportDetail: ReportDetail | null = selectedReport
     ? toMapReportDetail(selectedReport, userLocation)
     : null;
@@ -128,13 +136,35 @@ export default function HomeMapScreen() {
     );
   }, [publicReports, userLocation]);
 
-  const syncMapRegion = (nextRegion: Region, duration = 700) => {
+  const mapMarkers = useMemo(
+    () =>
+      publicReports.map((item) => ({
+        id: String(item.issueGroup.id),
+        latitude: item.report.latitude,
+        longitude: item.report.longitude,
+        kind: 'report' as const,
+        reportCount: item.issueGroup.reportCount,
+      })),
+    [publicReports]
+  );
+
+  const kakaoSearchMarker = searchMarker
+    ? {
+        id: 'search-marker',
+        latitude: searchMarker.latitude,
+        longitude: searchMarker.longitude,
+        kind: 'search' as const,
+        label: searchMarker.title,
+      }
+    : null;
+
+  const syncMapRegion = (nextRegion: KakaoMapRegion, duration = 700) => {
     ignoreRegionChangeUntilRef.current = Date.now() + duration + 500;
     setCurrentRegion(nextRegion);
     mapRef.current?.animateToRegion(nextRegion, duration);
   };
 
-  const handleRegionChangeComplete = (region: Region) => {
+  const handleRegionChangeComplete = (region: KakaoMapRegion) => {
     if (Date.now() < ignoreRegionChangeUntilRef.current) {
       return;
     }
@@ -148,9 +178,37 @@ export default function HomeMapScreen() {
   };
 
   const moveToCoordinate = (latitude: number, longitude: number, title: string) => {
-    const nextRegion: Region = { latitude, longitude, ...DEFAULT_DELTA };
+    const nextRegion: KakaoMapRegion = { latitude, longitude, ...DEFAULT_DELTA };
     setSearchMarker({ latitude, longitude, title });
+    setSearchQuery(title);
+    setSearchResults([]);
+    Keyboard.dismiss();
     syncMapRegion(nextRegion);
+  };
+
+  const searchPlaces = async () => {
+    if (!searchQuery.trim() || isSearchingPlaces) {
+      return;
+    }
+
+    try {
+      setIsSearchingPlaces(true);
+      const results = await mapRef.current?.searchPlaces(searchQuery, {
+        ...(userLocation
+          ? { latitude: userLocation.latitude, longitude: userLocation.longitude, radiusMeters: 5000 }
+          : {}),
+      });
+      setSearchResults(results ?? []);
+
+      if (!results || results.length === 0) {
+        Alert.alert('검색 결과 없음', '입력한 키워드에 해당하는 장소가 없어요.');
+      }
+    } catch (error) {
+      console.log('[KakaoPlaces] search failed', error);
+      Alert.alert('검색 오류', '카카오 장소 검색 요청이 실패했습니다.');
+    } finally {
+      setIsSearchingPlaces(false);
+    }
   };
 
   const moveToCurrentLocation = async () => {
@@ -166,7 +224,7 @@ export default function HomeMapScreen() {
 
       const granted = await requestAppLocationPermission();
       if (!granted) {
-        Alert.alert('위치 권한 필요', '위치 권한을 허용해야 현재 위치를 표시할 수 있습니다.');
+        Alert.alert('위치 권한 필요', '위치 권한을 허용해야 현재 위치를 표시할 수 있어요.');
         return;
       }
 
@@ -175,7 +233,7 @@ export default function HomeMapScreen() {
       setUserLocation(position);
       syncMapRegion({ ...position, ...DEFAULT_DELTA });
     } catch (error) {
-      Alert.alert('위치 조회 실패', `현재 위치를 가져오지 못했습니다.\n${String(error)}`);
+      Alert.alert('위치 조회 실패', `현재 위치를 가져오지 못했어요.\n${String(error)}`);
     } finally {
       setIsResolvingCurrentLocation(false);
     }
@@ -229,7 +287,7 @@ export default function HomeMapScreen() {
 
   // Peek-list tap: pan the map to the report, then open its detail sheet.
   const focusReport = (item: PublicReportItem) => {
-    const region: Region = {
+    const region: KakaoMapRegion = {
       latitude: item.report.latitude,
       longitude: item.report.longitude,
       ...DEFAULT_DELTA,
@@ -250,43 +308,31 @@ export default function HomeMapScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
-        <MapView
-          ref={(ref) => {
-            mapRef.current = ref;
-          }}
-          provider={PROVIDER_GOOGLE}
+    <View style={styles.container}>
+        <KakaoMapView
+          ref={mapRef}
           style={styles.mapContainer}
-          initialRegion={currentRegion}
+          initialRegion={initialMapRegionRef.current}
           region={currentRegion}
-          onPanDrag={() => {
+          markers={mapMarkers}
+          searchMarker={kakaoSearchMarker}
+          userLocation={userLocation}
+          showsUserLocation
+          onMapDragStart={() => {
             isUserDraggingMapRef.current = true;
+            Keyboard.dismiss();
           }}
           onRegionChangeComplete={handleRegionChangeComplete}
-          showsUserLocation
-          showsMyLocationButton={false}
-        >
-          {publicReports.map((item) => (
-            <Marker
-              key={item.issueGroup.id}
-              coordinate={{ latitude: item.report.latitude, longitude: item.report.longitude }}
-              tracksViewChanges={false}
-              onPress={() => {
-                void openReportSheet(item);
-              }}
-            >
-              <ReportMapMarker reportCount={item.issueGroup.reportCount} />
-            </Marker>
-          ))}
-          {searchMarker ? (
-            <Marker
-              coordinate={{ latitude: searchMarker.latitude, longitude: searchMarker.longitude }}
-              title={searchMarker.title}
-              pinColor={colors.accent}
-            />
-          ) : null}
-        </MapView>
+          onMarkerPress={(markerId) => {
+            if (markerId === 'search-marker') {
+              return;
+            }
+            const item = publicReports.find((report) => String(report.issueGroup.id) === markerId);
+            if (item) {
+              void openReportSheet(item);
+            }
+          }}
+        />
 
         {/* floating top: logo + bell */}
         <SafeAreaView edges={['top']} style={styles.topSafe} pointerEvents="box-none">
@@ -305,72 +351,46 @@ export default function HomeMapScreen() {
 
           {/* search pill */}
           <View style={styles.searchContainer} pointerEvents="box-none">
-            <GooglePlacesAutocomplete
-              placeholder="지역·주소로 제보 찾기"
-              minLength={2}
-              debounce={200}
-              listViewDisplayed="auto"
-              fetchDetails
-              enablePoweredByContainer={false}
-              query={{
-                key: googlePlacesApiKey,
-                language: 'ko',
-                ...(userLocation
-                  ? { location: `${userLocation.latitude},${userLocation.longitude}`, radius: '5000' }
-                  : {}),
-              }}
-              GooglePlacesDetailsQuery={{ fields: 'geometry' }}
-              onFail={(error) => {
-                const errorMessage =
-                  typeof error === 'string' ? error : JSON.stringify(error, null, 2);
-                Alert.alert('검색 오류', `Google Places 요청이 실패했습니다.\n\n${errorMessage}`);
-              }}
-              onNotFound={() => {
-                Alert.alert('검색 결과 없음', '입력한 키워드에 해당하는 장소가 없습니다.');
-              }}
-              onPress={async (data, details) => {
-                const location = details?.geometry?.location;
-                if (location) {
-                  moveToCoordinate(location.lat, location.lng, data.description);
-                  return;
-                }
-
-                if (!data.place_id) {
-                  Alert.alert('검색 오류', '장소 좌표를 가져오지 못했습니다.');
-                  return;
-                }
-
-                try {
-                  const response = await fetch(
-                    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${data.place_id}&fields=geometry,name&language=ko&key=${googlePlacesApiKey}`
-                  );
-                  const result = await response.json();
-                  const detailLocation = result?.result?.geometry?.location;
-                  if (!detailLocation) {
-                    Alert.alert('검색 오류', '장소 상세 좌표를 가져오지 못했습니다.');
-                    return;
-                  }
-                  moveToCoordinate(
-                    detailLocation.lat,
-                    detailLocation.lng,
-                    result?.result?.name ?? data.description
-                  );
-                } catch {
-                  Alert.alert('검색 오류', '장소 상세 조회 중 오류가 발생했습니다.');
-                }
-              }}
-              styles={{
-                container: styles.placesContainer,
-                textInput: styles.searchInput,
-                listView: styles.placeListView,
-                row: styles.placeRow,
-                separator: styles.placeSeparator,
-                description: styles.placeDescription,
-              }}
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="장소명으로 제보 찾기"
+              placeholderTextColor={colors.muted}
+              returnKeyType="search"
+              onSubmitEditing={searchPlaces}
+              style={styles.searchInput}
             />
-            <View pointerEvents="none" style={styles.searchIconOverlay}>
-              <Icon name="search" size={19} color={colors.muted} />
-            </View>
+            <TouchableOpacity
+              style={styles.searchIconOverlay}
+              onPress={searchPlaces}
+              disabled={isSearchingPlaces}
+            >
+              {isSearchingPlaces ? (
+                <ActivityIndicator size="small" color={colors.muted} />
+              ) : (
+                <Icon name="search" size={19} color={colors.muted} />
+              )}
+            </TouchableOpacity>
+            {searchResults.length > 0 ? (
+              <View style={styles.placeListView}>
+                <ScrollView keyboardShouldPersistTaps="handled">
+                  {searchResults.map((result, index) => (
+                    <Pressable
+                      key={result.id || `${result.placeName}-${index}`}
+                      style={styles.placeRow}
+                      onPress={() =>
+                        moveToCoordinate(result.latitude, result.longitude, result.placeName)
+                      }
+                    >
+                      <AppText style={styles.placeDescription}>{result.placeName}</AppText>
+                      <AppText style={styles.placeAddress} numberOfLines={1}>
+                        {result.roadAddressName || result.addressName}
+                      </AppText>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
           </View>
 
           {/* density legend */}
@@ -521,8 +541,7 @@ export default function HomeMapScreen() {
             </Animated.View>
           </View>
         </Modal>
-      </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 }
 
@@ -577,10 +596,8 @@ const styles = StyleSheet.create({
     borderColor: colors.canvas,
   },
 
-  // Fixed-height search row: the GooglePlacesAutocomplete container is pinned to
-  // the input height so the (absolute) results dropdown can't push the legend.
+  // Fixed-height search row: results are absolute so they do not push the legend.
   searchContainer: { marginTop: 12, marginHorizontal: 16, height: 46, zIndex: 20 },
-  placesContainer: { flexGrow: 0, flexShrink: 0 },
   searchInput: {
     height: 46,
     borderRadius: 14,
@@ -592,7 +609,15 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     ...shadow.float,
   },
-  searchIconOverlay: { position: 'absolute', right: 14, top: 14, height: 19, width: 19 },
+  searchIconOverlay: {
+    position: 'absolute',
+    right: 8,
+    top: 6,
+    height: 34,
+    width: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   placeListView: {
     position: 'absolute',
     top: 54,
@@ -607,8 +632,8 @@ const styles = StyleSheet.create({
     ...shadow.float,
   },
   placeRow: { paddingHorizontal: 14, paddingVertical: 11 },
-  placeSeparator: { height: 1, backgroundColor: colors.soft2 },
   placeDescription: { color: colors.ink, fontFamily: fonts.regular, fontSize: 14 },
+  placeAddress: { marginTop: 3, color: colors.muted, fontFamily: fonts.regular, fontSize: 12 },
 
   legendChip: {
     marginTop: 12,
