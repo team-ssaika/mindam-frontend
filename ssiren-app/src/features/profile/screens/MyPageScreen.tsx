@@ -15,16 +15,23 @@ import {
   formatReportDate,
   getReportStatusLabel,
   getReportStatusTone,
+  summarizeReportStatuses,
+  type ReportStatusSummary,
 } from '../../report/utils/reportStatus';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { fetchMyProfile } from '../api/userApi';
-import { myPageMock } from '../mocks/myPageMock';
 
-const STATUS_ITEMS = [
-  { key: 'wait' as StatusKey, label: '접수 대기', count: myPageMock.statusSummary.pending },
-  { key: 'prog' as StatusKey, label: '처리중', count: myPageMock.statusSummary.inProgress },
-  { key: 'done' as StatusKey, label: '처리 완료', count: myPageMock.statusSummary.completed },
+const STATUS_ITEMS: { key: StatusKey; label: string }[] = [
+  { key: 'wait', label: '접수 대기' },
+  { key: 'prog', label: '처리중' },
+  { key: 'done', label: '처리 완료' },
 ];
+
+const EMPTY_STATUS_SUMMARY: ReportStatusSummary = { wait: 0, prog: 0, done: 0 };
+
+/** Pull enough of the user's reports in one call to count statuses for the summary widget. */
+const STATUS_SUMMARY_FETCH_SIZE = 100;
+const RECENT_REPORTS_COUNT = 3;
 
 const MENU_ITEMS = [
   { icon: 'info' as const, label: '이용안내' },
@@ -58,6 +65,7 @@ export function MyPageScreen() {
   const [name, setName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [recent, setRecent] = useState<MyReportItem[]>([]);
+  const [statusSummary, setStatusSummary] = useState<ReportStatusSummary>(EMPTY_STATUS_SUMMARY);
 
   const loadProfile = useCallback(() => {
     let isMounted = true;
@@ -73,15 +81,18 @@ export function MyPageScreen() {
         console.log('[Profile] failed to fetch /api/v1/users/me', error);
       });
 
-    fetchMyReports({ page: 0, size: 3, sort: 'createdAt,desc' })
+    fetchMyReports({ page: 0, size: STATUS_SUMMARY_FETCH_SIZE, sort: 'createdAt,desc' })
       .then((page) => {
         if (!isMounted) return;
-        setRecent(page?.contents ?? []);
+        const items = page?.contents ?? [];
+        setRecent(items.slice(0, RECENT_REPORTS_COUNT));
+        setStatusSummary(summarizeReportStatuses(items.map((item) => item.report.status)));
       })
       .catch((error) => {
         if (!isMounted) return;
-        console.log('[Profile] failed to fetch recent reports', error);
+        console.log('[Profile] failed to fetch my reports', error);
         setRecent([]);
+        setStatusSummary(EMPTY_STATUS_SUMMARY);
       });
 
     return () => {
@@ -130,7 +141,7 @@ export function MyPageScreen() {
                 {index > 0 ? <View style={styles.statSeparator} /> : null}
                 <View style={styles.statPressable}>
                   <AppText style={[styles.statCount, { color: statusColors[item.key].dot }]}>
-                    {item.count}
+                    {statusSummary[item.key]}
                   </AppText>
                   <AppText style={styles.statLabel}>{item.label}</AppText>
                 </View>
