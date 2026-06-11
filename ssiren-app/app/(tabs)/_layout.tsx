@@ -1,10 +1,14 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Alert, View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Icon } from '../../src/components/ui';
 import { colors } from '../../src/theme';
 import { TAB_BAR_TOP_PADDING } from '../../src/constants/layout';
 import { useTabBarMetrics } from '../../src/hooks/useTabBarMetrics';
 import { hasStoredAuthSession } from '../../src/features/auth/services/authService';
+import { RoleOnboardingBottomSheet } from '../../src/features/auth/components/RoleOnboardingBottomSheet';
+import type { UserRole } from '../../src/features/auth/types/auth.types';
+import { fetchMyProfile, updateUserRole } from '../../src/features/profile/api/userApi';
 
 function PlusButton() {
   const router = useRouter();
@@ -38,8 +42,73 @@ function PlusButton() {
 
 export default function TabLayout() {
   const pathname = usePathname();
+  const router = useRouter();
   const isReportFlow = pathname === '/plus' || pathname === '/(tabs)/plus';
   const { height: tabBarHeight, insets } = useTabBarMetrics();
+  const [isRoleSheetVisible, setIsRoleSheetVisible] = useState(false);
+  const [isSubmittingRole, setIsSubmittingRole] = useState(false);
+  const [roleErrorMessage, setRoleErrorMessage] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkRoleSelection() {
+      try {
+        const hasSession = await hasStoredAuthSession();
+        if (!hasSession) {
+          return;
+        }
+
+        const profile = await fetchMyProfile();
+        if (!isMounted) {
+          return;
+        }
+
+        setCurrentUserId(profile.id);
+        setIsRoleSheetVisible(profile.roleSelected === false);
+
+        if (profile.roleSelected && profile.role === 'OFFICER') {
+          router.replace('/(officer)');
+        }
+      } catch (error) {
+        console.log('[Auth] role onboarding check skipped', error);
+      }
+    }
+
+    checkRoleSelection();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  const handleSelectRole = async (role: UserRole, departmentId?: number) => {
+    if (isSubmittingRole) {
+      return;
+    }
+
+    setIsSubmittingRole(true);
+    setRoleErrorMessage(null);
+
+    try {
+      if (currentUserId == null) {
+        throw new Error('current_user_missing');
+      }
+
+      await updateUserRole(currentUserId, { role, departmentId });
+      setIsRoleSheetVisible(false);
+
+      if (role === 'OFFICER') {
+        router.replace('/(officer)');
+      }
+    } catch (error) {
+      console.log('[Auth] role onboarding submit failed', error);
+      setRoleErrorMessage('사용자 유형 설정 중 문제가 발생했어요. 다시 시도해 주세요.');
+    } finally {
+      setIsSubmittingRole(false);
+    }
+  };
 
   // Every screen renders its own AppBar / floating bar, so no global header.
   return (
@@ -96,6 +165,12 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
+      <RoleOnboardingBottomSheet
+        visible={isRoleSheetVisible}
+        isSubmitting={isSubmittingRole}
+        errorMessage={roleErrorMessage}
+        onSelectRole={handleSelectRole}
+      />
     </>
   );
 }
