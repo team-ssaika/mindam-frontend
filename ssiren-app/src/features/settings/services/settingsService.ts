@@ -1,15 +1,17 @@
-import { logout } from '../../auth/services/authService';
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { clearStoredAuthSession, logout } from '../../auth/services/authService';
+import { deactivateStoredPushToken } from '../../notifications/services/pushNotificationService';
+import { deactivateMyAccount } from '../../profile/api/userApi';
 
 export async function logoutUser(): Promise<void> {
   await logout();
 }
 
 export async function withdrawUser(): Promise<void> {
-  await delay(700);
-  // TODO: replace with real account withdrawal API
-  console.log('withdraw');
+  try {
+    await deactivateStoredPushToken();
+  } catch (error) {
+    console.log('[Settings] push token deactivate skipped', error);
+  }
+  await deactivateMyAccount();
+  await clearStoredAuthSession();
 }
