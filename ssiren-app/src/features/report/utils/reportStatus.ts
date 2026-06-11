@@ -31,6 +31,23 @@ export function getReportStatusTone(status: ReportStatus): 'wait' | 'prog' | 'do
   return 'wait';
 }
 
+export type ReportStatusSummary = {
+  wait: number;
+  prog: number;
+  done: number;
+};
+
+/** Aggregate reports into the 접수 대기 / 처리중 / 처리 완료 buckets used on the 내 정보 page. */
+export function summarizeReportStatuses(
+  statuses: ReportStatus[]
+): ReportStatusSummary {
+  const summary: ReportStatusSummary = { wait: 0, prog: 0, done: 0 };
+  for (const status of statuses) {
+    summary[getReportStatusTone(status)] += 1;
+  }
+  return summary;
+}
+
 export function canEditReport(status: ReportStatus) {
   return status === 'SUBMITTED';
 }
