@@ -3,12 +3,15 @@ import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { Image, Platform } from 'react-native';
 import { restoreAuthSession } from '../src/features/auth/services/authService';
+import { configureNotificationBehavior } from '../src/features/notifications/services/pushNotificationService';
 import { fontAssets } from '../src/theme';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts(fontAssets);
 
   useEffect(() => {
+    configureNotificationBehavior();
+
     if (Platform.OS === 'web' || typeof Image.resolveAssetSource !== 'function') {
       return;
     }

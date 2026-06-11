@@ -5,6 +5,25 @@ import { deactivateFcmToken, registerFcmToken } from '../api/notificationApi';
 
 const FCM_TOKEN_STORAGE_KEY = 'ssiren.fcmToken';
 
+let isNotificationHandlerConfigured = false;
+
+export function configureNotificationBehavior() {
+  if (isNotificationHandlerConfigured || Platform.OS === 'web') {
+    return;
+  }
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+
+  isNotificationHandlerConfigured = true;
+}
+
 async function getGrantedNotificationPermission() {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) {
