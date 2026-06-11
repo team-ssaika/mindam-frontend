@@ -33,6 +33,7 @@ type UserConsentResponse = {
   locationAgreed: boolean;
   sensitiveInfoAgreed: boolean;
   sensitiveInfoAgreedAt: string | null;
+  requiredAgreed: boolean;
   updatedAt: string;
 };
 
@@ -156,8 +157,11 @@ export async function completeLogin(tokens: PendingLoginResult) {
 export async function checkUserTermsAgreement(
   loginResult: PendingLoginResult
 ): Promise<UserTermsStatus> {
+  setApiAccessToken(loginResult.accessToken);
+
+  const response = await apiClient.get<ApiResponse<UserConsentResponse>>('/api/v1/users/me/consents');
   return {
-    needsTermsAgreement: loginResult.isNewUser,
+    needsTermsAgreement: !response.data.data.requiredAgreed,
   };
 }
 
@@ -165,7 +169,7 @@ export async function submitTermsAgreement(
   loginResult: PendingLoginResult,
   agreement: TermsAgreementState
 ): Promise<void> {
-  if (!agreement.service || !agreement.location || !agreement.privacy) {
+  if (!agreement.location || !agreement.privacy) {
     throw new Error('required_terms_missing');
   }
 
