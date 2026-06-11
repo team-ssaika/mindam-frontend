@@ -20,16 +20,6 @@ import {
 } from '../../../components/map/KakaoMapView';
 import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
-import { OfficerDenseAreaLegend } from '../components/OfficerDenseAreaLegend';
-import { useOfficerDenseAreas } from '../hooks/useOfficerDenseAreas';
-import {
-  denseAreaKey,
-  denseAreaPolygonCoordinates,
-  getDenseAreaColors,
-  getMaxDenseAreaCount,
-  resolveDenseAreaCenter,
-  resolveDenseAreaRadius,
-} from '../utils/officerDenseArea';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
 import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
@@ -96,7 +86,6 @@ export default function OfficerHomeScreen() {
   const [region, setRegion] = useState<KakaoMapRegion>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
   const [issues, setIssues] = useState<AdminIssueItem[]>([]);
   const [isPeekExpanded, setIsPeekExpanded] = useState(true);
-  const [showDenseAreas, setShowDenseAreas] = useState(true);
   const peekExpandAnim = useRef(new Animated.Value(1)).current;
   const peekDragStart = useRef(1);
 
@@ -180,38 +169,6 @@ export default function OfficerHomeScreen() {
   );
 
   const summary = useMemo(() => summarizeIssues(issues), [issues]);
-
-  const denseAreaCenter = useMemo(
-    () => resolveDenseAreaCenter(region, userLocation),
-    [region, userLocation]
-  );
-  const denseAreaRadius = useMemo(
-    () => resolveDenseAreaRadius(region, userLocation),
-    [region, userLocation]
-  );
-  const { denseAreas, isLoading: isLoadingDenseAreas } = useOfficerDenseAreas({
-    latitude: denseAreaCenter.latitude,
-    longitude: denseAreaCenter.longitude,
-    radiusMeters: denseAreaRadius,
-    myDepartmentOnly: true,
-  });
-
-  const denseAreaPolygons = useMemo(() => {
-    if (!showDenseAreas) {
-      return [];
-    }
-
-    const maxCount = getMaxDenseAreaCount(denseAreas);
-    return denseAreas.map((area, index) => {
-      const { fill, stroke } = getDenseAreaColors(area.issueGroupCount, maxCount);
-      return {
-        id: denseAreaKey(area, index),
-        coordinates: denseAreaPolygonCoordinates(area),
-        fillColor: fill,
-        strokeColor: stroke,
-      };
-    });
-  }, [denseAreas, showDenseAreas]);
 
   const sortedIssues = useMemo(() => {
     const visible = issues.filter(hasValidAdminIssueCoordinate);
@@ -326,7 +283,6 @@ export default function OfficerHomeScreen() {
         initialRegion={initialMapRegionRef.current}
         region={region}
         markers={mapMarkers}
-        polygons={denseAreaPolygons}
         userLocation={userLocation}
         showsUserLocation
         onMapDragStart={() => {
@@ -361,22 +317,10 @@ export default function OfficerHomeScreen() {
             <Icon name="building" size={16} color={colors.brand} />
             <AppText style={styles.jurisText}>{jurisdictionLabel}</AppText>
           </View>
-          {showDenseAreas ? (
-            <OfficerDenseAreaLegend
-              areaCount={isLoadingDenseAreas ? undefined : denseAreas.length}
-            />
-          ) : null}
         </View>
       </SafeAreaView>
 
       <Animated.View style={[styles.fabColumn, { bottom: fabBottom }]} pointerEvents="box-none">
-        <TouchableOpacity
-          style={[styles.fab, showDenseAreas && styles.fabActive]}
-          onPress={() => setShowDenseAreas((prev) => !prev)}
-          accessibilityLabel="밀집 구역 표시"
-        >
-          <Icon name="layers" size={21} color={showDenseAreas ? colors.brand : colors.ink} />
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.fab, styles.fabPrimary]}
           onPress={moveToCurrentLocation}
@@ -566,7 +510,6 @@ const styles = StyleSheet.create({
     ...shadow.float,
   },
   fabPrimary: { backgroundColor: colors.brand, borderWidth: 0 },
-  fabActive: { borderColor: colors.brandSoft, backgroundColor: colors.brandSoft },
 
   peek: {
     position: 'absolute',

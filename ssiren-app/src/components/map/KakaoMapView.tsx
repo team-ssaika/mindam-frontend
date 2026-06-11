@@ -25,6 +25,15 @@ export type KakaoMapPolygon = {
   strokeColor: string;
 };
 
+export type KakaoMapCircle = {
+  id: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  fillColor: string;
+  strokeColor: string;
+};
+
 export type KakaoPlaceSearchResult = {
   id: string;
   placeName: string;
@@ -52,6 +61,7 @@ type KakaoMapViewProps = {
   initialRegion: KakaoMapRegion;
   markers?: KakaoMapMarker[];
   polygons?: KakaoMapPolygon[];
+  circles?: KakaoMapCircle[];
   region: KakaoMapRegion;
   searchMarker?: KakaoMapMarker | null;
   showsUserLocation?: boolean;
@@ -100,6 +110,7 @@ export const KakaoMapView = forwardRef<KakaoMapViewHandle, KakaoMapViewProps>(
       onMapDragStart,
       onMarkerPress,
       onRegionChangeComplete,
+      circles = [],
       polygons = [],
       region,
       searchMarker,
@@ -119,6 +130,7 @@ export const KakaoMapView = forwardRef<KakaoMapViewHandle, KakaoMapViewProps>(
       (nextRegion: KakaoMapRegion, duration = 0, moveCamera = true) => {
         const allMarkers = searchMarker ? [...markers, searchMarker] : markers;
         const state = {
+          circles,
           duration,
           markers: allMarkers,
           moveCamera,
@@ -131,7 +143,7 @@ export const KakaoMapView = forwardRef<KakaoMapViewHandle, KakaoMapViewProps>(
           `window.SSIREN_SET_STATE && window.SSIREN_SET_STATE(${serializeForInjection(state)}); true;`
         );
       },
-      [markers, polygons, searchMarker, showsUserLocation, userLocation]
+      [circles, markers, polygons, searchMarker, showsUserLocation, userLocation]
     );
 
     useImperativeHandle(
@@ -296,6 +308,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             var places;
             var overlays = [];
             var polygons = [];
+            var circles = [];
             var userOverlay = null;
             var pendingState = null;
 
@@ -331,6 +344,48 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             function clearPolygons() {
               polygons.forEach(function (polygon) { polygon.setMap(null); });
               polygons = [];
+            }
+
+            function clearCircles() {
+              circles.forEach(function (circle) { circle.setMap(null); });
+              circles = [];
+            }
+
+            function parseColor(value, fallbackOpacity) {
+              if (!value) {
+                return { color: '#6C63FF', opacity: fallbackOpacity };
+              }
+              var rgba = String(value).match(/^rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)$/i);
+              if (!rgba) {
+                return { color: value, opacity: fallbackOpacity };
+              }
+              var r = Number(rgba[1]);
+              var g = Number(rgba[2]);
+              var b = Number(rgba[3]);
+              var opacity = rgba[4] != null ? Number(rgba[4]) : fallbackOpacity;
+              return {
+                color: 'rgb(' + r + ', ' + g + ', ' + b + ')',
+                opacity: opacity
+              };
+            }
+
+            function renderCircles(items) {
+              clearCircles();
+              (items || []).forEach(function (item) {
+                var fill = parseColor(item.fillColor, 0.28);
+                var stroke = parseColor(item.strokeColor, 0.85);
+                var circle = new kakao.maps.Circle({
+                  center: new kakao.maps.LatLng(item.latitude, item.longitude),
+                  radius: item.radiusMeters,
+                  strokeWeight: 2,
+                  strokeColor: stroke.color,
+                  strokeOpacity: stroke.opacity,
+                  fillColor: fill.color,
+                  fillOpacity: fill.opacity
+                });
+                circle.setMap(map);
+                circles.push(circle);
+              });
             }
 
             function markerHtml(marker) {
@@ -411,6 +466,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               }
               renderMarkers(state.markers);
               renderPolygons(state.polygons);
+              renderCircles(state.circles);
               renderUserLocation(state);
             };
 
