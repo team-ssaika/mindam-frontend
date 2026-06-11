@@ -184,12 +184,16 @@ export function OfficerReportDetailScreen() {
   const statusHistories = representative
     ? sortStatusHistories(representative.statusHistories)
     : [];
+  const activeHistoryIndex = statusHistories.reduce<number>(
+    (activeIndex, history, index) =>
+      history.newStatus === representativeReport?.status ? index : activeIndex,
+    statusHistories.length > 0 ? statusHistories.length - 1 : -1
+  );
   const summaryText =
     representativeReport?.contents.summary ?? detail?.issueGroup.content ?? '';
 
   const info: [string, string][] = detail
     ? [
-        ['이슈 그룹', `#${detail.issueGroup.id}`],
         ['제보 건수', `${detail.issueGroup.reportCount}건`],
         [
           '위치',
@@ -207,7 +211,7 @@ export function OfficerReportDetailScreen() {
   return (
     <View style={styles.flex}>
       <AppBar
-        title={detail ? `#${detail.issueGroup.id}` : '이슈 상세'}
+        title="제보 상세"
         logo={false}
         onBack={goBack}
         right={<Icon name="info" size={20} color={colors.body} />}
@@ -281,7 +285,7 @@ export function OfficerReportDetailScreen() {
               {info.map(([k, v], i) => (
                 <View key={k} style={[styles.infoRow, i > 0 && styles.infoDivider]}>
                   <AppText style={styles.infoKey}>{k}</AppText>
-                  <AppText style={[styles.infoVal, i === 0 && styles.mono]}>{v}</AppText>
+                  <AppText style={styles.infoVal}>{v}</AppText>
                 </View>
               ))}
             </Card>
@@ -289,22 +293,58 @@ export function OfficerReportDetailScreen() {
             {statusHistories.length > 0 ? (
               <Card>
                 <AppText style={styles.sectionLabel}>처리 이력</AppText>
-                {statusHistories.map((history, index) => (
-                  <View key={history.id} style={[styles.historyRow, index > 0 && styles.historyDivider]}>
-                    <AppText style={styles.historyStatus}>
-                      {formatStatusTransition(
-                        history.previousStatus,
-                        history.newStatus as ReportStatus
-                      )}
-                    </AppText>
-                    <AppText style={styles.historyMeta}>
-                      {formatReportDateTime(history.createdAt)}
-                    </AppText>
-                    {history.reason ? (
-                      <AppText style={styles.historyReason}>{history.reason}</AppText>
-                    ) : null}
-                  </View>
-                ))}
+                <View style={styles.timelineList}>
+                  {statusHistories.map((history, index) => {
+                    const isActive = index === activeHistoryIndex;
+                    const tone = getReportStatusTone(history.newStatus as ReportStatus);
+                    const toneColor = statusColors[tone].dot;
+                    return (
+                      <View key={history.id} style={styles.timelineItem}>
+                        <View style={styles.timelineLeft}>
+                          <View
+                            style={[
+                              styles.timelineDot,
+                              isActive && { backgroundColor: toneColor, borderColor: toneColor },
+                            ]}
+                          />
+                          {index < statusHistories.length - 1 ? (
+                            <View style={styles.timelineLine} />
+                          ) : null}
+                        </View>
+                        <View
+                          style={[
+                            styles.timelineContent,
+                            index < statusHistories.length - 1 && styles.timelineContentSpaced,
+                          ]}
+                        >
+                          <View style={styles.timelineHeader}>
+                            <AppText
+                              style={[styles.timelineStatus, isActive && { color: colors.ink }]}
+                            >
+                              {formatStatusTransition(
+                                history.previousStatus,
+                                history.newStatus as ReportStatus
+                              )}
+                            </AppText>
+                            {isActive ? (
+                              <View style={[styles.timelineCurrentBadge, { backgroundColor: statusColors[tone].bg }]}>
+                                <AppText style={[styles.timelineCurrentBadgeText, { color: statusColors[tone].fg }]}>
+                                  현재
+                                </AppText>
+                              </View>
+                            ) : null}
+                          </View>
+                          {history.reason ? (
+                            <AppText style={styles.timelineReason}>{history.reason}</AppText>
+                          ) : null}
+                          <AppText style={styles.timelineDate}>
+                            {formatReportDateTime(history.createdAt)}
+                          </AppText>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
               </Card>
             ) : null}
 
@@ -320,7 +360,11 @@ export function OfficerReportDetailScreen() {
                     return (
                       <Card key={report.id} style={styles.reportCard}>
                         <View style={styles.reportCardTop}>
-                          <AppText style={styles.reportCardId}>제보 #{report.id}</AppText>
+                          {report.isRepresentative ? (
+                            <AppText style={styles.reportCardTag}>대표 제보</AppText>
+                          ) : (
+                            <View />
+                          )}
                           <StatusBadge
                             status={getReportStatusTone(report.status as ReportStatus)}
                             size="sm"
@@ -331,9 +375,6 @@ export function OfficerReportDetailScreen() {
                           {report.title}
                         </AppText>
                         <View style={styles.reportCardMeta}>
-                          {report.isRepresentative ? (
-                            <AppText style={styles.reportCardTag}>대표 제보</AppText>
-                          ) : null}
                           {report.isDeleted ? (
                             <AppText style={styles.reportCardTagMuted}>삭제됨</AppText>
                           ) : null}
@@ -476,18 +517,32 @@ const styles = StyleSheet.create({
   infoDivider: { borderTopWidth: 1, borderTopColor: colors.hairline },
   infoKey: { fontSize: 13, color: colors.muted },
   infoVal: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.ink, flex: 1, textAlign: 'right', marginLeft: 12 },
-  mono: { fontFamily: fonts.semibold },
 
-  historyRow: { gap: 4, paddingVertical: 8 },
-  historyDivider: { borderTopWidth: 1, borderTopColor: colors.hairline },
-  historyStatus: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.ink },
-  historyMeta: { fontSize: 12.5, color: colors.muted },
-  historyReason: { fontSize: 13, color: colors.body, lineHeight: 18 },
+  timelineList: { marginTop: 4 },
+  timelineItem: { flexDirection: 'row', gap: 12 },
+  timelineLeft: { alignItems: 'center', width: 14 },
+  timelineDot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: colors.canvas,
+    borderWidth: 2,
+    borderColor: colors.hairline,
+    marginTop: 3,
+  },
+  timelineLine: { flex: 1, width: 2, backgroundColor: colors.hairline, marginVertical: 2 },
+  timelineContent: { flex: 1 },
+  timelineContentSpaced: { paddingBottom: 18 },
+  timelineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  timelineStatus: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
+  timelineCurrentBadge: { borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 },
+  timelineCurrentBadgeText: { fontFamily: fonts.bold, fontSize: 10.5 },
+  timelineReason: { fontSize: 13, color: colors.body, marginTop: 4, lineHeight: 19 },
+  timelineDate: { fontSize: 12, color: colors.faint, marginTop: 4 },
 
   reportList: { gap: 10 },
   reportCard: { gap: 8 },
   reportCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  reportCardId: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted },
   reportCardTitle: { fontFamily: fonts.semibold, fontSize: 14.5, color: colors.ink, lineHeight: 20 },
   reportCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   reportCardTag: { fontFamily: fonts.bold, fontSize: 11.5, color: colors.brand },
