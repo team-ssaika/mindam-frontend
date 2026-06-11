@@ -1,6 +1,15 @@
 import { apiClient } from '../../../lib/api/client';
 import type { ApiResponse } from '../../../lib/api/types';
 
+export type UserDepartment = {
+  id: number;
+  name: string;
+  agencyType: {
+    id: number;
+    name: string;
+  };
+};
+
 export type UserMe = {
   id: number;
   email: string;
@@ -10,6 +19,7 @@ export type UserMe = {
   isAlarmEnabled: boolean;
   createdAt: string;
   updatedAt: string;
+  departments?: UserDepartment[];
 };
 
 export type UserUpdateRequest = {
