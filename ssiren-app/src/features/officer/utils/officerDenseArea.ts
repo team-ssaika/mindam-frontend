@@ -1,4 +1,3 @@
-import type { Region } from 'react-native-maps';
 import { colors } from '../../../theme';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 
@@ -9,6 +8,7 @@ export const DENSE_AREA_DEFAULTS = {
 } as const;
 
 type LatLng = { latitude: number; longitude: number };
+type Region = LatLng & { latitudeDelta: number; longitudeDelta: number };
 
 export function regionRadiusMeters(region: Region) {
   const latMeters = region.latitudeDelta * 111_320;

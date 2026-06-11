@@ -6,9 +6,8 @@ import type { TermsAgreementState, TermsItem } from '../types/auth.types';
 import { TermsAgreementItem } from './TermsAgreementItem';
 
 const TERMS_ITEMS: TermsItem[] = [
-  { key: 'service', label: '서비스 이용약관 (필수)' },
   { key: 'location', label: '위치기반 서비스 이용약관 (필수)' },
-  { key: 'privacy', label: '개인정보 처리방침 (필수)' },
+  { key: 'privacy', label: '민감정보 처리방침 (필수)' },
 ];
 
 type TermsAgreementBottomSheetProps = {
@@ -45,7 +44,7 @@ export function TermsAgreementBottomSheet({
       visible={visible}
       onClose={onClose}
       backdropOpacity={0.68}
-      minHeight="48%"
+      minHeight="42%"
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >

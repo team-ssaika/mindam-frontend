@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Circle, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import {
+  KakaoMapView,
+  type KakaoMapCircle,
+  type KakaoMapRegion,
+  type KakaoMapViewHandle,
+} from '../../../components/map/KakaoMapView';
 import { colors, radius } from '../../../theme';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 import {
@@ -11,7 +16,6 @@ import {
   resolveDenseAreaViewRadiusMeters,
   type DenseAreaIssueGroupMarker,
 } from '../utils/officerDenseArea';
-import { OfficerIssueMapMarker } from './OfficerIssueMapMarker';
 
 type DenseAreaExplorerMapProps = {
   denseAreas: AdminDashboardDenseAreaItem[];
@@ -30,7 +34,7 @@ export function DenseAreaExplorerMap({
   userLocation = null,
   size,
 }: DenseAreaExplorerMapProps) {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<KakaoMapViewHandle | null>(null);
   const hasAnimatedRef = useRef(false);
   const viewRadiusMeters = resolveDenseAreaViewRadiusMeters(size);
   const selectedArea = denseAreas[selectedIndex] ?? denseAreas[0];
@@ -39,8 +43,38 @@ export function DenseAreaExplorerMap({
     () => denseAreaMiniMapRegion(denseAreas[0], viewRadiusMeters),
     [denseAreas, viewRadiusMeters]
   );
+  const initialRegionRef = useRef<KakaoMapRegion>(initialRegion);
+  const [region, setRegion] = useState<KakaoMapRegion>(initialRegion);
 
-  const { fill, stroke } = getDenseAreaColors(selectedArea.issueGroupCount, maxCount);
+  const markers = useMemo(
+    () =>
+      issueGroups.map((issueGroup) => ({
+        id: String(issueGroup.id),
+        latitude: issueGroup.latitude,
+        longitude: issueGroup.longitude,
+        kind: 'officer' as const,
+        reportCount: issueGroup.reportCount,
+      })),
+    [issueGroups]
+  );
+
+  const circles = useMemo((): KakaoMapCircle[] => {
+    if (!selectedArea) {
+      return [];
+    }
+    const { fill, stroke } = getDenseAreaColors(selectedArea.issueGroupCount, maxCount);
+    const center = denseAreaCenter(selectedArea);
+    return [
+      {
+        id: 'dense-area',
+        latitude: center.latitude,
+        longitude: center.longitude,
+        radiusMeters: denseAreaRadiusMeters(selectedArea),
+        fillColor: fill,
+        strokeColor: stroke,
+      },
+    ];
+  }, [maxCount, selectedArea]);
 
   useEffect(() => {
     const area = denseAreas[selectedIndex];
@@ -48,64 +82,29 @@ export function DenseAreaExplorerMap({
       return;
     }
 
-    const region = denseAreaMiniMapRegion(area, viewRadiusMeters);
+    const nextRegion = denseAreaMiniMapRegion(area, viewRadiusMeters);
     const duration = hasAnimatedRef.current ? 400 : 0;
     hasAnimatedRef.current = true;
-    mapRef.current?.animateToRegion(region, duration);
+    setRegion(nextRegion);
+    mapRef.current?.animateToRegion(nextRegion, duration);
   }, [denseAreas, selectedIndex, viewRadiusMeters]);
-
-  const handleMapReady = () => {
-    if (!selectedArea) {
-      return;
-    }
-    mapRef.current?.animateToRegion(denseAreaMiniMapRegion(selectedArea, viewRadiusMeters), 0);
-  };
 
   if (!selectedArea) {
     return null;
   }
 
   return (
-    <View style={[styles.wrap, { width: size, height: size }]}>
-      <MapView
+    <View style={[styles.wrap, { width: size, height: size }]} pointerEvents="none">
+      <KakaoMapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={initialRegion}
-        onMapReady={handleMapReady}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
-        toolbarEnabled={false}
-        moveOnMarkerPress={false}
-        pointerEvents="none"
-      >
-        <Circle
-          center={denseAreaCenter(selectedArea)}
-          radius={denseAreaRadiusMeters(selectedArea)}
-          fillColor={fill}
-          strokeColor={stroke}
-          strokeWidth={2}
-        />
-        {issueGroups.map((issueGroup) => (
-          <Marker
-            key={issueGroup.id}
-            coordinate={{ latitude: issueGroup.latitude, longitude: issueGroup.longitude }}
-            tracksViewChanges={false}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <OfficerIssueMapMarker reportCount={issueGroup.reportCount} />
-          </Marker>
-        ))}
-        {userLocation ? (
-          <Marker coordinate={userLocation} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.userDotOuter}>
-              <View style={styles.userDotInner} />
-            </View>
-          </Marker>
-        ) : null}
-      </MapView>
+        initialRegion={initialRegionRef.current}
+        region={region}
+        markers={markers}
+        circles={circles}
+        userLocation={userLocation}
+        showsUserLocation={!!userLocation}
+      />
     </View>
   );
 }
@@ -119,22 +118,6 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
   },
   map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  userDotOuter: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(108, 99, 255, 0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userDotInner: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.brand,
-    borderWidth: 1.5,
-    borderColor: colors.white,
+    flex: 1,
   },
 });

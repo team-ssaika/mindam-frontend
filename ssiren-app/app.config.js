@@ -36,10 +36,6 @@ const kakaoNativeAppKey =
   process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ??
   localEnv.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY ??
   '';
-const googleMapsApiKey =
-  process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
-  localEnv.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ??
-  '';
 const googleServicesFile = path.join(__dirname, 'google-services.json');
 const hasGoogleServicesFile = fs.existsSync(googleServicesFile);
 
@@ -53,10 +49,6 @@ module.exports = {
       NSLocationWhenInUseUsageDescription:
         '현재 위치 주변의 이슈를 지도에서 확인하기 위해 위치 권한이 필요합니다.',
     },
-    config: {
-      ...appJson.expo.ios.config,
-      googleMapsApiKey,
-    },
   },
   android: {
     ...appJson.expo.android,
@@ -69,10 +61,6 @@ module.exports = {
         'ACCESS_FINE_LOCATION',
       ]),
     ],
-    config: {
-      ...appJson.expo.android.config,
-      googleMaps: { apiKey: googleMapsApiKey },
-    },
   },
   plugins: [
     'expo-router',

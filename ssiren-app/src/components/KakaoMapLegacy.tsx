@@ -35,11 +35,13 @@ function initializeKakaoMap() {
 
 /**
  * Legacy Kakao map implementation.
- * Kept for reference while switching to react-native-maps.
+ * Kept for reference while iterating on Kakao map WebView integration.
  */
 export default function KakaoMapLegacy() {
   const [useKakaoWebFallback, setUseKakaoWebFallback] = useState(false);
-  const jsKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const jsKey =
+    process.env.EXPO_PUBLIC_KAKAO_MAP_JS_KEY ??
+    process.env.EXPO_PUBLIC_KAKAO_JAVASCRIPT_KEY;
   const isWeb = Platform.OS === 'web';
   const kakaoWebMapUrl = `https://map.kakao.com/link/map/서울시청,${CENTER.lat},${CENTER.lng}`;
   const nativeMapHtml = useMemo(() => {
@@ -48,7 +50,7 @@ export default function KakaoMapLegacy() {
         <!DOCTYPE html>
         <html>
           <body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;">
-            <p style="font-family:sans-serif;color:#444;">EXPO_PUBLIC_GOOGLE_MAPS_API_KEY가 설정되지 않았습니다.</p>
+            <p style="font-family:sans-serif;color:#444;">EXPO_PUBLIC_KAKAO_MAP_JS_KEY가 설정되지 않았습니다.</p>
           </body>
         </html>
       `;
@@ -135,7 +137,7 @@ export default function KakaoMapLegacy() {
     }
 
     if (!jsKey) {
-      console.error('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY is not set.');
+      console.error('EXPO_PUBLIC_KAKAO_MAP_JS_KEY is not set.');
       return;
     }
 

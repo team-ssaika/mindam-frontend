@@ -11,7 +11,9 @@ export type UserTermsStatus = {
   needsTermsAgreement: boolean;
 };
 
-export type TermsKey = 'service' | 'location' | 'privacy';
+export type UserRole = 'CITIZEN' | 'OFFICER';
+
+export type TermsKey = 'location' | 'privacy';
 
 export type TermsAgreementState = Record<TermsKey, boolean>;
 

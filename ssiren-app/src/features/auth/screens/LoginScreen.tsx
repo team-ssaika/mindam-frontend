@@ -19,7 +19,6 @@ import {
 } from '../components/AuthPrimitives';
 
 const INITIAL_TERMS_STATE: TermsAgreementState = {
-  service: false,
   location: false,
   privacy: false,
 };
@@ -80,7 +79,6 @@ export function LoginScreen() {
     const nextValue = !Object.values(termsState).every(Boolean);
     setTermsErrorMessage(null);
     setTermsState({
-      service: nextValue,
       location: nextValue,
       privacy: nextValue,
     });

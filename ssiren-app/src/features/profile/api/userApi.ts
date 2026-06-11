@@ -15,6 +15,7 @@ export type UserMe = {
   email: string;
   nickname: string;
   role: 'CITIZEN' | 'OFFICER' | 'ADMIN' | string;
+  roleSelected: boolean;
   isActive: boolean;
   isAlarmEnabled: boolean;
   createdAt: string;
@@ -27,6 +28,11 @@ export type UserUpdateRequest = {
   isAlarmEnabled?: boolean;
 };
 
+export type UserRoleUpdateRequest = {
+  role: 'CITIZEN' | 'OFFICER';
+  departmentId?: number;
+};
+
 export async function fetchMyProfile() {
   const response = await apiClient.get<ApiResponse<UserMe>>('/api/v1/users/me');
   return response.data.data;
@@ -34,6 +40,11 @@ export async function fetchMyProfile() {
 
 export async function updateMyProfile(body: UserUpdateRequest) {
   const response = await apiClient.patch<ApiResponse<UserMe>>('/api/v1/users/me', body);
+  return response.data.data;
+}
+
+export async function updateUserRole(userId: number, body: UserRoleUpdateRequest) {
+  const response = await apiClient.patch<ApiResponse<UserMe>>(`/api/v1/users/${userId}/role`, body);
   return response.data.data;
 }
 
