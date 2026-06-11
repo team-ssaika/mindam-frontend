@@ -27,3 +27,8 @@ export async function updateMyProfile(body: UserUpdateRequest) {
   return response.data.data;
 }
 
+export async function deactivateMyAccount() {
+  const response = await apiClient.delete<ApiResponse<UserMe>>('/api/v1/users/me');
+  return response.data.data;
+}
+
