@@ -10,6 +10,9 @@ import {
   AuthScreen,
   DevButton,
 } from '../components/AuthPrimitives';
+import { loginByTestEmail } from '../services/authService';
+
+const DEV_OFFICER_EMAIL = 'seoha.officer@ssiren.kr';
 
 const DEV_PROFILE = {
   name: '홍길동',
@@ -38,11 +41,21 @@ export function AdminInfoScreen() {
     goHome();
   };
 
-  const handleDev = () => {
+  const handleDev = async () => {
     setName(DEV_PROFILE.name);
     setOrganization(DEV_PROFILE.organization);
     setDepartment(DEV_PROFILE.department);
-    goHome();
+
+    try {
+      await loginByTestEmail(DEV_OFFICER_EMAIL);
+      goHome();
+    } catch (error) {
+      console.log('[Auth] dev officer login failed', error);
+      Alert.alert(
+        '개발 로그인 실패',
+        '백엔드를 재시작한 뒤 다시 시도해 주세요. (테스트 계정: seoha.officer@ssiren.kr)'
+      );
+    }
   };
 
   return (

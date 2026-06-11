@@ -85,6 +85,20 @@ function registerPushTokenInBackground(logPrefix: string) {
   });
 }
 
+export async function loginByTestEmail(email: string) {
+  await clearStoredAuthSession();
+
+  const response = await apiClient.post<ApiResponse<BackendTokenResponse>>(
+    '/api/v1/test/auth/login',
+    { email }
+  );
+
+  const tokens = response.data.data;
+  await persistBackendTokens(tokens);
+  registerPushTokenInBackground('registration');
+  return tokens;
+}
+
 export async function restoreAuthSession() {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
   setApiAccessToken(accessToken);

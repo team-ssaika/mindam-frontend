@@ -190,6 +190,21 @@ function logApiResponse(response: { config: InternalAxiosRequestConfig; status: 
   console.log(`[API] ← ${response.status} ${method} ${formatApiUrl(response.config)}`, response.data);
 }
 
+type ApiErrorBody = {
+  code?: string;
+  message?: string;
+};
+
+function isStaleUserSessionError(error: AxiosError) {
+  const body = error.response?.data as ApiErrorBody | undefined;
+  return error.response?.status === 404 && body?.code === 'USER_NOT_FOUND';
+}
+
+async function handleStaleUserSession() {
+  console.log('[Auth] stale session detected (USER_NOT_FOUND), clearing tokens');
+  await clearApiAuthTokens();
+}
+
 function logApiError(error: AxiosError) {
   if (!__DEV__) {
     return;
@@ -228,6 +243,12 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+    if (isStaleUserSessionError(error)) {
+      await handleStaleUserSession();
+      logApiError(error);
+      return Promise.reject(error);
+    }
 
     if (
       error.response?.status !== 401 ||

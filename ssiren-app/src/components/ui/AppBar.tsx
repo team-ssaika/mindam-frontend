@@ -12,6 +12,7 @@ type AppBarProps = {
   onBack?: () => void;
   right?: ReactNode;
   border?: boolean;
+  backgroundColor?: string;
 };
 
 function Logo() {
@@ -32,12 +33,13 @@ export default function AppBar({
   onBack,
   right,
   border = true,
+  backgroundColor = colors.canvas,
 }: AppBarProps) {
   const shouldCenter = centerTitle ?? Boolean(title);
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
-      <View style={[styles.bar, border && styles.border]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor }]}>
+      <View style={[styles.bar, { backgroundColor }, border && styles.border]}>
         <View style={styles.side}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={8} accessibilityRole="button">
@@ -65,16 +67,13 @@ export default function AppBar({
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    backgroundColor: colors.canvas,
-  },
+  safe: {},
   bar: {
     height: 52,
     paddingHorizontal: layout.screenPadding,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.canvas,
   },
   border: {
     borderBottomWidth: 1,
