@@ -1,8 +1,9 @@
-import { Polygon } from 'react-native-maps';
+import { Circle } from 'react-native-maps';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 import {
+  denseAreaCenter,
   denseAreaKey,
-  denseAreaPolygonCoordinates,
+  denseAreaRadiusMeters,
   getDenseAreaColors,
   getMaxDenseAreaCount,
 } from '../utils/officerDenseArea';
@@ -19,9 +20,10 @@ export function OfficerDenseAreaOverlay({ denseAreas }: OfficerDenseAreaOverlayP
       {denseAreas.map((area, index) => {
         const { fill, stroke } = getDenseAreaColors(area.issueGroupCount, maxCount);
         return (
-          <Polygon
+          <Circle
             key={denseAreaKey(area, index)}
-            coordinates={denseAreaPolygonCoordinates(area)}
+            center={denseAreaCenter(area)}
+            radius={denseAreaRadiusMeters(area)}
             fillColor={fill}
             strokeColor={stroke}
             strokeWidth={1.5}

@@ -180,6 +180,16 @@ export function OfficerDashboardScreen() {
     [sortedCategories]
   );
 
+  const denseAreaSectionRight = useMemo(() => {
+    if (!userLocation) {
+      return '이슈그룹 기준';
+    }
+    if (isLoadingDenseAreas) {
+      return '불러오는 중';
+    }
+    return `반경 5km · 총 ${denseAreas.length}곳`;
+  }, [denseAreas.length, isLoadingDenseAreas, userLocation]);
+
   return (
     <View style={styles.flex}>
       <AppBar
@@ -285,23 +295,21 @@ export function OfficerDashboardScreen() {
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <SectionLabel title="주변 밀집 구역" right="이슈그룹 기준" />
+              <SectionLabel title="주변 밀집 구역" right={denseAreaSectionRight} />
             </View>
             {!userLocation ? (
               <AppText style={styles.emptyCategoryText}>
                 현재 위치 권한이 필요합니다. 위치를 허용하면 주변 밀집 구역을 볼 수 있어요.
               </AppText>
             ) : (
-              <View style={styles.denseListWrap}>
-                <OfficerDenseAreaList
-                  denseAreas={denseAreas.slice(0, 5)}
-                  isLoading={isLoadingDenseAreas}
-                  formatDistance={formatDistance}
-                  getDistanceMeters={getDenseAreaDistance}
-                  onPressArea={() => router.push('/(officer)')}
-                  emptyText="반경 5km 안에 밀집 구역이 없습니다."
-                />
-              </View>
+              <OfficerDenseAreaList
+                denseAreas={denseAreas.slice(0, 5)}
+                isLoading={isLoadingDenseAreas}
+                userLocation={userLocation}
+                formatDistance={formatDistance}
+                getDistanceMeters={getDenseAreaDistance}
+                emptyText="반경 5km 안에 밀집 구역이 없습니다."
+              />
             )}
           </View>
 
@@ -440,7 +448,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  denseListWrap: { paddingHorizontal: layout.screenPadding },
   emptyCategoryBox: {
     alignItems: 'center',
     paddingVertical: 28,

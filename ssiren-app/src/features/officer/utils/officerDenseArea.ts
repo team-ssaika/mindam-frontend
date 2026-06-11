@@ -31,14 +31,19 @@ export function resolveDenseAreaRadius(region: Region, userLocation: LatLng | nu
   return regionRadiusMeters(region);
 }
 
-export function denseAreaPolygonCoordinates(item: AdminDashboardDenseAreaItem) {
-  const { bounds } = item;
-  return [
-    { latitude: bounds.swLat, longitude: bounds.swLng },
-    { latitude: bounds.swLat, longitude: bounds.neLng },
-    { latitude: bounds.neLat, longitude: bounds.neLng },
-    { latitude: bounds.neLat, longitude: bounds.swLng },
-  ];
+export function denseAreaCenter(item: AdminDashboardDenseAreaItem): LatLng {
+  return {
+    latitude: item.centerLatitude,
+    longitude: item.centerLongitude,
+  };
+}
+
+export function denseAreaRadiusMeters(item: AdminDashboardDenseAreaItem) {
+  const { bounds, centerLatitude } = item;
+  const latMeters = (bounds.neLat - bounds.swLat) * 111_320;
+  const lngMeters =
+    (bounds.neLng - bounds.swLng) * 111_320 * Math.cos((centerLatitude * Math.PI) / 180);
+  return Math.max(latMeters, lngMeters) / 2;
 }
 
 export function getDenseAreaColors(issueGroupCount: number, maxCount: number) {
@@ -58,4 +63,92 @@ export function getMaxDenseAreaCount(areas: AdminDashboardDenseAreaItem[]) {
 
 export function denseAreaKey(area: AdminDashboardDenseAreaItem, index: number) {
   return `${area.centerLatitude}-${area.centerLongitude}-${area.issueGroupCount}-${index}`;
+}
+
+export function resolveDenseAreaViewRadiusMeters(mapSize: number) {
+  return Math.round(Math.max(200, Math.min(280, mapSize * 0.72)));
+}
+
+export function denseAreaMiniMapRegion(
+  area: AdminDashboardDenseAreaItem,
+  viewRadiusMeters = 420
+): Region {
+  const center = denseAreaCenter(area);
+  const spanMeters = viewRadiusMeters * 2;
+  const latitudeDelta = spanMeters / 111_320;
+  const longitudeDelta =
+    spanMeters / (111_320 * Math.cos((center.latitude * Math.PI) / 180));
+
+  return {
+    latitude: center.latitude,
+    longitude: center.longitude,
+    latitudeDelta,
+    longitudeDelta,
+  };
+}
+
+export type DenseAreaThumbnailPoint = { x: number; y: number };
+
+export type DenseAreaIssueGroupMarker = {
+  id: number;
+  latitude: number;
+  longitude: number;
+  reportCount: number;
+};
+
+export function isIssueGroupInDenseArea(
+  area: AdminDashboardDenseAreaItem,
+  latitude: number,
+  longitude: number
+) {
+  const { bounds } = area;
+  return (
+    latitude >= bounds.swLat &&
+    latitude <= bounds.neLat &&
+    longitude >= bounds.swLng &&
+    longitude <= bounds.neLng
+  );
+}
+
+export function createDenseAreaProjector(
+  area: AdminDashboardDenseAreaItem,
+  size: number,
+  padding = 10
+) {
+  const viewRadiusMeters = resolveDenseAreaViewRadiusMeters(size);
+  const spanMeters = viewRadiusMeters * 2;
+  const latSpan = spanMeters / 111_320;
+  const lngSpan =
+    spanMeters / (111_320 * Math.cos((area.centerLatitude * Math.PI) / 180));
+  const minLat = area.centerLatitude - latSpan / 2;
+  const maxLat = area.centerLatitude + latSpan / 2;
+  const minLng = area.centerLongitude - lngSpan / 2;
+  const maxLng = area.centerLongitude + lngSpan / 2;
+  const inner = size - padding * 2;
+
+  const project = (latitude: number, longitude: number): DenseAreaThumbnailPoint => ({
+    x: padding + ((longitude - minLng) / lngSpan) * inner,
+    y: padding + (1 - (latitude - minLat) / latSpan) * inner,
+  });
+
+  return { project };
+}
+
+export function denseAreaThumbnailProjection(
+  area: AdminDashboardDenseAreaItem,
+  userLocation: LatLng | null | undefined,
+  size: number,
+  padding = 10
+) {
+  const { project } = createDenseAreaProjector(area, size, padding);
+  const center = project(area.centerLatitude, area.centerLongitude);
+  const latDelta = denseAreaRadiusMeters(area) / 111_320;
+  const north = project(area.centerLatitude + latDelta, area.centerLongitude);
+  const pixelRadius = Math.hypot(north.x - center.x, north.y - center.y);
+
+  return {
+    circle: { cx: center.x, cy: center.y, r: pixelRadius },
+    user: userLocation ? project(userLocation.latitude, userLocation.longitude) : null,
+    project,
+  };
 }
