@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { colors } from '../../theme';
+import { colors, fonts } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
 
@@ -9,8 +9,32 @@ type ChatBubbleProps = {
   bot?: boolean;
 };
 
+function renderBoldMarkdown(text: string, color: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, index) => {
+    const isBold = part.startsWith('**') && part.endsWith('**') && part.length > 4;
+    const content = isBold ? part.slice(2, -2) : part;
+
+    return (
+      <AppText
+        key={`${index}-${content}`}
+        style={[
+          styles.text,
+          { color },
+          isBold && styles.boldText,
+        ]}
+      >
+        {content}
+      </AppText>
+    );
+  });
+}
+
 /** Chat message bubble with bot avatar; user bubbles align right. */
 export default function ChatBubble({ children, bot = false }: ChatBubbleProps) {
+  const textColor = bot ? colors.body : colors.white;
+
   return (
     <View style={[styles.row, bot ? styles.rowBot : styles.rowUser]}>
       {bot ? (
@@ -25,9 +49,9 @@ export default function ChatBubble({ children, bot = false }: ChatBubbleProps) {
         ]}
       >
         <AppText
-          style={[styles.text, { color: bot ? colors.body : colors.white }]}
+          style={[styles.text, { color: textColor }]}
         >
-          {children}
+          {renderBoldMarkdown(children, textColor)}
         </AppText>
       </View>
     </View>
@@ -75,5 +99,8 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 14.5,
     lineHeight: 22,
+  },
+  boldText: {
+    fontFamily: fonts.bold,
   },
 });
