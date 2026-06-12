@@ -259,7 +259,7 @@ export function MyReportDetailScreen() {
                 <AppText style={[styles.cardLabel, styles.inlineLabel]}>담당 기관</AppText>
               </View>
               <AppText style={styles.agencyName}>
-                {detail.department.agencyName} · {detail.agencyType.name}
+                {detail.department.agencyTypeName} · {detail.department.name}
               </AppText>
               <AppText style={styles.locationSecondary}>{detail.department.name}</AppText>
             </Card>

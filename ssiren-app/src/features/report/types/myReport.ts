@@ -81,9 +81,9 @@ export type MyReportItem = {
   };
   department: {
     id: number;
-    agencyName: string;
     name: string;
-    agencyId: number;
+    agencyTypeId: number;
+    agencyTypeName: string;
   };
 };
 
