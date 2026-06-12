@@ -12,12 +12,17 @@ import { formatOfficerDepartments } from '../utils/officerDepartmentDisplay';
 const MENU_ITEMS = [
   { icon: 'gear' as const, label: '설정', route: '/(officer)/config' as const },
   { icon: 'doc' as const, label: '처리 이력' },
+  {
+    icon: 'layers' as const,
+    label: '제보 이관',
+    route: '/(officer)/transfer-requests' as const,
+    officerOnly: true,
+  },
   { icon: 'headset' as const, label: '내부 문의' },
   { icon: 'info' as const, label: '담당 구역 설정' },
 ];
 
-function getProfileFallbackName(role: string | null) {
-  if (role === 'ADMIN') return '관리자 님';
+function getProfileFallbackName(_role: string | null) {
   return '담당자 님';
 }
 
@@ -127,7 +132,7 @@ export function OfficerProfileScreen() {
 
         <View style={styles.section}>
           <View style={styles.menuList}>
-            {MENU_ITEMS.map((item, index) => (
+            {MENU_ITEMS.filter((item) => !('officerOnly' in item) || role === 'OFFICER').map((item, index) => (
               <ListRow
                 key={item.label}
                 icon={item.icon}
