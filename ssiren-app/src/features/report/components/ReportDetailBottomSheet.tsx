@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
 import { fonts, fontSize } from '../../../theme';
+import { submitReportReaction } from '../api/reportApi';
 import type { ReportDetail } from '../types/reportDetail';
 
 const SKY = '#75C7F4';
@@ -77,12 +78,14 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
   const requestClose = useBottomSheetClose();
   const [isPressed, setIsPressed] = useState(false);
   const [discomfortCount, setDiscomfortCount] = useState(report.yesCount);
+  const [isSubmittingReaction, setIsSubmittingReaction] = useState(false);
   const activeStatusIndex = getActiveStatusIndex(report.status);
   const timeline = buildTimeline(report.organization);
 
   useEffect(() => {
     setIsPressed(false);
     setDiscomfortCount(report.yesCount);
+    setIsSubmittingReaction(false);
   }, [report.id, report.yesCount]);
 
   const handleClose = () => {
@@ -90,12 +93,38 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
     requestClose();
   };
 
-  const handleDiscomfortPress = () => {
-    setIsPressed((prev) => {
-      setDiscomfortCount((count) => Math.max(0, count + (prev ? -1 : 1)));
-      return !prev;
-    });
-    console.log('[ReportDetail] discomfort press', report.id);
+  const handleDiscomfortPress = async () => {
+    if (isSubmittingReaction) {
+      return;
+    }
+
+    const reportId = Number(report.id);
+    if (!Number.isFinite(reportId)) {
+      Alert.alert('처리할 수 없어요', '제보 ID를 확인하지 못했습니다.');
+      return;
+    }
+
+    const previousPressed = isPressed;
+    const previousCount = discomfortCount;
+    const nextPressed = !previousPressed;
+    const reactionType = nextPressed ? 'YES' : 'UNKNOWN';
+
+    setIsPressed(nextPressed);
+    setDiscomfortCount((count) => Math.max(0, count + (nextPressed ? 1 : -1)));
+    setIsSubmittingReaction(true);
+
+    try {
+      const result = await submitReportReaction(reportId, reactionType);
+      setIsPressed(result.reactionLog.reactionType === 'YES');
+      setDiscomfortCount(result.issueGroup.yesCount ?? previousCount);
+    } catch (error) {
+      console.log('[ReportDetail] reaction submit failed', error);
+      setIsPressed(previousPressed);
+      setDiscomfortCount(previousCount);
+      Alert.alert('반영하지 못했어요', '잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSubmittingReaction(false);
+    }
   };
 
   return (
@@ -147,9 +176,11 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
       <Pressable
         style={({ pressed }) => [
           styles.discomfortButton,
+          isSubmittingReaction ? styles.discomfortButtonDisabled : null,
           pressed || isPressed ? styles.discomfortButtonPressed : null,
         ]}
         onPress={handleDiscomfortPress}
+        disabled={isSubmittingReaction}
         accessibilityRole="button"
         accessibilityLabel="나도 불편해요"
       >
@@ -246,6 +277,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#FFFFFF',
+    transform: [{ translateY: 4 }],
   },
   riskText: {
     fontFamily: fonts.bold,
@@ -258,6 +290,7 @@ const styles = StyleSheet.create({
     height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    transform: [{ translateY: 4 }],
   },
   categoryText: {
     marginTop: 22,
@@ -343,6 +376,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 7,
     elevation: 2,
+  },
+  discomfortButtonDisabled: {
+    opacity: 0.72,
   },
   discomfortText: {
     fontFamily: fonts.bold,

@@ -13,6 +13,21 @@ import type {
   ReportImageFile,
 } from '../types/reportSubmission';
 
+export type ReportReactionType = 'YES' | 'NO' | 'UNKNOWN';
+
+export type ReportReactionResponse = {
+  reactionLog: {
+    id: number;
+    reactionType: ReportReactionType;
+    createdAt: string;
+    updatedAt: string;
+    reportId: number;
+    userId: number;
+  };
+  report: MyReportItem['report'];
+  issueGroup: MyReportItem['issueGroup'];
+};
+
 function inferImageType(uri: string, fallback?: string | null) {
   if (fallback) {
     return fallback;
@@ -96,6 +111,15 @@ export async function updateMyReport(reportId: number, body: MyReportUpdateReque
 export async function deleteMyReport(reportId: number) {
   const response = await apiClient.delete<ApiResponse<MyReportDeleteResponse>>(
     `/api/v1/reports/me/${reportId}`
+  );
+
+  return response.data.data;
+}
+
+export async function submitReportReaction(reportId: number, reactionType: ReportReactionType) {
+  const response = await apiClient.post<ApiResponse<ReportReactionResponse>>(
+    `/api/v1/reports/${reportId}/reactions`,
+    { reactionType }
   );
 
   return response.data.data;
