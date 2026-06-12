@@ -40,7 +40,7 @@ type FunnelItem = {
 function buildFunnelItems(stats: AdminDashboardStatistics): FunnelItem[] {
   return [
     { label: '전체', count: stats.totalReportCount, tone: 'all' },
-    { label: '처리 전·중', count: stats.processingReportCount, tone: 'prog' },
+    { label: '처리 중', count: stats.processingReportCount, tone: 'prog' },
     { label: '완료', count: stats.completedReportCount, tone: 'done' },
     { label: '지연', count: stats.delayedReportCount, tone: 'wait' },
   ];
@@ -171,7 +171,7 @@ export function OfficerDashboardScreen() {
   const ctaTitle = statistics
     ? statistics.delayedReportCount > 0
       ? `지연 제보 ${statistics.delayedReportCount}건`
-      : `처리 전·중 ${statistics.processingReportCount}건`
+      : `처리 중 ${statistics.processingReportCount}건`
     : '';
 
   const sortedCategories = useMemo(() => sortCategoriesByCount(categories), [categories]);
@@ -240,10 +240,11 @@ export function OfficerDashboardScreen() {
           <View style={styles.statusSection}>
             <AppText style={styles.statusSectionTitle}>처리 현황</AppText>
             <View style={styles.statusGrid}>
-              {funnelItems.map((item) => {
+              {funnelItems.map((item, index) => {
                 const color = item.tone === 'all' ? colors.ink : statusColors[item.tone].dot;
+                const isLast = index === funnelItems.length - 1;
                 return (
-                  <View key={item.label} style={styles.statusCard}>
+                  <View key={item.label} style={[styles.statusCard, !isLast && styles.statusCardDivider]}>
                     <AppText style={[styles.statusCount, { color }]}>{item.count}</AppText>
                     <View style={styles.statusLabelRow}>
                       <View style={[styles.statusDot, { backgroundColor: color }]} />
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPadding,
     paddingTop: 4,
     paddingBottom: 22,
-    gap: 16,
+    gap: 12,
   },
   statusSectionTitle: {
     fontFamily: fonts.semibold,
@@ -441,41 +442,52 @@ const styles = StyleSheet.create({
   },
   statusGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+    backgroundColor: colors.canvas,
+    overflow: 'hidden',
   },
   statusCard: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 2,
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 6,
+    gap: 8,
+  },
+  statusCardDivider: {
+    borderRightWidth: 1,
+    borderRightColor: colors.hairline,
   },
   statusLabelRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    marginTop: 12,
-    minHeight: 40,
+    gap: 4,
     paddingHorizontal: 2,
   },
   statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    marginTop: 5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    flexShrink: 0,
   },
   statusLabel: {
     flexShrink: 1,
     fontFamily: fonts.semibold,
-    fontSize: fontSize.base,
-    color: colors.ink,
+    fontSize: fontSize.sm,
+    color: colors.body,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   statusCount: {
     fontFamily: fonts.bold,
     fontSize: fontSize['3xl'],
     letterSpacing: -0.5,
     textAlign: 'center',
+    lineHeight: 30,
   },
 
   emptyCategoryBox: {
