@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fonts, radius, shadow } from '../../../theme';
+import { colors, fonts, radius, shadow, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { fetchAdminIssues } from '../api/adminIssueApi';
 import type { AdminIssueItem, AdminIssueSortType } from '../types/adminIssue';
@@ -24,6 +24,10 @@ import {
 
 type ViewMode = 'list' | 'grid';
 type OpenDropdown = 'sort' | 'status' | null;
+
+/** 탭바 SVG 아이콘과 동일한 라인 두께·톤 */
+const CONTROL_ICON_STROKE = 2.25;
+const CONTROL_ICON_INACTIVE = '#8D8D8D';
 
 const SORT_OPTIONS: { value: AdminIssueSortType; label: string }[] = [
   { value: 'LATEST', label: '최신순' },
@@ -116,11 +120,11 @@ export function OfficerInboxScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar title="제보함" logo={false} right={<Icon name="bell" size={20} color={colors.body} />} />
+      <AppBar title="제보함" logo={false} right={<Icon name="bell" size={24} color={colors.brand} strokeWidth={2.2} />} />
 
       <View style={[styles.controls, openDropdown ? styles.controlsRaised : null]}>
         <View style={styles.searchBar}>
-          <Icon name="search" size={19} color={colors.muted} />
+          <Icon name="search" size={20} color={CONTROL_ICON_INACTIVE} strokeWidth={CONTROL_ICON_STROKE} />
           <TextInput
             value={searchInput}
             onChangeText={setSearchInput}
@@ -135,7 +139,7 @@ export function OfficerInboxScreen() {
           />
           {searchInput.length > 0 ? (
             <Pressable onPress={() => setSearchInput('')} hitSlop={8} accessibilityLabel="검색어 지우기">
-              <Icon name="x" size={16} color={colors.faint} />
+              <Icon name="x" size={17} color={CONTROL_ICON_INACTIVE} strokeWidth={CONTROL_ICON_STROKE} />
             </Pressable>
           ) : null}
         </View>
@@ -277,7 +281,9 @@ function InlineDropdown<T extends string>({
         <AppText style={[styles.menuOptionLabel, selected && styles.menuOptionLabelSelected]}>
           {option.label}
         </AppText>
-        {selected ? <Icon name="check" size={14} color={colors.brand} /> : null}
+        {selected ? (
+          <Icon name="check" size={15} color={colors.brandActive} strokeWidth={2.4} />
+        ) : null}
       </Pressable>
     );
   });
@@ -292,11 +298,21 @@ function InlineDropdown<T extends string>({
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
       >
-        <Icon name={icon} size={15} color={open ? colors.brand : colors.body} />
+        <Icon
+          name={icon}
+          size={16}
+          color={open ? colors.white : CONTROL_ICON_INACTIVE}
+          strokeWidth={CONTROL_ICON_STROKE}
+        />
         <AppText style={[styles.dropdownLabel, open && styles.dropdownLabelOpen]} numberOfLines={1}>
           {label}
         </AppText>
-        <Icon name="chevD" size={14} color={open ? colors.brand : colors.faint} />
+        <Icon
+          name="chevD"
+          size={15}
+          color={open ? colors.white : CONTROL_ICON_INACTIVE}
+          strokeWidth={CONTROL_ICON_STROKE}
+        />
       </Pressable>
 
       {open ? (
@@ -323,7 +339,12 @@ function InlineDropdown<T extends string>({
 function ViewButton({ icon, on, onPress }: { icon: 'list' | 'grid'; on: boolean; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.viewButton, on && styles.viewButtonOn]}>
-      <Icon name={icon} size={18} color={on ? colors.white : colors.faint} />
+      <Icon
+        name={icon}
+        size={19}
+        color={on ? colors.white : CONTROL_ICON_INACTIVE}
+        strokeWidth={CONTROL_ICON_STROKE}
+      />
     </Pressable>
   );
 }
@@ -399,10 +420,10 @@ function GridCard({ item, onPress }: { item: AdminIssueItem; onPress: () => void
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 14.5, color: colors.muted, textAlign: 'center', lineHeight: 21 },
+  errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
   emptyContent: { flexGrow: 1, justifyContent: 'center' },
-  emptyText: { fontSize: 14.5, color: colors.muted, textAlign: 'center' },
+  emptyText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center' },
 
   controls: {
     paddingHorizontal: 16,
@@ -435,7 +456,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontSize: fontSize.mdLg,
     color: colors.ink,
     paddingVertical: 0,
   },
@@ -465,11 +486,11 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
   },
   dropdownOpen: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brandSoft,
+    borderColor: colors.brandActive,
+    backgroundColor: colors.brand,
   },
-  dropdownLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: 13, color: colors.ink },
-  dropdownLabelOpen: { color: colors.brand },
+  dropdownLabel: { flex: 1, fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.body },
+  dropdownLabelOpen: { color: colors.white },
   dropdownMenu: {
     position: 'absolute',
     top: 38,
@@ -512,7 +533,7 @@ const styles = StyleSheet.create({
   },
   menuOptionLabel: {
     fontFamily: fonts.medium,
-    fontSize: 13.5,
+    fontSize: fontSize.md,
     color: colors.body,
   },
   menuOptionLabelSelected: {
@@ -528,22 +549,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   viewButton: { width: 38, height: 36, alignItems: 'center', justifyContent: 'center' },
-  viewButtonOn: { backgroundColor: colors.ink },
+  viewButtonOn: { backgroundColor: colors.brandActive },
 
   listContent: { paddingHorizontal: 16, paddingTop: 12, gap: 10 },
   listCard: { gap: 10, padding: 14 },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  listTitle: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink, lineHeight: 21 },
+  listTitle: { fontFamily: fonts.semibold, fontSize: fontSize.base, color: colors.ink, lineHeight: 23 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  locText: { flex: 1, fontSize: 13.5, color: colors.muted },
+  locText: { flex: 1, fontSize: fontSize.md, color: colors.muted },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.faint },
-  metaDot: { marginHorizontal: 6, fontSize: 12.5, color: colors.faint },
+  metaText: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.faint },
+  metaDot: { marginHorizontal: 6, fontSize: fontSize.sm, color: colors.faint },
 
   gridContent: { paddingHorizontal: 16, paddingTop: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   gridItem: { width: '47.5%' },
   gridCard: { overflow: 'hidden' },
   gridBody: { padding: 12, gap: 8 },
-  gridTitle: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.ink, lineHeight: 18, minHeight: 36 },
-  gridMeta: { fontFamily: fonts.medium, fontSize: 12, color: colors.faint },
+  gridTitle: { fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.ink, lineHeight: 22, minHeight: 36 },
+  gridMeta: { fontFamily: fonts.medium, fontSize: fontSize.xs, color: colors.faint },
 });

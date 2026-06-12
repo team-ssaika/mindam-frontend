@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -11,7 +12,7 @@ import {
 } from 'react-native';
 import { AppBar, AppText, Button, Icon, SectionLabel } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fonts, layout, radius, statusColors, type StatusKey } from '../../../theme';
+import { colors, fontSize, fonts, layout, radius, statusColors, type StatusKey } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { DashboardCategoryStatRow } from '../components/DashboardCategoryStatRow';
 import { OfficerDenseAreaList } from '../components/OfficerDenseAreaList';
@@ -39,7 +40,7 @@ type FunnelItem = {
 function buildFunnelItems(stats: AdminDashboardStatistics): FunnelItem[] {
   return [
     { label: '전체', count: stats.totalReportCount, tone: 'all' },
-    { label: '처리 전·중', count: stats.processingReportCount, tone: 'prog' },
+    { label: '처리 중', count: stats.processingReportCount, tone: 'prog' },
     { label: '완료', count: stats.completedReportCount, tone: 'done' },
     { label: '지연', count: stats.delayedReportCount, tone: 'wait' },
   ];
@@ -170,7 +171,7 @@ export function OfficerDashboardScreen() {
   const ctaTitle = statistics
     ? statistics.delayedReportCount > 0
       ? `지연 제보 ${statistics.delayedReportCount}건`
-      : `처리 전·중 ${statistics.processingReportCount}건`
+      : `처리 중 ${statistics.processingReportCount}건`
     : '';
 
   const sortedCategories = useMemo(() => sortCategoriesByCount(categories), [categories]);
@@ -200,7 +201,7 @@ export function OfficerDashboardScreen() {
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.ink} />
             ) : (
-              <Icon name="refresh" size={20} color={colors.body} />
+              <Icon name="refresh" size={22} color={colors.brand} strokeWidth={2.2} />
             )}
           </Pressable>
         }
@@ -224,25 +225,26 @@ export function OfficerDashboardScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.heroSection}>
-            <AppText style={styles.heroEyebrow}>내 관할 · {formatTodayLabel()}</AppText>
             <View style={styles.heroHeadlineRow}>
-              <AppText variant="heading" color={colors.ink} style={styles.heroHeadline}>
-                오늘 신규 제보
-              </AppText>
+              <AppText style={styles.heroHeadline}>오늘 신규 제보</AppText>
               <AppText style={styles.heroCount}>{statistics.todayNewReportCount}건</AppText>
             </View>
-            <AppText style={styles.heroSubtitle}>
-              이번 달 처리 완료 {statistics.monthlyCompletedReportCount}건
-            </AppText>
+            <View style={styles.heroSubRow}>
+              <AppText style={styles.heroSubtitle}>
+                이번 달 처리 완료 {statistics.monthlyCompletedReportCount}건
+              </AppText>
+              <AppText style={styles.heroDate}>{formatTodayLabel()}</AppText>
+            </View>
           </View>
 
           <View style={styles.statusSection}>
             <AppText style={styles.statusSectionTitle}>처리 현황</AppText>
             <View style={styles.statusGrid}>
-              {funnelItems.map((item) => {
+              {funnelItems.map((item, index) => {
                 const color = item.tone === 'all' ? colors.ink : statusColors[item.tone].dot;
+                const isLast = index === funnelItems.length - 1;
                 return (
-                  <View key={item.label} style={styles.statusCard}>
+                  <View key={item.label} style={[styles.statusCard, !isLast && styles.statusCardDivider]}>
                     <AppText style={[styles.statusCount, { color }]}>{item.count}</AppText>
                     <View style={styles.statusLabelRow}>
                       <View style={[styles.statusDot, { backgroundColor: color }]} />
@@ -279,14 +281,17 @@ export function OfficerDashboardScreen() {
                   </AppText>
                 </View>
               ) : (
-                sortedCategories.map((item, index) => (
-                  <DashboardCategoryStatRow
-                    key={item.categoryId}
-                    item={item}
-                    rank={index + 1}
-                    totalCount={totalCategoryReports}
-                  />
-                ))
+                <View style={styles.categoryCard}>
+                  {sortedCategories.map((item, index) => (
+                    <DashboardCategoryStatRow
+                      key={item.categoryId}
+                      item={item}
+                      rank={index + 1}
+                      totalCount={totalCategoryReports}
+                      isLast={index === sortedCategories.length - 1}
+                    />
+                  ))}
+                </View>
               )}
             </View>
           </View>
@@ -316,7 +321,12 @@ export function OfficerDashboardScreen() {
           <View style={styles.sectionDivider} />
 
           <View style={styles.ctaSection}>
-            <View style={styles.cta}>
+            <LinearGradient
+              colors={[colors.brand, colors.brandActive]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cta}
+            >
               <View style={styles.ctaText}>
                 <AppText style={styles.ctaTitle}>{ctaTitle}</AppText>
                 <AppText style={styles.ctaSub}>제보함에서 오래된 순으로 처리해 보세요</AppText>
@@ -325,7 +335,7 @@ export function OfficerDashboardScreen() {
                 <AppText style={styles.ctaButtonText}>처리하기</AppText>
                 <Icon name="chevR" size={15} color={colors.ink} />
               </Pressable>
-            </View>
+            </LinearGradient>
           </View>
         </ScrollView>
       ) : null}
@@ -336,7 +346,7 @@ export function OfficerDashboardScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 14.5, color: colors.muted, textAlign: 'center', lineHeight: 21 },
+  errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
   content: { paddingTop: 8 },
 
@@ -344,33 +354,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPadding,
     paddingTop: 12,
     paddingBottom: 20,
-    gap: 8,
-  },
-  heroEyebrow: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.muted,
+    gap: 10,
   },
   heroHeadlineRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   heroHeadline: {
-    flex: 1,
-    minWidth: 0,
+    fontFamily: fonts.bold,
+    fontSize: fontSize['3xl'],
+    color: colors.ink,
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
   heroCount: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: fontSize['3xl'],
     color: colors.brand,
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  heroSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   heroSubtitle: {
+    flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: colors.muted,
+  },
+  heroDate: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    color: colors.muted,
+    flexShrink: 0,
   },
 
   sectionDivider: {
@@ -391,61 +413,81 @@ const styles = StyleSheet.create({
   },
   categorySummary: {
     fontFamily: fonts.medium,
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
     color: colors.muted,
   },
   categoryRows: {
-    gap: 2,
     paddingHorizontal: layout.screenPadding,
+  },
+  categoryCard: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
   },
 
   statusSection: {
     paddingHorizontal: layout.screenPadding,
     paddingTop: 4,
     paddingBottom: 22,
-    gap: 16,
+    gap: 12,
   },
   statusSectionTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.muted,
-    letterSpacing: -0.1,
+    fontSize: fontSize.lg,
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
   statusGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+    backgroundColor: colors.canvas,
+    overflow: 'hidden',
   },
   statusCard: {
     flex: 1,
     alignItems: 'center',
-    paddingHorizontal: 2,
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 6,
+    gap: 8,
+  },
+  statusCardDivider: {
+    borderRightWidth: 1,
+    borderRightColor: colors.hairline,
   },
   statusLabelRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    marginTop: 14,
-    minHeight: 30,
+    paddingHorizontal: 2,
   },
   statusDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginTop: 4,
+    flexShrink: 0,
   },
   statusLabel: {
-    fontFamily: fonts.medium,
-    fontSize: 11.5,
+    flexShrink: 1,
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.sm,
     color: colors.body,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 18,
   },
   statusCount: {
     fontFamily: fonts.bold,
-    fontSize: 24,
+    fontSize: fontSize['3xl'],
     letterSpacing: -0.5,
     textAlign: 'center',
+    lineHeight: 30,
   },
 
   emptyCategoryBox: {
@@ -464,14 +506,14 @@ const styles = StyleSheet.create({
   },
   emptyCategoryTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 14.5,
+    fontSize: fontSize.mdLg,
     color: colors.ink,
   },
   emptyCategoryText: {
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 23,
     paddingHorizontal: layout.screenPadding,
   },
 
@@ -481,16 +523,16 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   cta: {
-    backgroundColor: colors.ink,
     borderRadius: radius.lg,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    overflow: 'hidden',
   },
   ctaText: { flex: 1 },
-  ctaTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.white },
-  ctaSub: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  ctaTitle: { fontFamily: fonts.bold, fontSize: fontSize.base, color: colors.white },
+  ctaSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -500,5 +542,5 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 14,
   },
-  ctaButtonText: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.ink },
+  ctaButtonText: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.ink },
 });

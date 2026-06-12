@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { colors, fonts } from '../../theme';
+import { colors, fontSize, fonts } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
 
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 4,
   },
   text: {
-    fontSize: 14.5,
-    lineHeight: 22,
+    fontSize: fontSize.mdLg,
+    lineHeight: 24,
   },
   boldText: {
     fontFamily: fonts.bold,

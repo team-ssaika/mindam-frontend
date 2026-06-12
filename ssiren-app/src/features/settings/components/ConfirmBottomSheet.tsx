@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import { fontSize } from '../../../theme';
 
 type ConfirmBottomSheetProps = {
   actionLabel: string;
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconMark: {
-    fontSize: 24,
+    fontSize: fontSize['3xl'],
     lineHeight: 24,
     fontWeight: '900',
     color: '#FFFFFF',
@@ -88,13 +89,13 @@ const styles = StyleSheet.create({
   },
   title: {
     marginTop: 14,
-    fontSize: 24,
+    fontSize: fontSize['3xl'],
     fontWeight: '800',
     color: '#111111',
   },
   description: {
     marginTop: 10,
-    fontSize: 15,
+    fontSize: fontSize.base,
     lineHeight: 23,
     color: '#B4B5BB',
     textAlign: 'center',

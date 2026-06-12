@@ -3,13 +3,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Icon, ListRow } from '../../../components/ui';
-import { colors, fonts, layout, statusColors } from '../../../theme';
+import { colors, fonts, layout, statusColors, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { fetchMyProfile } from '../../profile/api/userApi';
 import { officerStats } from '../mocks/officerMock';
 import { formatOfficerDepartments } from '../utils/officerDepartmentDisplay';
 
 const MENU_ITEMS = [
+  { icon: 'gear' as const, label: '설정', route: '/(officer)/config' as const },
   { icon: 'doc' as const, label: '처리 이력' },
   { icon: 'headset' as const, label: '내부 문의' },
   { icon: 'info' as const, label: '담당 구역 설정' },
@@ -132,7 +133,11 @@ export function OfficerProfileScreen() {
                 icon={item.icon}
                 label={item.label}
                 first={index === 0}
-                onPress={() => {}}
+                onPress={() => {
+                  if ('route' in item && item.route) {
+                    router.push(item.route);
+                  }
+                }}
               />
             ))}
           </View>
@@ -164,7 +169,7 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, minWidth: 0, gap: 6 },
   subtitle: {
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: colors.muted,
   },
   sectionDivider: {
@@ -188,13 +193,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     letterSpacing: -0.1,
   },
   sectionMeta: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   statRow: {
@@ -222,12 +227,12 @@ const styles = StyleSheet.create({
   },
   statCount: {
     fontFamily: fonts.bold,
-    fontSize: 26,
+    fontSize: fontSize.display,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontFamily: fonts.regular,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
 
@@ -240,7 +245,7 @@ const styles = StyleSheet.create({
   avgText: { flex: 1 },
   avgLabel: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     letterSpacing: -0.1,
   },
@@ -252,13 +257,13 @@ const styles = StyleSheet.create({
   },
   avgValue: {
     fontFamily: fonts.bold,
-    fontSize: 26,
+    fontSize: fontSize.display,
     color: colors.ink,
     letterSpacing: -0.6,
   },
   avgDelta: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: statusColors.done.fg,
   },
   avgIcon: {

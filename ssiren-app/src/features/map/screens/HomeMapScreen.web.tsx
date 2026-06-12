@@ -1,6 +1,6 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Icon } from '../../../components/ui';
-import { fonts } from '../../../theme';
+import { fonts, fontSize } from '../../../theme';
 
 const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
 const ssirenMarkerLogo = require('../../../assets/ssiren-logo.png');
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     borderColor: 'transparent',
     fontFamily: fonts.semibold,
-    fontSize: 18,
+    fontSize: fontSize.xl,
     color: TEXT,
     paddingHorizontal: 0,
     paddingVertical: 0,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontFamily: fonts.medium,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: TEXT,
   },
   cardList: {
@@ -483,8 +483,8 @@ const styles = StyleSheet.create({
   },
   cardKeyword: {
     fontFamily: fonts.bold,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fontSize.mdLg,
+    lineHeight: 22,
     color: SKY,
     marginBottom: 4,
   },
@@ -505,17 +505,17 @@ const styles = StyleSheet.create({
   },
   riskText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: DANGER,
   },
   metaDivider: {
     marginHorizontal: 12,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: '#C8C8C8',
   },
   timeText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: TEXT,
   },
 });

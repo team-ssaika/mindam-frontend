@@ -16,7 +16,7 @@ const SEOUL_CITY_HALL = {
   longitude: 126.978,
 } as const;
 
-export const USE_DEV_MOCK_LOCATION = false;
+export const USE_DEV_MOCK_LOCATION = true;
 
 export function getDefaultMapCenter(): AppLatLng {
   return USE_DEV_MOCK_LOCATION ? GANGNAM_STATION : SEOUL_CITY_HALL;

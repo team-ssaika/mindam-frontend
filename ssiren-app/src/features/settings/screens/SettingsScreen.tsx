@@ -1,9 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, ListRow } from '../../../components/ui';
-import { colors, fonts, layout } from '../../../theme';
+import { colors, fonts, layout, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -27,9 +27,7 @@ function SGroup({ title, children }: { title: string; children: ReactNode }) {
 
 export function SettingsScreen() {
   const router = useRouter();
-  const segments = useSegments();
   const { contentOffset: tabBarOffset } = useTabBarMetrics();
-  const isOfficerMode = segments[0] === '(officer)';
   const [activeSheet, setActiveSheet] = useState<SheetType>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAlarmEnabled, setIsAlarmEnabled] = useState(false);
@@ -141,10 +139,6 @@ export function SettingsScreen() {
     }
   };
 
-  const handleSwitchToCitizenMode = () => {
-    router.replace('/(tabs)');
-  };
-
   const handleSwitchToOfficerMode = () => {
     router.replace('/(officer)');
   };
@@ -179,23 +173,13 @@ export function SettingsScreen() {
         <SGroup title="기타">
           <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
           <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
-          {isOfficerMode ? (
-            <ListRow
-              icon="megaphone"
-              label="민원인 모드"
-              sub="시민 제보 화면으로 이동"
-              size="lg"
-              onPress={handleSwitchToCitizenMode}
-            />
-          ) : (
-            <ListRow
-              icon="building"
-              label="담당자 모드"
-              sub="관할 제보 처리 화면으로 이동"
-              size="lg"
-              onPress={handleSwitchToOfficerMode}
-            />
-          )}
+          <ListRow
+            icon="building"
+            label="담당자 모드"
+            sub="관할 제보 처리 화면으로 이동"
+            size="lg"
+            onPress={handleSwitchToOfficerMode}
+          />
         </SGroup>
 
         <SGroup title="계정">
@@ -244,7 +228,7 @@ const styles = StyleSheet.create({
   group: { gap: 8 },
   groupTitle: {
     fontFamily: fonts.bold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     paddingHorizontal: layout.screenPadding,
   },
@@ -254,6 +238,6 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
   },
   footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
-  footerLinks: { fontSize: 12.5, color: colors.muted, fontFamily: fonts.medium },
-  footerVersion: { fontSize: 11.5, color: colors.faint },
+  footerLinks: { fontSize: fontSize.sm, color: colors.muted, fontFamily: fonts.medium },
+  footerVersion: { fontSize: fontSize.xs, color: colors.faint },
 });

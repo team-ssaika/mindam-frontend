@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '../../../components/ui';
-import { fonts } from '../../../theme';
+import { fonts, fontSize } from '../../../theme';
 import {
   AuthButton,
   AuthHero,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: fonts.medium,
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
     color: '#8A8A8A',
   },
   form: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontFamily: fonts.medium,
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
     color: '#8A8A8A',
     textDecorationLine: 'underline',
   },

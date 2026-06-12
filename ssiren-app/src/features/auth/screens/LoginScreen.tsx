@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppText } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { colors, fonts, fontSize } from '../../../theme';
 import {
   checkUserTermsAgreement,
   clearStoredAuthSession,
@@ -183,12 +183,12 @@ const styles = StyleSheet.create({
   },
   browseText: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: '#111111',
   },
   browseAccent: {
     fontFamily: fonts.bold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: '#8B7561',
   },
 });

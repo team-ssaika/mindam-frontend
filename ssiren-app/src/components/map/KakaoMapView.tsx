@@ -370,12 +370,12 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
           }
           .marker-officer {
             min-width: 32px; min-height: 32px; padding: 0 8px; border-radius: 999px;
-            background: #6C63FF; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.28);
+            background: #7EC8F7; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.28);
             color: #fff; font: 700 13px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             display: flex; align-items: center; justify-content: center;
           }
           .marker-search {
-            transform: translateY(-8px); color: #6C63FF;
+            transform: translateY(-8px); color: #7EC8F7;
             filter: drop-shadow(0 2px 5px rgba(0,0,0,.25));
             font-size: 34px; line-height: 34px;
           }
@@ -459,7 +459,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
 
             function parseColor(value, fallbackOpacity) {
               if (!value) {
-                return { color: '#6C63FF', opacity: fallbackOpacity };
+                return { color: '#7EC8F7', opacity: fallbackOpacity };
               }
               var rgba = String(value).match(/^rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)(?:,\\s*([\\d.]+))?\\)$/i);
               if (!rgba) {

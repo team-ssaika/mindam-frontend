@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../../../components/ui';
-import { colors, fonts, shadow } from '../../../theme';
+import { colors, fonts, shadow, fontSize } from '../../../theme';
 
 type OfficerDenseAreaLegendProps = {
   areaCount?: number;
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fonts.semibold,
-    fontSize: 12,
+    fontSize: fontSize.xs,
     color: colors.body,
   },
 });

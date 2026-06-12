@@ -1,6 +1,6 @@
 /**
  * Design system entry point.
- * Import tokens from here: `import { colors, radius, typography } from '../theme';`
+ * Import tokens from here: `import { colors, fontSize, radius, typography } from '../theme';`
  */
 export * from './tokens';
 export { fontAssets } from './fonts';

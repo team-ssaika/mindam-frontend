@@ -1,48 +1,47 @@
 /**
- * Design tokens — tone "A · 소프트 퍼플".
- * Lavender-tinted neutrals + #6C63FF brand family.
+ * Design tokens — tone "B · 스카이 블루" (민원인 홈 기준).
  */
 
 export const colors = {
-  // text (purple-gray undertone)
-  ink: '#1C1B26',
-  body: '#3F3D50',
-  muted: '#7B7894',
-  faint: '#B3B0C4',
-  // surfaces (lavender tint)
+  // text
+  ink: '#050505',
+  body: '#2F2F2F',
+  muted: '#777777',
+  faint: '#B3B3B3',
+  // surfaces
   canvas: '#ffffff',
-  soft: '#F9F8FD',
-  soft2: '#EEECF8',
-  hairline: '#E6E4F2',
-  // brand (purple)
-  brand: '#6C63FF',
-  brandActive: '#5A52E8',
-  brandSoft: '#EEEAFF',
-  accent: '#6C63FF',
-  accentSoft: '#E8E4FF',
-  accentActive: '#5A52E8',
+  soft: '#FAFAFA',
+  soft2: '#F5F5F5',
+  hairline: '#F1F1F1',
+  // brand (sky)
+  brand: '#7EC8F7',
+  brandActive: '#55B5F0',
+  brandSoft: 'rgba(126, 200, 247, 0.22)',
+  accent: '#7EC8F7',
+  accentSoft: 'rgba(126, 200, 247, 0.22)',
+  accentActive: '#55B5F0',
   // buttons
-  buttonDisabled: '#DDD9F0',
+  buttonDisabled: '#D4D4D4',
   buttonDisabledText: '#FFFFFF',
-  // supporting palette (harmonized with brand)
-  coral: '#6C63FF',
+  // supporting palette
+  coral: '#7EC8F7',
   forest: '#3D8B62',
-  cream: '#F5F2FF',
-  peach: '#A89FFF',
+  cream: '#F0F9FF',
+  peach: '#55B5F0',
   mint: '#D8EDE4',
-  yellow: '#D4CCFF',
-  mustard: '#8B83F0',
+  yellow: '#B8E1F6',
+  mustard: '#7EC8F7',
   // misc
   white: '#ffffff',
   black: '#000000',
-  danger: '#E45B5B',
+  danger: '#D95E5E',
 } as const;
 
 export type ColorToken = keyof typeof colors;
 
 /** Report status palette — gray wait, amber prog, soft green done. */
 export const statusColors = {
-  wait: { bg: '#DDE1EF', fg: '#4A4F63', dot: '#72789A', label: '접수 대기' },
+  wait: { bg: '#E8E8E8', fg: '#4A4F63', dot: '#72789A', label: '접수 대기' },
   prog: { bg: '#FEF3C7', fg: '#92400E', dot: '#D97706', label: '처리중' },
   done: { bg: '#E6F4EC', fg: '#2F6B4A', dot: '#3D8B62', label: '처리 완료' },
 } as const;
@@ -100,28 +99,28 @@ export function fontByWeight(weight: 400 | 500 | 600 | 700): string {
 
 export const shadow = {
   card: {
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
+    shadowRadius: 8,
     elevation: 2,
   },
   sheet: {
-    shadowColor: '#3F3D50',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 18,
   },
   fab: {
-    shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
     elevation: 8,
   },
   float: {
-    shadowColor: '#3F3D50',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -129,14 +128,31 @@ export const shadow = {
   },
 } as const;
 
+/** Shared content font-size scale (+1px bump from prior defaults). */
+export const fontSize = {
+  micro: 12,
+  xs: 13,
+  sm: 13.5,
+  md: 14,
+  mdLg: 14.5,
+  base: 16,
+  lg: 17,
+  xl: 18,
+  '2xl': 20,
+  '3xl': 24,
+  display: 30,
+} as const;
+
+export type FontSizeToken = keyof typeof fontSize;
+
 export const typography = {
-  display: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 36, letterSpacing: -0.6 },
-  title: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30, letterSpacing: -0.4 },
-  heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24, letterSpacing: -0.3 },
-  section: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.2 },
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
-  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
-  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, color: colors.muted },
-  mono: { fontFamily: 'ui-monospace', fontSize: 12.5, letterSpacing: 0.2 },
+  display: { fontFamily: fonts.bold, fontSize: fontSize.display, lineHeight: 38, letterSpacing: -0.6 },
+  title: { fontFamily: fonts.bold, fontSize: fontSize['3xl'], lineHeight: 32, letterSpacing: -0.4 },
+  heading: { fontFamily: fonts.bold, fontSize: fontSize.xl, lineHeight: 26, letterSpacing: -0.3 },
+  section: { fontFamily: fonts.bold, fontSize: fontSize.lg, lineHeight: 24, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.regular, fontSize: fontSize.base, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: fontSize.base, lineHeight: 24 },
+  label: { fontFamily: fonts.semibold, fontSize: fontSize.md, lineHeight: 20 },
+  caption: { fontFamily: fonts.medium, fontSize: fontSize.xs, lineHeight: 18, color: colors.muted },
+  mono: { fontFamily: 'ui-monospace', fontSize: fontSize.sm, letterSpacing: 0.2 },
 } as const;

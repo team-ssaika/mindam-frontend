@@ -5,7 +5,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { colors, fonts, radius } from '../../theme';
+import { colors, fontSize, fonts, radius } from '../../theme';
 import AppText from './AppText';
 import Icon, { IconName } from './Icon';
 
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.bold,
-    fontSize: 17,
+    fontSize: fontSize.lg,
     letterSpacing: -0.2,
   },
   pressed: {

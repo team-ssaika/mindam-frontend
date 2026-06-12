@@ -8,7 +8,7 @@ import {
   ListRow,
   StatusBadge,
 } from '../../../components/ui';
-import { colors, fonts, layout, statusColors, StatusKey } from '../../../theme';
+import { colors, fonts, layout, statusColors, StatusKey, fontSize } from '../../../theme';
 import { fetchMyReports } from '../../report/api/reportApi';
 import type { MyReportItem } from '../../report/types/myReport';
 import {
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1, minWidth: 0, gap: 6 },
   email: {
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: colors.muted,
   },
   sectionDivider: {
@@ -264,13 +264,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     letterSpacing: -0.1,
   },
   sectionAction: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.brand,
   },
   statRow: {
@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
   },
   statCount: {
     fontFamily: fonts.bold,
-    fontSize: 26,
+    fontSize: fontSize.display,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontFamily: fonts.regular,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
 
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13.5,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   recentRow: {
@@ -325,11 +325,11 @@ const styles = StyleSheet.create({
   recentText: { flex: 1, minWidth: 0 },
   recentTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: colors.ink,
   },
   recentMeta: {
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
     color: colors.muted,
     marginTop: 3,
   },

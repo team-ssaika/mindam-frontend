@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Button, Icon } from '../../../components/ui';
-import { colors } from '../../../theme';
+import { colors, fontSize } from '../../../theme';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { fetchMyReports } from '../api/reportApi';
 import { MyReportListItem } from '../components/MyReportListItem';
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 28 },
   emptyListContent: { flexGrow: 1, justifyContent: 'center' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
+  errorText: { fontSize: fontSize.base, lineHeight: 22, color: colors.muted, textAlign: 'center' },
   retryWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },
   emptyState: { alignItems: 'center', gap: 10, paddingHorizontal: 20 },
   emptyIcon: {
@@ -140,5 +140,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  emptyDescription: { fontSize: 14.5, lineHeight: 22, color: colors.muted, textAlign: 'center' },
+  emptyDescription: { fontSize: fontSize.mdLg, lineHeight: 22, color: colors.muted, textAlign: 'center' },
 });

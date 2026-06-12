@@ -20,7 +20,7 @@ import {
   Icon,
   StatusBadge,
 } from '../../../components/ui';
-import { colors, fonts, radius } from '../../../theme';
+import { colors, fonts, radius, fontSize } from '../../../theme';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { deleteMyReport, fetchMyReportDetail } from '../api/reportApi';
 import { MyReportEditSheet } from '../components/MyReportEditSheet';
@@ -318,9 +318,9 @@ export function MyReportDetailScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
-  editAction: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.accent },
+  editAction: { fontFamily: fonts.bold, fontSize: fontSize.mdLg, color: colors.accent },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 15, lineHeight: 22, color: colors.muted, textAlign: 'center' },
+  errorText: { fontSize: fontSize.base, lineHeight: 22, color: colors.muted, textAlign: 'center' },
   retryWrap: { alignSelf: 'stretch', paddingHorizontal: 24 },
 
   content: { paddingHorizontal: 18, paddingTop: 16, gap: 12 },
@@ -330,27 +330,27 @@ const styles = StyleSheet.create({
   metaCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
   metaCol: { flex: 1, alignItems: 'center', gap: 4 },
   metaSep: { width: 1, alignSelf: 'stretch', backgroundColor: colors.hairline },
-  metaLabel: { fontSize: 12, color: colors.muted },
-  metaValue: { fontFamily: fonts.bold, fontSize: 15, color: colors.ink },
+  metaLabel: { fontSize: fontSize.xs, color: colors.muted },
+  metaValue: { fontFamily: fonts.bold, fontSize: fontSize.base, color: colors.ink },
 
-  cardLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink },
+  cardLabel: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.ink },
   cardLabelGap: { marginBottom: 6 },
   outerLabel: { marginLeft: 4, marginBottom: 8 },
   inlineLabel: { marginLeft: 6 },
   rowCenter: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  summaryText: { fontSize: 14, color: colors.body, lineHeight: 21, marginTop: 8 },
+  summaryText: { fontSize: fontSize.mdLg, color: colors.body, lineHeight: 23, marginTop: 8 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   gridItem: { width: '50%', paddingVertical: 8, paddingRight: 8, gap: 2 },
-  gridKey: { fontFamily: fonts.bold, fontSize: 11.5, color: colors.brand },
-  gridValue: { fontFamily: fonts.medium, fontSize: 14, color: colors.body, lineHeight: 19 },
+  gridKey: { fontFamily: fonts.bold, fontSize: fontSize.xs, color: colors.brand },
+  gridValue: { fontFamily: fonts.medium, fontSize: fontSize.mdLg, color: colors.body, lineHeight: 23 },
 
   imageRow: { gap: 10, paddingVertical: 2 },
   image: { width: 130, height: 130, borderRadius: radius.md, backgroundColor: colors.soft2 },
 
-  locationPrimary: { fontSize: 14, color: colors.body, fontFamily: fonts.medium },
-  locationSecondary: { fontSize: 13, color: colors.muted, marginTop: 3 },
-  agencyName: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.ink },
+  locationPrimary: { fontSize: fontSize.mdLg, color: colors.body, fontFamily: fonts.medium },
+  locationSecondary: { fontSize: fontSize.md, color: colors.muted, marginTop: 3 },
+  agencyName: { fontFamily: fonts.bold, fontSize: fontSize.mdLg, color: colors.ink },
 
   timelineItem: { flexDirection: 'row', gap: 12 },
   timelineLeft: { alignItems: 'center', width: 14 },
@@ -358,9 +358,9 @@ const styles = StyleSheet.create({
   timelineDotActive: { backgroundColor: colors.accent },
   timelineLine: { flex: 1, width: 2, backgroundColor: colors.hairline, marginVertical: 2 },
   timelineContent: { flex: 1, paddingBottom: 18 },
-  timelineStatus: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
-  timelineReason: { fontSize: 13, color: colors.body, marginTop: 3, lineHeight: 19 },
-  timelineDate: { fontSize: 12, color: colors.faint, marginTop: 4 },
+  timelineStatus: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink },
+  timelineReason: { fontSize: fontSize.md, color: colors.body, marginTop: 3, lineHeight: 23 },
+  timelineDate: { fontSize: fontSize.xs, color: colors.faint, marginTop: 4 },
 
   footer: {
     paddingHorizontal: 18,

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import { colors } from '../../theme';
+import { colors, fontSize } from '../../theme';
 import AppText from './AppText';
 
 type SectionLabelProps = {
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   right: {
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
 });

@@ -1,9 +1,11 @@
 import { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, layout } from '../../theme';
+import { colors, fontSize, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
+
+const ssirenNameLogo = require('../../assets/SSIREN-name.png');
 
 type AppBarProps = {
   title?: string;
@@ -16,14 +18,7 @@ type AppBarProps = {
 };
 
 function Logo() {
-  return (
-    <View style={styles.logoRow}>
-      <View style={styles.logoMark}>
-        <Icon name="marker" size={16} color={colors.white} fill />
-      </View>
-      <AppText variant="heading" color={colors.ink}>시민제보</AppText>
-    </View>
-  );
+  return <Image source={ssirenNameLogo} style={styles.nameLogo} resizeMode="contain" />;
 }
 
 export default function AppBar({
@@ -32,7 +27,7 @@ export default function AppBar({
   centerTitle,
   onBack,
   right,
-  border = true,
+  border = false,
   backgroundColor = colors.canvas,
 }: AppBarProps) {
   const shouldCenter = centerTitle ?? Boolean(title);
@@ -43,7 +38,7 @@ export default function AppBar({
         <View style={styles.side}>
           {onBack ? (
             <Pressable onPress={onBack} hitSlop={8} accessibilityRole="button">
-              <Icon name="arrowL" size={22} color={colors.ink} />
+              <Icon name="arrowL" size={22} color={colors.ink} strokeWidth={2.2} />
             </Pressable>
           ) : (
             <View style={styles.sidePlaceholder} />
@@ -52,7 +47,7 @@ export default function AppBar({
 
         <View style={[styles.center, shouldCenter && styles.centerAbsolute]}>
           {title ? (
-            <AppText variant="heading" color={colors.ink} numberOfLines={1} style={styles.title}>
+            <AppText style={styles.titleText} numberOfLines={1}>
               {title}
             </AppText>
           ) : logo ? (
@@ -103,20 +98,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 56,
   },
-  title: {
+  titleText: {
+    fontFamily: fonts.black,
+    fontSize: fontSize['2xl'],
+    color: colors.ink,
     textAlign: 'center',
   },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logoMark: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: colors.brand,
-    alignItems: 'center',
-    justifyContent: 'center',
+  nameLogo: {
+    width: 96,
+    height: 30,
   },
 });

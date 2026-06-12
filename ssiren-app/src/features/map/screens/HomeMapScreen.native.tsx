@@ -38,7 +38,7 @@ import {
   issueToPublicReportItem,
   toMapReportDetail,
 } from '../../report/utils/publicReportMap';
-import { fonts } from '../../../theme';
+import { fonts, fontSize } from '../../../theme';
 
 const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
 const ssirenMarkerLogo = require('../../../assets/ssiren-logo.png');
@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     elevation: 0,
     fontFamily: fonts.semibold,
-    fontSize: 17,
+    fontSize: fontSize.lg,
     color: TEXT,
     includeFontPadding: false,
     paddingHorizontal: 0,
@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontFamily: fonts.medium,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: TEXT,
   },
   reportList: {
@@ -1027,8 +1027,8 @@ const styles = StyleSheet.create({
   },
   cardKeyword: {
     fontFamily: fonts.bold,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fontSize.mdLg,
+    lineHeight: 22,
     color: SKY,
     marginBottom: 5,
   },
@@ -1049,17 +1049,17 @@ const styles = StyleSheet.create({
   },
   riskText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: DANGER,
   },
   metaDivider: {
     marginHorizontal: 12,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: '#C8C8C8',
   },
   timeText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: TEXT,
   },
   emptyBox: {
@@ -1072,7 +1072,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: MUTED,
   },
 });

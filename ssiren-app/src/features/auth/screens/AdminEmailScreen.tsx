@@ -9,7 +9,7 @@ import {
   DevButton,
 } from '../components/AuthPrimitives';
 import { AppText } from '../../../components/ui';
-import { fonts } from '../../../theme';
+import { fonts, fontSize } from '../../../theme';
 
 const DEV_EMAIL = 'name@police.go.kr';
 
@@ -87,8 +87,8 @@ const styles = StyleSheet.create({
   },
   footnote: {
     fontFamily: fonts.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: fontSize.sm,
+    lineHeight: 22,
     color: '#8B8B8B',
     textAlign: 'center',
   },

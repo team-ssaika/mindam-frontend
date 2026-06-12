@@ -31,7 +31,7 @@ import {
   Stepper,
   Tag,
 } from '../../../components/ui';
-import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
+import { colors, fonts, radius, shadow, statusColors, fontSize } from '../../../theme';
 import { createReport, createReportDraft } from '../api/reportApi';
 import { reportSubmissionMock } from '../mocks/reportSubmissionMock';
 import type {
@@ -1083,20 +1083,20 @@ function ScreenshotToast({ visible, bottomInset }: { visible: boolean; bottomIns
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   tinted: { backgroundColor: colors.soft },
-  stepBadge: { fontFamily: fonts.bold, fontSize: 13, color: colors.muted },
+  stepBadge: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.muted },
   stepperWrap: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 4 },
   scroll: { paddingHorizontal: 20, paddingTop: 8 },
   stepContent: { gap: 12 },
 
   // write step
-  heroSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22 },
+  heroSub: { fontSize: fontSize.mdLg, color: colors.muted, marginTop: 8, lineHeight: 22 },
   textAreaWrap: {
     marginTop: 8,
     minHeight: 130,
     paddingVertical: 4,
   },
   textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 120 },
-  counter: { textAlign: 'right', fontSize: 12, color: colors.faint, marginTop: 6 },
+  counter: { textAlign: 'right', fontSize: fontSize.xs, color: colors.faint, marginTop: 6 },
   attachRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1107,7 +1107,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.hairline,
   },
   attachLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  attachOptional: { fontFamily: fonts.regular, fontSize: 13, color: colors.muted },
+  attachOptional: { fontFamily: fonts.regular, fontSize: fontSize.md, color: colors.muted },
   imageRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
   imageCard: { width: 92, height: 92, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.soft2 },
   imageThumb: { width: '100%', height: '100%' },
@@ -1133,21 +1133,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  addImageText: { fontFamily: fonts.semibold, fontSize: 11.5, color: colors.muted },
+  addImageText: { fontFamily: fonts.semibold, fontSize: fontSize.xs, color: colors.muted },
 
   // review step
   aiLine: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  aiLineText: { fontFamily: fonts.bold, fontSize: 13, color: colors.accent },
+  aiLineText: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.accent },
   gap: { marginTop: 0 },
   cardHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginTop: 8 },
   reviewTitle: { flex: 1, lineHeight: 24 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  cardLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink },
-  summaryText: { fontSize: 14, color: colors.body, lineHeight: 21, marginTop: 8 },
-  locationPrimary: { fontSize: 14, color: colors.body, fontFamily: fonts.medium, marginTop: 10 },
-  locationSecondary: { fontSize: 13, color: colors.muted, marginTop: 3 },
+  cardLabel: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.ink },
+  summaryText: { fontSize: fontSize.mdLg, color: colors.body, lineHeight: 23, marginTop: 8 },
+  locationPrimary: { fontSize: fontSize.mdLg, color: colors.body, fontFamily: fonts.medium, marginTop: 10 },
+  locationSecondary: { fontSize: fontSize.md, color: colors.muted, marginTop: 3 },
   detailHead: { marginBottom: 4 },
   detailItem: {
     flexDirection: 'row',
@@ -1160,10 +1160,10 @@ const styles = StyleSheet.create({
   },
   detailLeft: { flexDirection: 'row', alignItems: 'center', gap: 11, flex: 1 },
   detailTextBlock: { flex: 1 },
-  detailLabel: { fontSize: 12, color: colors.muted },
-  detailValue: { fontSize: 14, color: colors.body, fontFamily: fonts.medium, marginTop: 2, lineHeight: 20 },
+  detailLabel: { fontSize: fontSize.xs, color: colors.muted },
+  detailValue: { fontSize: fontSize.mdLg, color: colors.body, fontFamily: fonts.medium, marginTop: 2, lineHeight: 22 },
   editBtn: { paddingVertical: 4, paddingHorizontal: 8 },
-  editBtnText: { fontFamily: fonts.bold, fontSize: 12.5, color: colors.accent },
+  editBtnText: { fontFamily: fonts.bold, fontSize: fontSize.sm, color: colors.accent },
 
   // complete step
   completeContent: { alignItems: 'center', paddingTop: 24 },
@@ -1177,12 +1177,12 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   completeTitle: { textAlign: 'center' },
-  completeSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, lineHeight: 22, textAlign: 'center' },
+  completeSub: { fontSize: fontSize.mdLg, color: colors.muted, marginTop: 8, lineHeight: 22, textAlign: 'center' },
   completeCard: { width: '100%', padding: 16, marginTop: 20, gap: 14 },
   completeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  completeRowLabel: { fontSize: 13, color: colors.muted },
-  completeRowValue: { fontSize: 14, color: colors.body, fontFamily: fonts.semibold },
-  completeMono: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
+  completeRowLabel: { fontSize: fontSize.md, color: colors.muted },
+  completeRowValue: { fontSize: fontSize.mdLg, color: colors.body, fontFamily: fonts.semibold },
+  completeMono: { fontFamily: fonts.bold, fontSize: fontSize.mdLg, color: colors.ink },
   completeDivider: { height: 1, backgroundColor: colors.hairline },
   completeAgency: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   agencyIcon: {
@@ -1193,7 +1193,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  agencyName: { fontSize: 14.5, fontFamily: fonts.bold, color: colors.ink, marginTop: 2 },
+  agencyName: { fontSize: fontSize.mdLg, fontFamily: fonts.bold, color: colors.ink, marginTop: 2 },
   noticeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1204,7 +1204,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     width: '100%',
   },
-  noticeText: { flex: 1, fontSize: 13.5, color: colors.body, lineHeight: 20 },
+  noticeText: { flex: 1, fontSize: fontSize.md, color: colors.body, lineHeight: 22 },
   noticeAccent: { fontFamily: fonts.bold, color: colors.accent },
 
   // analyzing
@@ -1212,12 +1212,12 @@ const styles = StyleSheet.create({
   analyzeSpinner: { width: 88, height: 88, alignItems: 'center', justifyContent: 'center', marginBottom: 26 },
   analyzeSpark: { position: 'absolute' },
   analyzeTitle: { textAlign: 'center' },
-  analyzeSub: { fontSize: 14.5, color: colors.muted, marginTop: 8, textAlign: 'center', lineHeight: 22 },
+  analyzeSub: { fontSize: fontSize.mdLg, color: colors.muted, marginTop: 8, textAlign: 'center', lineHeight: 22 },
   analyzeList: { width: '100%', marginTop: 30, gap: 12 },
   analyzeRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   analyzeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   analyzeDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.faint },
-  analyzeRowText: { fontFamily: fonts.semibold, fontSize: 14.5 },
+  analyzeRowText: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg },
 
   // footer
   footer: {
@@ -1232,8 +1232,8 @@ const styles = StyleSheet.create({
   footerStack: { gap: 10 },
   blockedSubmitText: {
     fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: fontSize.md,
+    lineHeight: 23,
     color: colors.accent,
     textAlign: 'center',
   },
@@ -1242,7 +1242,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(24,29,38,0.5)', alignItems: 'center', justifyContent: 'center', padding: 22 },
   exitCard: { width: '100%', backgroundColor: colors.canvas, borderRadius: 22, padding: 24 },
   center: { textAlign: 'center' },
-  exitDesc: { fontSize: 14.5, color: colors.muted, textAlign: 'center', marginTop: 10, lineHeight: 21 },
+  exitDesc: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', marginTop: 10, lineHeight: 23 },
   exitActions: { flexDirection: 'row', gap: 10, marginTop: 20 },
   exitBtn: { flex: 1 },
 
@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
   sheetCard: { backgroundColor: colors.canvas, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 32, ...shadow.sheet },
   sheetHandle: { width: 40, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', alignSelf: 'center', marginBottom: 16 },
   sheetForm: { marginTop: 16, gap: 8 },
-  sheetFieldLabel: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted, marginTop: 4 },
+  sheetFieldLabel: { fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.muted, marginTop: 4 },
   sheetInput: {
     backgroundColor: colors.soft,
     borderRadius: radius.md,
@@ -1260,7 +1260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
     fontFamily: fonts.regular,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: colors.ink,
   },
   sheetTextArea: { minHeight: 96, textAlignVertical: 'top' },
@@ -1288,5 +1288,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
-  toastText: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.white },
+  toastText: { fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.white },
 });
