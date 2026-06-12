@@ -21,7 +21,6 @@ import {
   type KakaoMapViewHandle,
 } from '../../../components/map/KakaoMapView';
 import { colors, fonts, shadow, statusColors, fontSize } from '../../../theme';
-import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
 import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
@@ -38,7 +37,11 @@ const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
-const PEEK_LIST_HEIGHT = 124;
+const PEEK_CARD_MIN_HEIGHT = 140;
+const PEEK_LIST_TOP_PADDING = 12;
+const PEEK_LIST_BOTTOM_PADDING = 10;
+const PEEK_LIST_HEIGHT =
+  PEEK_CARD_MIN_HEIGHT + PEEK_LIST_TOP_PADDING + PEEK_LIST_BOTTOM_PADDING;
 const PEEK_COLLAPSE_DRAG_THRESHOLD = 24;
 const HEADER_BODY_HEIGHT = Math.min(49, Math.max(40, SCREEN_HEIGHT * 0.05));
 const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
@@ -80,7 +83,6 @@ function summarizeIssues(issues: AdminIssueItem[]) {
 
 export default function OfficerHomeScreen() {
   const router = useRouter();
-  const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const mapRef = useRef<KakaoMapViewHandle | null>(null);
   const initialMapRegionRef = useRef<KakaoMapRegion>({ ...DEFAULT_MAP_CENTER, ...DEFAULT_DELTA });
   const ignoreRegionChangeUntilRef = useRef(0);
@@ -150,7 +152,7 @@ export default function OfficerHomeScreen() {
   });
   const fabBottom = peekExpandAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [tabBarOffset + 96, tabBarOffset + 168],
+    outputRange: [96, 132 + PEEK_LIST_HEIGHT],
   });
 
   const mapReports = useMemo(
@@ -367,7 +369,6 @@ export default function OfficerHomeScreen() {
             { height: peekListHeight, opacity: peekListOpacity },
           ]}
           pointerEvents={isPeekExpanded ? 'auto' : 'none'}
-          {...peekPanResponder.panHandlers}
         >
           {isLoadingIssues ? (
             <View style={styles.peekLoading}>
@@ -396,7 +397,9 @@ export default function OfficerHomeScreen() {
                 return (
                   <Pressable
                     key={item.issueGroup.id}
-                    style={styles.peekCard}
+                    delayPressIn={120}
+                    android_ripple={{ color: 'rgba(0,0,0,0.04)' }}
+                    style={({ pressed }) => [styles.peekCard, pressed && styles.peekCardPressed]}
                     onPress={() => {
                       focusIssue(item);
                       openIssueDetail(item);
@@ -514,12 +517,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.soft,
+    backgroundColor: colors.canvas,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 24,
     paddingTop: 14,
-    paddingBottom: 12,
+    paddingBottom: 16,
     ...shadow.sheet,
     zIndex: 10,
   },
@@ -563,20 +566,25 @@ const styles = StyleSheet.create({
   inboxLinkText: { fontFamily: fonts.bold, fontSize: fontSize.mdLg, color: colors.brand },
   peekLoading: { paddingTop: 12, paddingBottom: 0, alignItems: 'center' },
   peekEmpty: { fontSize: fontSize.md, color: colors.muted, paddingTop: 12, paddingBottom: 0 },
-  peekListContent: { gap: 10, paddingTop: 12, paddingBottom: 0, paddingRight: 4 },
+  peekListContent: {
+    gap: 10,
+    paddingTop: PEEK_LIST_TOP_PADDING,
+    paddingBottom: PEEK_LIST_BOTTOM_PADDING,
+    paddingRight: 4,
+  },
   peekCard: {
     width: 264,
-    minHeight: 140,
+    minHeight: PEEK_CARD_MIN_HEIGHT,
     backgroundColor: colors.canvas,
     borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.hairline,
     paddingHorizontal: 18,
     paddingVertical: 16,
     gap: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 1,
+  },
+  peekCardPressed: {
+    backgroundColor: colors.soft2,
   },
   peekCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   peekCardTitle: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink, lineHeight: 23 },
