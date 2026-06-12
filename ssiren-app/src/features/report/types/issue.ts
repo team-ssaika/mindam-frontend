@@ -1,4 +1,5 @@
 import type { MyReportItem } from './myReport';
+import type { ReportAgencyType, ReportDepartment } from './reportSubmission';
 
 export type IssueGroupStatus = 'ACTIVE' | 'RESOLVED' | 'MERGED' | string;
 
@@ -14,6 +15,8 @@ export type IssueItem = {
   issueGroup: IssueGroup;
   representativeReport: IssueReport | null;
   category: IssueCategory | null;
+  department: ReportDepartment;
+  agencyType: ReportAgencyType;
 };
 
 export type IssuesResponse = {
@@ -25,6 +28,8 @@ export type IssueDetail = {
   representativeReport: IssueReport | null;
   reports: IssueReport[];
   category: IssueCategory | null;
+  department: ReportDepartment | null;
+  agencyType: ReportAgencyType | null;
 };
 
 export type IssuesQuery = {

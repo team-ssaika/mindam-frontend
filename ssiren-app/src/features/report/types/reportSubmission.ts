@@ -21,6 +21,7 @@ export type ReportDraft = Omit<
 > & {
   id: null;
   contents: ReportContents;
+  assignmentReason: string;
   embedding: number[];
   issueGroupId: number | null;
   createdAt: string | null;
@@ -31,6 +32,7 @@ export type ReportDepartment = {
   id: number;
   name: string;
   agencyTypeId: number;
+  agencyTypeName: string;
 };
 
 export type ReportAgencyType = {
@@ -72,6 +74,7 @@ export type CreateReportRequest = {
   eupmyeondong: string;
   occurredAt: string;
   riskScore: number;
+  assignmentReason: string;
   visibility: string;
   categoryId: number;
   departmentId: number;

@@ -1,10 +1,13 @@
 import type { MyReportItem, ReportStatus } from './myReport';
+import type { ReportAgencyType, ReportDepartment } from './reportSubmission';
 
 export type PublicReportItem = {
   report: MyReportItem['report'];
   reportImages: MyReportItem['reportImages'];
   category: MyReportItem['category'];
   issueGroup: MyReportItem['issueGroup'];
+  department: ReportDepartment;
+  agencyType: ReportAgencyType;
 };
 
 export type PublicReportsQuery = {

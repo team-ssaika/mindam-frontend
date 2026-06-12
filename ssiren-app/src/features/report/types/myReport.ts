@@ -34,6 +34,7 @@ export type MyReportItem = {
     eupmyeondong: string;
     occurredAt: string;
     riskScore: number;
+    assignmentReason: string;
     status: ReportStatus;
     isRepresentative: boolean;
     visibility: string;
@@ -44,6 +45,9 @@ export type MyReportItem = {
     categoryId: number;
     issueGroupId: number;
     departmentId: number;
+    departmentName: string;
+    agencyTypeId: number;
+    agencyTypeName: string;
   };
   reportImages: Array<{
     id: number;
@@ -77,9 +81,9 @@ export type MyReportItem = {
   };
   department: {
     id: number;
-    agencyName: string;
     name: string;
-    agencyId: number;
+    agencyTypeId: number;
+    agencyTypeName: string;
   };
 };
 
