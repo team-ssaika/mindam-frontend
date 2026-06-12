@@ -10,6 +10,7 @@ import { officerStats } from '../mocks/officerMock';
 import { formatOfficerDepartments } from '../utils/officerDepartmentDisplay';
 
 const MENU_ITEMS = [
+  { icon: 'gear' as const, label: '설정', route: '/(officer)/config' as const },
   { icon: 'doc' as const, label: '처리 이력' },
   { icon: 'headset' as const, label: '내부 문의' },
   { icon: 'info' as const, label: '담당 구역 설정' },
@@ -132,7 +133,11 @@ export function OfficerProfileScreen() {
                 icon={item.icon}
                 label={item.label}
                 first={index === 0}
-                onPress={() => {}}
+                onPress={() => {
+                  if ('route' in item && item.route) {
+                    router.push(item.route);
+                  }
+                }}
               />
             ))}
           </View>

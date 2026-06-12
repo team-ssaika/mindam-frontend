@@ -11,18 +11,11 @@ type DashboardCategoryStatRowProps = {
   isLast?: boolean;
 };
 
-function getAccentStyle(rank: number | undefined) {
-  if (rank === 1) return { backgroundColor: colors.brandActive };
-  if (rank === 2) return { backgroundColor: colors.brand };
-  if (rank === 3) return { backgroundColor: colors.yellow };
-  return { backgroundColor: colors.hairline };
-}
-
-function getRankChipStyle(rank: number) {
-  if (rank === 1) return { chip: styles.rankChipFirst, text: styles.rankChipTextOn };
-  if (rank === 2) return { chip: styles.rankChipSecond, text: styles.rankChipTextOn };
-  if (rank === 3) return { chip: styles.rankChipThird, text: styles.rankChipTextThird };
-  return { chip: styles.rankChipDefault, text: styles.rankChipTextDefault };
+function getRankTextStyle(rank: number | undefined) {
+  if (rank === 1) return styles.rankTextFirst;
+  if (rank === 2) return styles.rankTextSecond;
+  if (rank === 3) return styles.rankTextThird;
+  return styles.rankTextDefault;
 }
 
 export function DashboardCategoryStatRow({
@@ -36,20 +29,16 @@ export function DashboardCategoryStatRow({
   const shareLabel = formatCategoryShare(item.reportCount, totalCount);
   const barWidth = item.reportCount > 0 ? sharePercent : 0;
   const isTopRank = rank != null && rank <= 3;
-  const rankChip = rank != null ? getRankChipStyle(rank) : null;
 
   return (
     <View style={[styles.row, !isLast && styles.rowDivider]}>
-      <View style={[styles.accent, getAccentStyle(rank)]} />
       <View style={styles.body}>
         <View style={styles.topLine}>
           <View style={styles.titleGroup}>
-            {rank != null && rankChip ? (
-              <View style={[styles.rankChip, rankChip.chip]}>
-                <AppText style={[styles.rankChipText, rankChip.text]}>
-                  {isTopRank ? `${rank}위` : rank}
-                </AppText>
-              </View>
+            {rank != null ? (
+              <AppText style={[styles.rankText, getRankTextStyle(rank)]}>
+                {isTopRank ? `${rank}위` : rank}
+              </AppText>
             ) : null}
             <AppText
               style={[styles.label, isTopRank && styles.labelTop]}
@@ -84,23 +73,13 @@ export function DashboardCategoryStatRow({
 
 const styles = StyleSheet.create({
   row: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 12,
     paddingVertical: 13,
   },
   rowDivider: {
     borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
   },
-  accent: {
-    width: 4,
-    borderRadius: 4,
-    marginVertical: 2,
-  },
   body: {
-    flex: 1,
-    minWidth: 0,
     gap: 9,
   },
   topLine: {
@@ -116,39 +95,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  rankChip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    flexShrink: 0,
-  },
-  rankChipFirst: {
-    backgroundColor: colors.brandActive,
-  },
-  rankChipSecond: {
-    backgroundColor: colors.brand,
-  },
-  rankChipThird: {
-    backgroundColor: colors.brandSoft,
-  },
-  rankChipDefault: {
-    backgroundColor: colors.soft2,
-    minWidth: 26,
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  rankChipText: {
+  rankText: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.micro,
+    fontSize: fontSize.lg,
     letterSpacing: -0.2,
+    flexShrink: 0,
+    minWidth: 30,
   },
-  rankChipTextOn: {
-    color: colors.white,
-  },
-  rankChipTextThird: {
+  rankTextFirst: {
     color: colors.brandActive,
   },
-  rankChipTextDefault: {
+  rankTextSecond: {
+    color: colors.brand,
+  },
+  rankTextThird: {
+    color: colors.brandActive,
+  },
+  rankTextDefault: {
     color: colors.muted,
   },
   label: {

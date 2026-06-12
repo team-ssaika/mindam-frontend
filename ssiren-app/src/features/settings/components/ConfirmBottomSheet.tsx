@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
+import { fontSize } from '../../../theme';
 
 type ConfirmBottomSheetProps = {
   actionLabel: string;
