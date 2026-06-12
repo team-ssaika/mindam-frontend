@@ -131,7 +131,7 @@ function makeReviewStateFromDraft(data: ReportDraftResponse): EditableReviewData
       department: department?.name ?? '',
       receiptNumber: '',
       eta: '처리 상태는 내 제보에서 확인해주세요.',
-      assignmentReason: analysis?.falseReport?.reason ?? '',
+      assignmentReason: reportDraft.assignmentReason ?? '',
     },
   };
 }
@@ -437,6 +437,7 @@ export function ReportCreateFlowScreen() {
         eupmyeondong: draft.eupmyeondong,
         occurredAt: editableReview.details.occurredAt || draft.occurredAt,
         riskScore: parseRiskScore(editableReview.details.risk, draft.riskScore),
+        assignmentReason: draft.assignmentReason,
         visibility: draft.visibility,
         categoryId: draft.categoryId,
         departmentId: draft.departmentId,
