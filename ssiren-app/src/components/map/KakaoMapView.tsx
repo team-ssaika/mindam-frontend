@@ -309,7 +309,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             justify-content: center;
             gap: 8px;
             color: #050505;
-            font: 500 21px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font: 500 22px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: -0.5px;
             white-space: nowrap;
           }
@@ -344,7 +344,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
           .marker-report.marker-one .marker-report-body {
             padding: 0 15px 0 14px;
             gap: 6px;
-            font-size: 18px;
+            font-size: 19px;
           }
           .marker-report.marker-large,
           .marker-report.marker-large .marker-report-body {
@@ -352,13 +352,15 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
           }
           .marker-report.marker-large .marker-report-body {
             padding: 0 20px 0 18px;
-            font-size: 23px;
+            font-size: 24px;
           }
           .marker-report-icon {
-            width: 33px;
-            height: 33px;
+            width: 30px;
+            height: 30px;
             object-fit: contain;
             flex: 0 0 auto;
+            margin-left: -4px;
+            transform: translateY(-1px);
           }
           .marker-report.marker-one .marker-report-icon {
             width: 28px;

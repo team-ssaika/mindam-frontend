@@ -1,9 +1,10 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { ReactNode, useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, ListRow } from '../../../components/ui';
-import { colors, fonts, layout, fontSize } from '../../../theme';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppBar, AppText, Icon, Toggle } from '../../../components/ui';
+import type { IconName } from '../../../components/ui';
+import { colors, fonts, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -16,12 +17,64 @@ import { hasStoredAuthSession } from '../../auth/services/authService';
 
 type SheetType = 'logout' | 'withdraw' | null;
 
-function SGroup({ title, children }: { title: string; children: ReactNode }) {
+function SettingCard({ children }: { children: ReactNode }) {
   return (
-    <View style={styles.group}>
-      <AppText style={styles.groupTitle}>{title}</AppText>
-      <View style={styles.groupList}>{children}</View>
-    </View>
+    <View style={styles.card}>{children}</View>
+  );
+}
+
+type SettingRowProps = {
+  icon: IconName;
+  label: string;
+  sub?: string;
+  value?: string;
+  danger?: boolean;
+  showChevron?: boolean;
+  first?: boolean;
+  right?: ReactNode;
+  onPress?: () => void;
+};
+
+function SettingRow({
+  icon,
+  label,
+  sub,
+  value,
+  danger = false,
+  showChevron,
+  first = false,
+  right,
+  onPress,
+}: SettingRowProps) {
+  const tint = danger ? '#EF5A5A' : '#111111';
+  const shouldShowChevron = showChevron ?? Boolean(onPress);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.row,
+        !first ? styles.rowDivider : null,
+        pressed && onPress ? styles.rowPressed : null,
+      ]}
+    >
+      <View style={styles.iconSlot}>
+        <Icon name={icon} size={25} color={tint} strokeWidth={1.9} />
+      </View>
+
+      <View style={styles.rowTextBox}>
+        <AppText style={[styles.rowLabel, danger ? styles.dangerText : null]}>{label}</AppText>
+        {sub ? <AppText style={styles.rowSub}>{sub}</AppText> : null}
+      </View>
+
+      {right ?? (
+        <View style={styles.rowRight}>
+          {value ? <AppText style={styles.rowValue}>{value}</AppText> : null}
+          {shouldShowChevron ? <Icon name="chevR" size={20} color="#B8B5C2" strokeWidth={2.2} /> : null}
+        </View>
+      )}
+    </Pressable>
   );
 }
 
@@ -145,58 +198,62 @@ export function SettingsScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar title="설정" logo={false} border={false} />
+      <AppBar
+        title="설정"
+        logo={false}
+        border={false}
+        backgroundColor="#F4F5F8"
+        onBack={() => router.back()}
+        right={<Icon name="bell" size={26} color="#111111" strokeWidth={1.9} />}
+      />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        <SGroup title="알림">
-          <ListRow
+        <SettingCard>
+          <SettingRow
             icon="bell"
             label="푸시 알림"
             sub="제보 상태 변경·주변 제보 소식"
             first
-            size="lg"
-            toggle
-            on={isAlarmEnabled}
-            onToggle={handleToggleAlarm}
             right={
               isAlarmLoading ? (
-                <ActivityIndicator size="small" color={colors.ink} />
-              ) : undefined
+                <ActivityIndicator size="small" color="#111111" />
+              ) : (
+                <Toggle
+                  value={isAlarmEnabled}
+                  onValueChange={handleToggleAlarm}
+                  disabled={isAlarmSaving}
+                />
+              )
             }
           />
-          <ListRow icon="pin" label="지도" size="lg" onPress={() => console.log('[Settings] open map')} />
-        </SGroup>
+          <SettingRow icon="pin" label="지도" onPress={() => router.push('/(tabs)/map-settings')} />
+        </SettingCard>
 
-        <SGroup title="기타">
-          <ListRow icon="info" label="버전 정보" value="1.32" first size="lg" />
-          <ListRow icon="headset" label="고객센터" size="lg" onPress={() => console.log('[Settings] support')} />
-          <ListRow
+        <SettingCard>
+          <SettingRow icon="info" label="버전 정보" value="1.32" first showChevron={false} />
+          <SettingRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
+          <SettingRow
             icon="building"
             label="담당자 모드"
             sub="관할 제보 처리 화면으로 이동"
-            size="lg"
             onPress={handleSwitchToOfficerMode}
           />
-        </SGroup>
+        </SettingCard>
 
-        <SGroup title="계정">
+        <SettingCard>
           {isAuthenticated ? (
             <>
-              <ListRow icon="arrowL" label="로그아웃" danger first size="lg" onPress={() => setActiveSheet('logout')} />
-              <ListRow icon="x" label="회원탈퇴" danger size="lg" onPress={() => setActiveSheet('withdraw')} />
+              <SettingRow icon="arrowL" label="로그아웃" danger first onPress={() => setActiveSheet('logout')} />
+              <SettingRow icon="x" label="회원탈퇴" danger onPress={() => setActiveSheet('withdraw')} />
             </>
           ) : (
-            <ListRow icon="arrowL" label="로그인하기" first size="lg" onPress={goToStartSelection} />
+            <SettingRow icon="arrowL" label="로그인하기" first onPress={goToStartSelection} />
           )}
-        </SGroup>
+        </SettingCard>
 
-        <View style={styles.footer}>
-          <AppText style={styles.footerLinks}>이용약관 · 개인정보 처리방침</AppText>
-          <AppText style={styles.footerVersion}>시민제보 v1.0.0</AppText>
-        </View>
       </ScrollView>
 
       <ConfirmBottomSheet
@@ -223,21 +280,73 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.canvas },
-  content: { paddingTop: 8, gap: 28 },
-  group: { gap: 8 },
-  groupTitle: {
-    fontFamily: fonts.bold,
-    fontSize: fontSize.md,
-    color: colors.muted,
-    paddingHorizontal: layout.screenPadding,
+  flex: { flex: 1, backgroundColor: '#F4F5F8' },
+  content: {
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    gap: 22,
   },
-  groupList: {
+  card: {
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 4,
+    shadowColor: '#AAB2C0',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  row: {
+    minHeight: 70,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 13,
+  },
+  rowDivider: {
     borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.hairline,
+    borderTopColor: '#EDEDED',
   },
-  footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
-  footerLinks: { fontSize: fontSize.sm, color: colors.muted, fontFamily: fonts.medium },
-  footerVersion: { fontSize: fontSize.xs, color: colors.faint },
+  rowPressed: {
+    opacity: 0.72,
+  },
+  iconSlot: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTextBox: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.lg,
+    lineHeight: 23,
+    color: '#111111',
+  },
+  dangerText: {
+    color: '#EF5A5A',
+  },
+  rowSub: {
+    marginTop: 3,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    color: '#8A8A8A',
+  },
+  rowRight: {
+    minWidth: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  rowValue: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    color: '#8A8A8A',
+  },
 });

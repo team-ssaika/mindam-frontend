@@ -107,7 +107,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
 
       <View style={styles.topRow}>
         <View style={styles.riskPill}>
-          <Ionicons name="warning-outline" size={18} color="#2F2F2F" />
+          <Ionicons name="warning-outline" size={16} color="#2F2F2F" />
           <Text style={styles.riskText}>{formatRiskLabel(report.riskLabel)}</Text>
         </View>
 
@@ -156,7 +156,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
         <Text style={[styles.discomfortText, isPressed ? styles.discomfortTextPressed : null]}>
           나도 불편해요
         </Text>
-        <Ionicons name="hand-left-outline" size={23} color={isPressed ? '#FFFFFF' : TEXT} />
+        <Ionicons name="hand-left-outline" size={23} color={TEXT} />
         <Text style={[styles.discomfortCount, isPressed ? styles.discomfortCountPressed : null]}>
           {discomfortCount}
         </Text>
@@ -199,7 +199,7 @@ export function ReportDetailBottomSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      minHeight="88%"
+      minHeight="82%"
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >
@@ -210,7 +210,7 @@ export function ReportDetailBottomSheet({
 
 const styles = StyleSheet.create({
   sheetContainer: {
-    height: '88%',
+    height: '82%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingTop: 12,
@@ -226,7 +226,8 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 999,
     backgroundColor: '#B8B8B8',
-    marginBottom: 16,
+    marginTop: 10,
+    marginBottom: 22,
   },
   topRow: {
     flexDirection: 'row',
@@ -235,21 +236,21 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   riskPill: {
-    minHeight: 32,
+    minHeight: 29,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#D0D0D0',
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     backgroundColor: '#FFFFFF',
   },
   riskText: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.base,
-    lineHeight: 23,
+    fontSize: fontSize.sm,
+    lineHeight: 19,
     color: TEXT,
   },
   closeButton: {
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     color: SKY,
   },
   title: {
-    marginTop: 8,
+    marginTop: 12,
     fontFamily: fonts.black,
     fontSize: fontSize.display,
     lineHeight: 34,
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   addressRow: {
-    marginTop: 10,
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -321,33 +322,36 @@ const styles = StyleSheet.create({
   discomfortButton: {
     alignSelf: 'flex-start',
     marginTop: 16,
-    minHeight: 48,
+    minHeight: 50,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: '#58BEF5',
-    backgroundColor: SKY_SOFT,
-    paddingHorizontal: 20,
+    borderColor: '#D6E4EA',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 8,
     shadowColor: '#58BEF5',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
-    elevation: 1,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   discomfortButtonPressed: {
-    borderColor: '#45AFE8',
-    backgroundColor: SKY,
+    borderColor: '#58BEF5',
+    backgroundColor: '#CDEFFC',
+    shadowOpacity: 0.18,
+    shadowRadius: 7,
+    elevation: 2,
   },
   discomfortText: {
     fontFamily: fonts.bold,
     fontSize: fontSize.xl,
     lineHeight: 23,
-    color: SKY_DARK,
+    color: '#5C7280',
   },
   discomfortTextPressed: {
-    color: '#FFFFFF',
+    color: SKY_DARK,
   },
   discomfortCount: {
     fontFamily: fonts.bold,
@@ -356,7 +360,7 @@ const styles = StyleSheet.create({
     color: TEXT,
   },
   discomfortCountPressed: {
-    color: '#FFFFFF',
+    color: TEXT,
   },
   divider: {
     height: 1,
@@ -369,16 +373,16 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     flexDirection: 'row',
-    minHeight: 82,
+    minHeight: 68,
   },
   timelineRail: {
-    width: 38,
+    width: 32,
     alignItems: 'center',
   },
   timelineDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 1.5,
     borderColor: '#D8D8D8',
     backgroundColor: '#8F8F8F',
@@ -395,22 +399,22 @@ const styles = StyleSheet.create({
   },
   timelineContent: {
     flex: 1,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   timelineTitle: {
     fontFamily: fonts.black,
-    fontSize: fontSize['2xl'],
-    lineHeight: 26,
+    fontSize: fontSize.lg,
+    lineHeight: 22,
     color: '#9C9C9C',
   },
   timelineTitleActive: {
     color: SKY,
   },
   timelineDescription: {
-    marginTop: 5,
+    marginTop: 3,
     fontFamily: fonts.medium,
-    fontSize: fontSize.base,
-    lineHeight: 22,
+    fontSize: fontSize.sm,
+    lineHeight: 19,
     color: MUTED,
   },
 });

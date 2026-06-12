@@ -1,6 +1,6 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Icon } from '../../src/components/ui';
 import { colors, fonts } from '../../src/theme';
@@ -33,27 +33,33 @@ function PlusButton() {
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={styles.plusButtonWrapper}
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel="제보하기"
     >
-      <View style={styles.plusButton}>
-        <Svg width={62} height={62} viewBox="0 0 62 62" style={styles.plusGradient}>
-          <Defs>
-            <LinearGradient id="plusGradient" x1="6" y1="6" x2="54" y2="58">
-              <Stop offset="0" stopColor="#70B9F5" />
-              <Stop offset="0.5" stopColor="#8FD0FA" />
-              <Stop offset="1" stopColor="#B8E1F6" />
-            </LinearGradient>
-          </Defs>
-          <Circle cx={31} cy={31} r={31} fill="url(#plusGradient)" />
-        </Svg>
-        <Image source={ssirenWhiteLogo} style={styles.plusIcon} resizeMode="contain" />
-      </View>
-      <Text style={styles.plusLabel}>제보하기</Text>
-    </TouchableOpacity>
+      {({ pressed }) => (
+        <>
+          <View style={styles.plusButton}>
+            <Svg width={72} height={72} viewBox="0 0 72 72" style={styles.plusGradient}>
+              <Defs>
+                <LinearGradient id="plusGradient" x1="0" y1="8" x2="72" y2="64">
+                  <Stop offset="0" stopColor="#69B6F7" />
+                  <Stop offset="0.52" stopColor="#82C9F8" />
+                  <Stop offset="1" stopColor="#B7E3F5" />
+                </LinearGradient>
+              </Defs>
+              <Circle cx={36} cy={36} r={36} fill="url(#plusGradient)" />
+            </Svg>
+            <Image source={ssirenWhiteLogo} style={styles.plusIcon} resizeMode="contain" />
+          </View>
+          <Text style={[styles.plusLabel, pressed ? styles.plusLabelPressed : null]}>
+            제보하기
+          </Text>
+        </>
+      )}
+    </Pressable>
   );
 }
 
@@ -61,10 +67,10 @@ function ChatbotTabIcon({ color }: { color: string }) {
   return (
     <View style={[styles.chatBubbleIcon, { borderColor: color }]}>
       <View style={styles.chatFaceRow}>
-        <View style={styles.chatEye} />
-        <View style={styles.chatEye} />
+        <View style={[styles.chatEye, { backgroundColor: color }]} />
+        <View style={[styles.chatEye, { backgroundColor: color }]} />
       </View>
-      <View style={styles.chatMouth} />
+      <View style={[styles.chatMouth, { backgroundColor: color }]} />
       <View style={[styles.chatTailOuter, { borderTopColor: color }]} />
       <View style={styles.chatTailInner} />
     </View>
@@ -78,7 +84,7 @@ function CitizenHomeTabIcon({ color }: { color: string }) {
         d="M4 10.5 12 4l8 6.5v8.4A2.1 2.1 0 0 1 17.9 21H6.1A2.1 2.1 0 0 1 4 18.9v-8.4Z"
         fill="none"
         stroke={color}
-        strokeWidth={2.35}
+        strokeWidth={2.05}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -86,7 +92,7 @@ function CitizenHomeTabIcon({ color }: { color: string }) {
         d="M9.2 21v-7h5.6v7"
         fill="none"
         stroke={color}
-        strokeWidth={2.35}
+        strokeWidth={2.05}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -97,12 +103,12 @@ function CitizenHomeTabIcon({ color }: { color: string }) {
 function CitizenUserTabIcon({ color }: { color: string }) {
   return (
     <Svg width={26} height={26} viewBox="0 0 24 24">
-      <Circle cx={12} cy={7.2} r={3.15} fill="none" stroke={color} strokeWidth={2.45} />
+      <Circle cx={12} cy={7.2} r={3.15} fill="none" stroke={color} strokeWidth={2.15} />
       <Path
         d="M5 20v-1.4c0-3 3.1-5 7-5s7 2 7 5V20H5Z"
         fill="none"
         stroke={color}
-        strokeWidth={2.45}
+        strokeWidth={2.15}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -113,12 +119,12 @@ function CitizenUserTabIcon({ color }: { color: string }) {
 function CitizenGearTabIcon({ color }: { color: string }) {
   return (
     <Svg width={28} height={28} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={3.05} fill="none" stroke={color} strokeWidth={2.15} />
+      <Circle cx={12} cy={12} r={3.05} fill="none" stroke={color} strokeWidth={1.9} />
       <Path
         d="M19.2 13.7c.1-.55.15-1.1.15-1.7s-.05-1.15-.15-1.7l2-1.5-2-3.45-2.4.95a7.7 7.7 0 0 0-2.75-1.6L13.7 2h-3.4l-.35 2.7a7.7 7.7 0 0 0-2.75 1.6l-2.4-.95-2 3.45 2 1.5c-.1.55-.15 1.1-.15 1.7s.05 1.15.15 1.7l-2 1.5 2 3.45 2.4-.95a7.7 7.7 0 0 0 2.75 1.6l.35 2.7h3.4l.35-2.7a7.7 7.7 0 0 0 2.75-1.6l2.4.95 2-3.45-2-1.5Z"
         fill="none"
         stroke={color}
-        strokeWidth={2.15}
+        strokeWidth={1.9}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -214,9 +220,14 @@ export default function TabLayout() {
             paddingBottom: insets.bottom,
             borderTopWidth: 1,
             borderTopColor: '#F1F1F1',
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
             backgroundColor: '#FFFFFF',
-            elevation: 0,
-            shadowOpacity: 0,
+            shadowColor: '#AAB2C0',
+            shadowOffset: { width: 0, height: -6 },
+            shadowOpacity: 0.08,
+            shadowRadius: 18,
+            elevation: 8,
             display: isReportFlow ? 'none' : 'flex',
           },
         }}
@@ -257,6 +268,12 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <CitizenGearTabIcon color={color} />,
           }}
         />
+        <Tabs.Screen
+          name="map-settings"
+          options={{
+            href: null,
+          }}
+        />
       </Tabs>
       <RoleOnboardingBottomSheet
         visible={isRoleSheetVisible}
@@ -279,7 +296,7 @@ const styles = StyleSheet.create({
     height: 62,
     marginTop: -24,
     borderRadius: 31,
-    backgroundColor: 'transparent',
+    backgroundColor: '#82C9F8',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 5,
@@ -292,7 +309,9 @@ const styles = StyleSheet.create({
     elevation: 7,
   },
   plusGradient: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: -5,
+    left: -5,
   },
   plusIcon: {
     width: 57,
@@ -302,7 +321,10 @@ const styles = StyleSheet.create({
   plusLabel: {
     marginTop: 1,
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: 12,
+    color: INACTIVE,
+  },
+  plusLabelPressed: {
     color: SKY,
   },
   chatBubbleIcon: {

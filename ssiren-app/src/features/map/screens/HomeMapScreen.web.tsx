@@ -1,13 +1,37 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Icon } from '../../../components/ui';
 import { fonts, fontSize } from '../../../theme';
 
 const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
-const ssirenMarkerLogo = require('../../../assets/ssiren-logo.png');
+const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
 
 const SKY = '#7EC8F7';
 const TEXT = '#050505';
 const DANGER = '#D95E5E';
+
+function NearbyRefreshIcon({ size = 30, color = '#202630' }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M19 12.3a7 7 0 1 1-2.05-4.95L19 9.4"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.45}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M19 4.8v4.6h-4.6"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.45}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
 
 const reports = [
   {
@@ -115,7 +139,7 @@ export default function HomeMapScreenWeb() {
               내 주변 제보 <Text style={styles.countText}>3건</Text>
             </Text>
             <Pressable onPress={() => console.log('[HomeWeb] refresh reports')}>
-              <Icon name="refresh" size={30} color="#B3B3B3" strokeWidth={2.3} />
+              <NearbyRefreshIcon />
             </Pressable>
           </View>
           <View style={styles.addressPill}>
@@ -391,7 +415,7 @@ const styles = StyleSheet.create({
   currentLocationButton: {
     position: 'absolute',
     right: 30,
-    bottom: 344,
+    bottom: 336,
     width: 58,
     height: 58,
     borderRadius: 29,
@@ -477,9 +501,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 19,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.012,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.025,
+    shadowRadius: 12,
   },
   cardKeyword: {
     fontFamily: fonts.bold,
