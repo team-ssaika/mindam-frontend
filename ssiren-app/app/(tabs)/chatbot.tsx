@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as Clipboard from 'expo-clipboard';
-import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,6 +27,7 @@ import type {
   ChatbotSession,
 } from '../../src/features/chatbot/types/chatbot';
 import { resolveApiBaseUrl } from '../../src/lib/api/client';
+import { getAppCurrentPosition } from '../../src/lib/location/appLocation';
 import { colors, fonts, radius } from '../../src/theme';
 
 type ChatMessage = {
@@ -79,19 +79,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 }
 
 async function getCurrentCoordinate(): Promise<LatLng> {
-  const permission = await Location.requestForegroundPermissionsAsync();
-  if (permission.status !== 'granted') {
-    throw new Error('챗봇 답변을 위해 현재 위치 권한이 필요합니다.');
-  }
-
-  const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  });
-
-  return {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-  };
+  return getAppCurrentPosition();
 }
 
 export default function Chatbot() {
