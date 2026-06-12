@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { colors, fonts } from '../../theme';
+import { colors, fontSize, fonts } from '../../theme';
 import AppText from './AppText';
 import Icon, { IconName } from './Icon';
 
@@ -28,6 +28,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fonts.semibold,
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
   },
 });

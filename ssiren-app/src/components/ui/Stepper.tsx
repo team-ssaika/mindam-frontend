@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { colors, fonts, radius } from '../../theme';
+import { colors, fontSize, fonts, radius } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
 
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   circleNumber: {
     fontFamily: fonts.bold,
-    fontSize: 14,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   circleNumberActive: {
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   stepLabel: {
     fontFamily: fonts.semibold,
-    fontSize: 14,
+    fontSize: fontSize.md,
     color: colors.faint,
   },
   stepLabelActive: {

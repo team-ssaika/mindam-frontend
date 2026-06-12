@@ -3,7 +3,7 @@ import { useRouter, useSegments } from 'expo-router';
 import { ReactNode, useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, ListRow } from '../../../components/ui';
-import { colors, fonts, layout } from '../../../theme';
+import { colors, fonts, layout, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
   deactivateStoredPushToken,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   group: { gap: 8 },
   groupTitle: {
     fontFamily: fonts.bold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     paddingHorizontal: layout.screenPadding,
   },
@@ -254,6 +254,6 @@ const styles = StyleSheet.create({
     borderColor: colors.hairline,
   },
   footer: { alignItems: 'center', paddingTop: 4, gap: 8 },
-  footerLinks: { fontSize: 12.5, color: colors.muted, fontFamily: fonts.medium },
-  footerVersion: { fontSize: 11.5, color: colors.faint },
+  footerLinks: { fontSize: fontSize.sm, color: colors.muted, fontFamily: fonts.medium },
+  footerVersion: { fontSize: fontSize.xs, color: colors.faint },
 });

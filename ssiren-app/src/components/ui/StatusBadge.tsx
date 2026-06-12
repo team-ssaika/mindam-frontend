@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { fonts, radius, statusColors, StatusKey } from '../../theme';
+import { fontSize, fonts, radius, statusColors, StatusKey } from '../../theme';
 import AppText from './AppText';
 
 type StatusBadgeProps = {
@@ -24,7 +24,7 @@ export default function StatusBadge({ status, size = 'md', label }: StatusBadgeP
     >
       <View style={[styles.dot, { backgroundColor: st.dot }]} />
       <AppText
-        style={[styles.text, { color: st.fg, fontSize: small ? 11.5 : 12.5 }]}
+        style={[styles.text, { color: st.fg, fontSize: small ? fontSize.micro : fontSize.sm }]}
       >
         {label ?? st.label}
       </AppText>

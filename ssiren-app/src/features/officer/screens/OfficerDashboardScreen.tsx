@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { AppBar, AppText, Button, Icon, SectionLabel } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fonts, layout, radius, statusColors, type StatusKey } from '../../../theme';
+import { colors, fontSize, fonts, layout, radius, statusColors, type StatusKey } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { DashboardCategoryStatRow } from '../components/DashboardCategoryStatRow';
 import { OfficerDenseAreaList } from '../components/OfficerDenseAreaList';
@@ -225,16 +225,16 @@ export function OfficerDashboardScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.heroSection}>
-            <AppText style={styles.heroEyebrow}>내 관할 · {formatTodayLabel()}</AppText>
             <View style={styles.heroHeadlineRow}>
-              <AppText variant="heading" color={colors.ink} style={styles.heroHeadline}>
-                오늘 신규 제보
-              </AppText>
+              <AppText style={styles.heroHeadline}>오늘 신규 제보</AppText>
               <AppText style={styles.heroCount}>{statistics.todayNewReportCount}건</AppText>
             </View>
-            <AppText style={styles.heroSubtitle}>
-              이번 달 처리 완료 {statistics.monthlyCompletedReportCount}건
-            </AppText>
+            <View style={styles.heroSubRow}>
+              <AppText style={styles.heroSubtitle}>
+                이번 달 처리 완료 {statistics.monthlyCompletedReportCount}건
+              </AppText>
+              <AppText style={styles.heroDate}>{formatTodayLabel()}</AppText>
+            </View>
           </View>
 
           <View style={styles.statusSection}>
@@ -280,14 +280,17 @@ export function OfficerDashboardScreen() {
                   </AppText>
                 </View>
               ) : (
-                sortedCategories.map((item, index) => (
-                  <DashboardCategoryStatRow
-                    key={item.categoryId}
-                    item={item}
-                    rank={index + 1}
-                    totalCount={totalCategoryReports}
-                  />
-                ))
+                <View style={styles.categoryCard}>
+                  {sortedCategories.map((item, index) => (
+                    <DashboardCategoryStatRow
+                      key={item.categoryId}
+                      item={item}
+                      rank={index + 1}
+                      totalCount={totalCategoryReports}
+                      isLast={index === sortedCategories.length - 1}
+                    />
+                  ))}
+                </View>
               )}
             </View>
           </View>
@@ -342,7 +345,7 @@ export function OfficerDashboardScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.canvas },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 14.5, color: colors.muted, textAlign: 'center', lineHeight: 21 },
+  errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
   content: { paddingTop: 8 },
 
@@ -350,33 +353,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screenPadding,
     paddingTop: 12,
     paddingBottom: 20,
-    gap: 8,
-  },
-  heroEyebrow: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.muted,
+    gap: 10,
   },
   heroHeadlineRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 10,
   },
   heroHeadline: {
-    flex: 1,
-    minWidth: 0,
+    fontFamily: fonts.bold,
+    fontSize: fontSize['3xl'],
+    color: colors.ink,
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
   heroCount: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: fontSize['3xl'],
     color: colors.brand,
-    letterSpacing: -0.4,
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  heroSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   heroSubtitle: {
+    flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: fontSize.mdLg,
     color: colors.muted,
+  },
+  heroDate: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    color: colors.muted,
+    flexShrink: 0,
   },
 
   sectionDivider: {
@@ -397,12 +412,19 @@ const styles = StyleSheet.create({
   },
   categorySummary: {
     fontFamily: fonts.medium,
-    fontSize: 12.5,
+    fontSize: fontSize.sm,
     color: colors.muted,
   },
   categoryRows: {
-    gap: 2,
     paddingHorizontal: layout.screenPadding,
+  },
+  categoryCard: {
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    borderRadius: radius.lg,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
   },
 
   statusSection: {
@@ -413,9 +435,9 @@ const styles = StyleSheet.create({
   },
   statusSectionTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
-    color: colors.muted,
-    letterSpacing: -0.1,
+    fontSize: fontSize.lg,
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
   statusGrid: {
     flexDirection: 'row',
@@ -430,26 +452,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: 4,
-    marginTop: 14,
-    minHeight: 30,
+    gap: 5,
+    marginTop: 12,
+    minHeight: 40,
+    paddingHorizontal: 2,
   },
   statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginTop: 5,
   },
   statusLabel: {
-    fontFamily: fonts.medium,
-    fontSize: 11.5,
-    color: colors.body,
+    flexShrink: 1,
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.base,
+    color: colors.ink,
     textAlign: 'center',
-    lineHeight: 15,
+    lineHeight: 22,
   },
   statusCount: {
     fontFamily: fonts.bold,
-    fontSize: 24,
+    fontSize: fontSize['3xl'],
     letterSpacing: -0.5,
     textAlign: 'center',
   },
@@ -470,14 +494,14 @@ const styles = StyleSheet.create({
   },
   emptyCategoryTitle: {
     fontFamily: fonts.semibold,
-    fontSize: 14.5,
+    fontSize: fontSize.mdLg,
     color: colors.ink,
   },
   emptyCategoryText: {
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 23,
     paddingHorizontal: layout.screenPadding,
   },
 
@@ -495,8 +519,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   ctaText: { flex: 1 },
-  ctaTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.white },
-  ctaSub: { fontSize: 12.5, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  ctaTitle: { fontFamily: fonts.bold, fontSize: fontSize.base, color: colors.white },
+  ctaSub: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,5 +530,5 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 14,
   },
-  ctaButtonText: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.ink },
+  ctaButtonText: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.ink },
 });

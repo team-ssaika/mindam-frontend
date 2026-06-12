@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { AppText, Button } from '../../../components/ui';
-import { colors, fonts, radius, shadow } from '../../../theme';
+import { colors, fonts, radius, shadow, fontSize } from '../../../theme';
 import { updateMyReport } from '../api/reportApi';
 import type { MyReportDetail } from '../types/myReportDetail';
 import type { ReportVisibility } from '../types/myReportUpdate';
@@ -217,11 +217,11 @@ const styles = StyleSheet.create({
     ...shadow.sheet,
   },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: '#d8dbe1', marginBottom: 16 },
-  sheetDescription: { marginTop: 6, fontSize: 14, color: colors.muted },
+  sheetDescription: { marginTop: 6, fontSize: fontSize.mdLg, color: colors.muted },
   formScroll: { marginTop: 16 },
   formContent: { gap: 18, paddingBottom: 12 },
   fieldGroup: { gap: 8 },
-  fieldLabel: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.body },
+  fieldLabel: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.body },
   input: {
     minHeight: 50,
     borderRadius: radius.md,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: fonts.regular,
-    fontSize: 15,
+    fontSize: fontSize.base,
     color: colors.ink,
   },
   textArea: { minHeight: 92 },
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     justifyContent: 'center',
   },
-  readOnlyText: { fontFamily: fonts.regular, fontSize: 15, color: colors.muted },
+  readOnlyText: { fontFamily: fonts.regular, fontSize: fontSize.base, color: colors.muted },
   visibilityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   visibilityChip: {
     borderRadius: radius.pill,
@@ -255,9 +255,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
   },
   visibilityChipActive: { borderColor: colors.brand, backgroundColor: colors.brandSoft },
-  visibilityChipText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
+  visibilityChipText: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.muted },
   visibilityChipTextActive: { color: colors.brand },
-  errorText: { marginTop: 8, fontSize: 14, lineHeight: 20, color: colors.accent },
+  errorText: { marginTop: 8, fontSize: fontSize.mdLg, lineHeight: 22, color: colors.accent },
   actions: { flexDirection: 'row', gap: 12, marginTop: 16 },
   actionItem: { flex: 1 },
 });

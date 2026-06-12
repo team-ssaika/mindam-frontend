@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   label: {
-    fontSize: 18,
+    fontSize: fontSize.xl,
     color: '#17171F',
   },
   subtleLabel: {
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rightLabel: {
-    fontSize: 18,
+    fontSize: fontSize.xl,
     color: '#17171F',
   },
   pressed: {

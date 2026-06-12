@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, Icon } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { colors, fonts, fontSize } from '../../../theme';
 
 type TermsAgreementItemProps = {
   checked: boolean;
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.medium,
-    fontSize: 15.5,
+    fontSize: fontSize.base,
     lineHeight: 23,
     color: '#5F5F5F',
   },

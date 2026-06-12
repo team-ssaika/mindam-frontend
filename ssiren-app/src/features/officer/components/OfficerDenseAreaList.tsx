@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { AppText } from '../../../components/ui';
-import { colors, fonts, layout, radius, shadow } from '../../../theme';
+import { colors, fonts, layout, radius, shadow, fontSize } from '../../../theme';
 import { fetchAdminIssues } from '../api/adminIssueApi';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 import type { AdminIssueItem } from '../types/adminIssue';
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   chipCount: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: fontSize['3xl'],
     lineHeight: 26,
     letterSpacing: -0.6,
     color: colors.body,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   chipUnit: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
     marginBottom: 1,
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     color: colors.brand,
   },
   chipDistance: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     lineHeight: 16,
     color: colors.muted,
   },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 13.5,
+    fontSize: fontSize.md,
     color: colors.muted,
     textAlign: 'center',
   },

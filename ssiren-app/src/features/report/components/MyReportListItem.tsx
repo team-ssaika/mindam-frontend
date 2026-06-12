@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText, Card, CatChip, Icon, StatusBadge } from '../../../components/ui';
-import { colors, fonts } from '../../../theme';
+import { colors, fonts, fontSize } from '../../../theme';
 import type { MyReportItem } from '../types/myReport';
 import { formatReportDate, getReportStatusLabel, getReportStatusTone } from '../utils/reportStatus';
 
@@ -50,8 +50,8 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { lineHeight: 22 },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  address: { flex: 1, fontSize: 13.5, color: colors.muted },
+  address: { flex: 1, fontSize: fontSize.md, color: colors.muted },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.faint },
-  metaDot: { marginHorizontal: 6, fontSize: 12.5, color: colors.faint },
+  metaText: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.faint },
+  metaDot: { marginHorizontal: 6, fontSize: fontSize.sm, color: colors.faint },
 });

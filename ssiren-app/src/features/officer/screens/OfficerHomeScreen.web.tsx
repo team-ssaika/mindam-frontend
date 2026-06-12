@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { AppText } from '../../../components/ui';
-import { colors } from '../../../theme';
+import { colors, fontSize } from '../../../theme';
 
 export default function OfficerHomeScreenWeb() {
   return (
@@ -20,5 +20,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 8,
   },
-  desc: { fontSize: 14, color: colors.muted },
+  desc: { fontSize: fontSize.mdLg, color: colors.muted },
 });

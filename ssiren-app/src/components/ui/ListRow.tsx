@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { colors, fonts, layout } from '../../theme';
+import { colors, fontSize, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon, { IconName } from './Icon';
 import Toggle from './Toggle';
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.semibold,
-    fontSize: 14.5,
+    fontSize: fontSize.mdLg,
     color: colors.ink,
     letterSpacing: -0.2,
   },
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   sub: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     color: colors.muted,
     marginTop: 2,
   },
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontFamily: fonts.semibold,
-    fontSize: 13.5,
+    fontSize: fontSize.sm,
     color: colors.body,
   },
 });

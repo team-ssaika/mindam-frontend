@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
-import { fonts } from '../../../theme';
+import { fonts, fontSize } from '../../../theme';
 import type { ReportDetail } from '../types/reportDetail';
 
 const SKY = '#75C7F4';
@@ -248,8 +248,8 @@ const styles = StyleSheet.create({
   },
   riskText: {
     fontFamily: fonts.bold,
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: fontSize.base,
+    lineHeight: 23,
     color: TEXT,
   },
   closeButton: {
@@ -261,14 +261,14 @@ const styles = StyleSheet.create({
   categoryText: {
     marginTop: 22,
     fontFamily: fonts.bold,
-    fontSize: 18,
+    fontSize: fontSize.xl,
     lineHeight: 23,
     color: SKY,
   },
   title: {
     marginTop: 8,
     fontFamily: fonts.black,
-    fontSize: 26,
+    fontSize: fontSize.display,
     lineHeight: 34,
     color: TEXT,
     letterSpacing: 0,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontFamily: fonts.bold,
-    fontSize: 17,
+    fontSize: fontSize.lg,
     lineHeight: 24,
     color: '#7D7B83',
   },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   },
   aiLabel: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     lineHeight: 17,
     color: '#77777E',
   },
@@ -314,8 +314,8 @@ const styles = StyleSheet.create({
   metaText: {
     marginTop: 16,
     fontFamily: fonts.medium,
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: fontSize.base,
+    lineHeight: 23,
     color: BODY,
   },
   discomfortButton: {
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   discomfortText: {
     fontFamily: fonts.bold,
-    fontSize: 18,
+    fontSize: fontSize.xl,
     lineHeight: 23,
     color: SKY_DARK,
   },
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   },
   timelineTitle: {
     fontFamily: fonts.black,
-    fontSize: 20,
+    fontSize: fontSize['2xl'],
     lineHeight: 26,
     color: '#9C9C9C',
   },
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   timelineDescription: {
     marginTop: 5,
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: fontSize.base,
     lineHeight: 22,
     color: MUTED,
   },

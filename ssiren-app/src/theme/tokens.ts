@@ -128,14 +128,31 @@ export const shadow = {
   },
 } as const;
 
+/** Shared content font-size scale (+1px bump from prior defaults). */
+export const fontSize = {
+  micro: 12,
+  xs: 13,
+  sm: 13.5,
+  md: 14,
+  mdLg: 14.5,
+  base: 16,
+  lg: 17,
+  xl: 18,
+  '2xl': 20,
+  '3xl': 24,
+  display: 30,
+} as const;
+
+export type FontSizeToken = keyof typeof fontSize;
+
 export const typography = {
-  display: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 36, letterSpacing: -0.6 },
-  title: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30, letterSpacing: -0.4 },
-  heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24, letterSpacing: -0.3 },
-  section: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 22, letterSpacing: -0.2 },
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
-  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
-  caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, color: colors.muted },
-  mono: { fontFamily: 'ui-monospace', fontSize: 12.5, letterSpacing: 0.2 },
+  display: { fontFamily: fonts.bold, fontSize: fontSize.display, lineHeight: 38, letterSpacing: -0.6 },
+  title: { fontFamily: fonts.bold, fontSize: fontSize['3xl'], lineHeight: 32, letterSpacing: -0.4 },
+  heading: { fontFamily: fonts.bold, fontSize: fontSize.xl, lineHeight: 26, letterSpacing: -0.3 },
+  section: { fontFamily: fonts.bold, fontSize: fontSize.lg, lineHeight: 24, letterSpacing: -0.2 },
+  body: { fontFamily: fonts.regular, fontSize: fontSize.base, lineHeight: 24 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: fontSize.base, lineHeight: 24 },
+  label: { fontFamily: fonts.semibold, fontSize: fontSize.md, lineHeight: 20 },
+  caption: { fontFamily: fonts.medium, fontSize: fontSize.xs, lineHeight: 18, color: colors.muted },
+  mono: { fontFamily: 'ui-monospace', fontSize: fontSize.sm, letterSpacing: 0.2 },
 } as const;

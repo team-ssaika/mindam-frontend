@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
-import { colors, fonts, radius } from '../../../theme';
+import { colors, fonts, radius, fontSize } from '../../../theme';
 import type { TermsAgreementState, TermsItem } from '../types/auth.types';
 import { TermsAgreementItem } from './TermsAgreementItem';
 
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.bold,
-    fontSize: 20,
+    fontSize: fontSize['2xl'],
     color: '#000000',
     marginBottom: 34,
   },
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginTop: 16,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: fontSize.md,
+    lineHeight: 22,
     color: colors.danger,
   },
   confirmButton: {

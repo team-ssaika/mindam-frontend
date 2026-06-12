@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText, Icon } from '../../../components/ui';
-import { colors, fonts, radius } from '../../../theme';
+import { colors, fonts, radius, fontSize } from '../../../theme';
 
 const SIREN_LOGIN_IMAGE = require('../../../assets/ssiren-login.png');
 
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: fonts.medium,
-    fontSize: 14.5,
-    lineHeight: 21,
+    fontSize: fontSize.mdLg,
+    lineHeight: 23,
     color: '#8B8B8B',
     textAlign: 'center',
   },
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: fonts.bold,
-    fontSize: 15.5,
+    fontSize: fontSize.base,
     color: colors.white,
   },
   buttonTextDark: {
@@ -325,13 +325,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     paddingHorizontal: 18,
     fontFamily: fonts.regular,
-    fontSize: 15.5,
+    fontSize: fontSize.base,
     color: '#111111',
   },
   helpText: {
     fontFamily: fonts.regular,
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: fontSize.sm,
+    lineHeight: 22,
     color: '#8B8B8B',
   },
   devButton: {

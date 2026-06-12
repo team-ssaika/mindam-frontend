@@ -17,7 +17,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
+import { colors, fonts, radius, shadow, statusColors, fontSize } from '../../../theme';
 import { fetchAdminIssueDetail, updateAdminIssueStatus } from '../api/adminIssueApi';
 import type { AdminIssueDetail, AdminUpdatableReportStatus } from '../types/adminIssue';
 import type { ReportStatus } from '../../report/types/myReport';
@@ -536,7 +536,7 @@ export function OfficerReportDetailScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
-  errorText: { fontSize: 14.5, color: colors.muted, textAlign: 'center', lineHeight: 21 },
+  errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
   content: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24, gap: 13 },
   heroImageRow: { gap: 10 },
@@ -555,14 +555,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  deletedBadgeText: { fontFamily: fonts.semibold, fontSize: 11.5, color: colors.muted },
-  summaryText: { fontSize: 14, color: colors.body, lineHeight: 20, marginTop: 6 },
+  deletedBadgeText: { fontFamily: fonts.semibold, fontSize: fontSize.xs, color: colors.muted },
+  summaryText: { fontSize: fontSize.mdLg, color: colors.body, lineHeight: 22, marginTop: 6 },
 
   infoCard: { paddingHorizontal: 14 },
   infoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
   infoDivider: { borderTopWidth: 1, borderTopColor: colors.hairline },
-  infoKey: { fontSize: 13, color: colors.muted },
-  infoVal: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.ink, flex: 1, textAlign: 'right', marginLeft: 12 },
+  infoKey: { fontSize: fontSize.md, color: colors.muted },
+  infoVal: { fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.ink, flex: 1, textAlign: 'right', marginLeft: 12 },
 
   timelineList: { marginTop: 4 },
   timelineItem: { flexDirection: 'row', gap: 12 },
@@ -580,23 +580,23 @@ const styles = StyleSheet.create({
   timelineContent: { flex: 1 },
   timelineContentSpaced: { paddingBottom: 18 },
   timelineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  timelineStatus: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
+  timelineStatus: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.muted },
   timelineCurrentBadge: { borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 },
-  timelineCurrentBadgeText: { fontFamily: fonts.bold, fontSize: 10.5 },
-  timelineReason: { fontSize: 13, color: colors.body, marginTop: 4, lineHeight: 19 },
-  timelineDate: { fontSize: 12, color: colors.faint, marginTop: 4 },
+  timelineCurrentBadgeText: { fontFamily: fonts.bold, fontSize: fontSize.micro },
+  timelineReason: { fontSize: fontSize.md, color: colors.body, marginTop: 4, lineHeight: 23 },
+  timelineDate: { fontSize: fontSize.xs, color: colors.faint, marginTop: 4 },
 
   reportList: { gap: 10 },
   reportCard: { gap: 8 },
   reportCardTags: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  reportCardTitle: { fontFamily: fonts.semibold, fontSize: 14.5, color: colors.ink, lineHeight: 20 },
-  reportCardTag: { fontFamily: fonts.bold, fontSize: 11.5, color: colors.brand },
-  reportCardTagMuted: { fontFamily: fonts.semibold, fontSize: 11.5, color: colors.muted },
-  reportCardMetaText: { fontSize: 12, color: colors.faint },
+  reportCardTitle: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink, lineHeight: 22 },
+  reportCardTag: { fontFamily: fonts.bold, fontSize: fontSize.xs, color: colors.brand },
+  reportCardTagMuted: { fontFamily: fonts.semibold, fontSize: fontSize.xs, color: colors.muted },
+  reportCardMetaText: { fontSize: fontSize.xs, color: colors.faint },
   reportThumb: { width: '100%', height: 96, borderRadius: radius.sm, backgroundColor: colors.hairline },
 
-  sectionLabel: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink, marginBottom: 8 },
-  sectionHint: { fontSize: 12.5, color: colors.muted, marginTop: -4, marginBottom: 10 },
+  sectionLabel: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.ink, marginBottom: 8 },
+  sectionHint: { fontSize: fontSize.sm, color: colors.muted, marginTop: -4, marginBottom: 10 },
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   statusBtn: {
     minWidth: '30%',
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   statusBtnDisabled: { opacity: 0.4 },
-  statusBtnText: { fontFamily: fonts.bold, fontSize: 12.5, textAlign: 'center' },
+  statusBtnText: { fontFamily: fonts.bold, fontSize: fontSize.sm, textAlign: 'center' },
 
   noteRow: { flexDirection: 'row', gap: 10 },
   photoSlot: {
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 3,
   },
-  photoSlotText: { fontFamily: fonts.semibold, fontSize: 10.5, color: colors.muted },
+  photoSlotText: { fontFamily: fonts.semibold, fontSize: fontSize.micro, color: colors.muted },
   noteInput: {
     flex: 1,
     height: 70,
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: fonts.regular,
-    fontSize: 13.5,
+    fontSize: fontSize.md,
     color: colors.ink,
   },
 
@@ -677,5 +677,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toastText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.white, flex: 1 },
+  toastText: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.white, flex: 1 },
 });

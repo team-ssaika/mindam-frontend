@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { colors, fonts, radius } from '../../theme';
+import { colors, fontSize, fonts, radius } from '../../theme';
 import AppText from './AppText';
 
 type TagProps = {
@@ -27,6 +27,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: fonts.semibold,
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
 });

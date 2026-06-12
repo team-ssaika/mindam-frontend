@@ -20,7 +20,7 @@ import {
   type KakaoMapRegion,
   type KakaoMapViewHandle,
 } from '../../../components/map/KakaoMapView';
-import { colors, fonts, shadow, statusColors } from '../../../theme';
+import { colors, fonts, shadow, statusColors, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     maxWidth: SCREEN_WIDTH * 0.52,
   },
-  jurisText: { flexShrink: 1, fontFamily: fonts.medium, fontSize: 13, color: colors.ink },
+  jurisText: { flexShrink: 1, fontFamily: fonts.medium, fontSize: fontSize.md, color: colors.ink },
 
   mapArea: { flex: 1, backgroundColor: '#eef2e8' },
   map: { flex: 1 },
@@ -547,22 +547,22 @@ const styles = StyleSheet.create({
   peekHeaderMain: { flex: 1 },
   peekTitle: {
     fontFamily: fonts.black,
-    fontSize: 28,
+    fontSize: fontSize.display,
     lineHeight: 36,
     color: colors.ink,
   },
   peekCount: {
     fontFamily: fonts.black,
-    fontSize: 28,
+    fontSize: fontSize.display,
     lineHeight: 36,
     color: colors.brand,
   },
   countsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  count: { fontFamily: fonts.semibold, fontSize: 12.5 },
+  count: { fontFamily: fonts.semibold, fontSize: fontSize.sm },
   inboxLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 6 },
-  inboxLinkText: { fontFamily: fonts.bold, fontSize: 14, color: colors.brand },
+  inboxLinkText: { fontFamily: fonts.bold, fontSize: fontSize.mdLg, color: colors.brand },
   peekLoading: { paddingTop: 12, paddingBottom: 0, alignItems: 'center' },
-  peekEmpty: { fontSize: 13.5, color: colors.muted, paddingTop: 12, paddingBottom: 0 },
+  peekEmpty: { fontSize: fontSize.md, color: colors.muted, paddingTop: 12, paddingBottom: 0 },
   peekListContent: { gap: 10, paddingTop: 12, paddingBottom: 0, paddingRight: 4 },
   peekCard: {
     width: 264,
@@ -579,9 +579,9 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   peekCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  peekCardTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, lineHeight: 19 },
+  peekCardTitle: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink, lineHeight: 23 },
   peekCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  peekCardCount: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
-  peekCardDot: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.faint },
-  peekCardDist: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.muted },
+  peekCardCount: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.muted },
+  peekCardDot: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.faint },
+  peekCardDist: { fontFamily: fonts.medium, fontSize: fontSize.sm, color: colors.muted },
 });

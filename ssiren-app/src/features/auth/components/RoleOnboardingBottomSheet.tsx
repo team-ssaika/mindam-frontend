@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText, Icon } from '../../../components/ui';
 import { BottomSheet } from '../../../components/ui/BottomSheet';
-import { colors, fonts, radius } from '../../../theme';
+import { colors, fonts, radius, fontSize } from '../../../theme';
 import {
   fetchAgencyTypes,
   fetchDepartments,
@@ -292,18 +292,18 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: fonts.semibold,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.brand,
   },
   title: {
     fontFamily: fonts.bold,
-    fontSize: 22,
+    fontSize: fontSize['3xl'],
     lineHeight: 30,
     color: colors.ink,
   },
   subtitle: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   options: {
@@ -366,8 +366,8 @@ const styles = StyleSheet.create({
   },
   optionDescription: {
     fontFamily: fonts.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: fontSize.md,
+    lineHeight: 22,
     color: colors.muted,
   },
   loadingRow: {
@@ -385,13 +385,13 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontFamily: fonts.medium,
-    fontSize: 13,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   errorText: {
     fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: fontSize.md,
+    lineHeight: 23,
     color: colors.danger,
     textAlign: 'center',
   },

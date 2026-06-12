@@ -1,5 +1,5 @@
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { colors, fonts, radius } from '../../theme';
+import { colors, fontSize, fonts, radius } from '../../theme';
 import AppText from './AppText';
 import Icon, { IconName } from './Icon';
 
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.regular,
-    fontSize: 11,
+    fontSize: fontSize.micro,
     color: colors.faint,
     letterSpacing: 0.2,
   },

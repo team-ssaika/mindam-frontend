@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, fonts, layout } from '../../theme';
+import { colors, fontSize, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
 
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontFamily: fonts.black,
-    fontSize: 20,
+    fontSize: fontSize['2xl'],
     color: colors.ink,
     textAlign: 'center',
   },
