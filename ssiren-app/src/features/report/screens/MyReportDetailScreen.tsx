@@ -44,6 +44,38 @@ const CONTENT_FIELDS = [
   { key: 'why', label: '왜' },
 ] as const;
 
+function uniqueNonEmpty(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+
+  return values
+    .map((value) => value?.trim())
+    .filter((value): value is string => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+}
+
+function getAddressLines(report: MyReportDetail['report']) {
+  const region = [report.sido, report.sigungu, report.eupmyeondong].filter(Boolean).join(' ');
+  const lines = uniqueNonEmpty([report.roadAddress, report.jibunAddress]);
+
+  if (region && !lines.some((line) => line.includes(region))) {
+    lines.push(region);
+  }
+
+  return lines;
+}
+
+function getDepartmentLines(department: MyReportDetail['department']) {
+  const agencyLine = [department.agencyTypeName, department.name].filter(Boolean).join(' · ');
+  const showDepartmentOnly = department.name && department.name !== agencyLine;
+
+  return uniqueNonEmpty([agencyLine, showDepartmentOnly ? department.name : undefined]);
+}
+
 export function MyReportDetailScreen() {
   const router = useRouter();
   const { reportId } = useLocalSearchParams<{ reportId: string }>();
@@ -124,6 +156,8 @@ export function MyReportDetailScreen() {
   }, [detail, isDeleting, router]);
 
   const summaryText = detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
+  const addressLines = detail ? getAddressLines(detail.report) : [];
+  const departmentLines = detail ? getDepartmentLines(detail.department) : [];
 
   const contentEntries = detail
     ? CONTENT_FIELDS.flatMap(({ key, label }) => {
@@ -211,7 +245,10 @@ export function MyReportDetailScreen() {
 
             {summaryText ? (
               <Card>
-                <AppText style={styles.cardLabel}>AI 요약</AppText>
+                <View style={styles.aiLabelRow}>
+                  <Icon name="sparkle" size={14} color="#F2C55C" strokeWidth={1.9} />
+                  <AppText style={styles.aiLabel}>AI 요약</AppText>
+                </View>
                 <AppText style={styles.summaryText}>{summaryText}</AppText>
               </Card>
             ) : null}
@@ -219,9 +256,12 @@ export function MyReportDetailScreen() {
             {contentEntries.length > 0 ? (
               <Card>
                 <AppText style={[styles.cardLabel, styles.cardLabelGap]}>상세 내용</AppText>
-                <View style={styles.grid}>
-                  {contentEntries.map((entry) => (
-                    <View key={entry.label} style={styles.gridItem}>
+                <View style={styles.detailList}>
+                  {contentEntries.map((entry, index) => (
+                    <View
+                      key={entry.label}
+                      style={[styles.detailItem, index > 0 ? styles.detailItemDivider : null]}
+                    >
                       <AppText style={styles.gridKey}>{entry.label}</AppText>
                       <AppText style={styles.gridValue}>{entry.value}</AppText>
                     </View>
@@ -246,11 +286,18 @@ export function MyReportDetailScreen() {
                 <Icon name="location" size={15} color={colors.muted} />
                 <AppText style={[styles.cardLabel, styles.inlineLabel]}>위치</AppText>
               </View>
-              <AppText style={styles.locationPrimary}>{detail.report.roadAddress}</AppText>
-              <AppText style={styles.locationSecondary}>{detail.report.jibunAddress}</AppText>
-              <AppText style={styles.locationSecondary}>
-                {detail.report.sido} {detail.report.sigungu} {detail.report.eupmyeondong}
-              </AppText>
+              {addressLines.length > 0 ? (
+                addressLines.map((line, index) => (
+                  <AppText
+                    key={line}
+                    style={index === 0 ? styles.locationPrimary : styles.locationSecondary}
+                  >
+                    {line}
+                  </AppText>
+                ))
+              ) : (
+                <AppText style={styles.locationSecondary}>위치 정보 없음</AppText>
+              )}
             </Card>
 
             <Card>
@@ -258,10 +305,18 @@ export function MyReportDetailScreen() {
                 <Icon name="building" size={15} color={colors.muted} />
                 <AppText style={[styles.cardLabel, styles.inlineLabel]}>담당 기관</AppText>
               </View>
-              <AppText style={styles.agencyName}>
-                {detail.department.agencyTypeName} · {detail.department.name}
-              </AppText>
-              <AppText style={styles.locationSecondary}>{detail.department.name}</AppText>
+              {departmentLines.length > 0 ? (
+                departmentLines.map((line, index) => (
+                  <AppText
+                    key={line}
+                    style={index === 0 ? styles.agencyName : styles.locationSecondary}
+                  >
+                    {line}
+                  </AppText>
+                ))
+              ) : (
+                <AppText style={styles.locationSecondary}>담당 기관 정보 없음</AppText>
+              )}
             </Card>
 
             {statusHistories.length > 0 ? (
@@ -338,12 +393,52 @@ const styles = StyleSheet.create({
   outerLabel: { marginLeft: 4, marginBottom: 8 },
   inlineLabel: { marginLeft: 6 },
   rowCenter: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  summaryText: { fontSize: fontSize.mdLg, color: colors.body, lineHeight: 23, marginTop: 8 },
+  aiLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  aiLabel: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    lineHeight: 17,
+    color: '#77777E',
+  },
+  summaryText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.ink,
+    lineHeight: 23,
+  },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  gridItem: { width: '50%', paddingVertical: 8, paddingRight: 8, gap: 2 },
-  gridKey: { fontFamily: fonts.bold, fontSize: fontSize.xs, color: colors.brand },
-  gridValue: { fontFamily: fonts.medium, fontSize: fontSize.mdLg, color: colors.body, lineHeight: 23 },
+  detailList: {
+    marginTop: 4,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 12,
+  },
+  detailItemDivider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.hairline,
+  },
+  gridKey: {
+    width: 54,
+    fontFamily: fonts.bold,
+    fontSize: fontSize.sm,
+    color: colors.brand,
+  },
+  gridValue: {
+    flex: 1,
+    minWidth: 0,
+    fontFamily: fonts.medium,
+    fontSize: fontSize.mdLg,
+    color: colors.body,
+    lineHeight: 23,
+  },
 
   imageRow: { gap: 10, paddingVertical: 2 },
   image: { width: 130, height: 130, borderRadius: radius.md, backgroundColor: colors.soft2 },

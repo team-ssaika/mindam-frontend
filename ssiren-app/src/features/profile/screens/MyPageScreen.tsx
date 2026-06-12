@@ -278,6 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     paddingTop: 6,
     paddingBottom: 2,
+    marginHorizontal: -10,
   },
   statColumn: {
     flex: 1,
