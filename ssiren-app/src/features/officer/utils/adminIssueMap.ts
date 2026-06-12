@@ -63,5 +63,15 @@ export function adminIssueToPublicReportItem(item: AdminIssueItem): PublicReport
       parentCategoryId: category.parentCategory?.id ?? null,
     },
     issueGroup,
+    department: {
+      id: report.departmentId,
+      name: report.departmentName,
+      agencyTypeId: report.agencyTypeId,
+      agencyTypeName: report.agencyTypeName,
+    },
+    agencyType: {
+      id: report.agencyTypeId,
+      name: report.agencyTypeName,
+    },
   };
 }

@@ -1,6 +1,7 @@
 import type { PublicReportItem } from '../types/publicReport';
 import type { IssueDetail, IssueItem } from '../types/issue';
 import type { ReportDetail } from '../types/reportDetail';
+import type { MyReportItem } from '../types/myReport';
 import { getReportStatusLabel } from './reportStatus';
 
 function formatTimeAgo(isoDate: string) {
@@ -89,6 +90,22 @@ export function hasValidReportCoordinate(item: PublicReportItem) {
   );
 }
 
+function departmentFromReport(report: MyReportItem['report']) {
+  return {
+    id: report.departmentId,
+    name: report.departmentName,
+    agencyTypeId: report.agencyTypeId,
+    agencyTypeName: report.agencyTypeName,
+  };
+}
+
+function agencyTypeFromReport(report: MyReportItem['report']) {
+  return {
+    id: report.agencyTypeId,
+    name: report.agencyTypeName,
+  };
+}
+
 export function issueToPublicReportItem(item: IssueItem): PublicReportItem | null {
   const { issueGroup, representativeReport, category } = item;
   if (!representativeReport || !category) {
@@ -104,6 +121,8 @@ export function issueToPublicReportItem(item: IssueItem): PublicReportItem | nul
     reportImages: [],
     category,
     issueGroup,
+    department: departmentFromReport(representativeReport),
+    agencyType: agencyTypeFromReport(representativeReport),
   };
 }
 
@@ -122,6 +141,8 @@ export function issueDetailToPublicReportItem(detail: IssueDetail): PublicReport
     reportImages: [],
     category,
     issueGroup,
+    department: departmentFromReport(representativeReport),
+    agencyType: agencyTypeFromReport(representativeReport),
   };
 }
 
