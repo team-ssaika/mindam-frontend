@@ -45,13 +45,19 @@ function MapMarker({
   left: `${number}%`;
   top: `${number}%`;
 }) {
+  const sizeStyle =
+    count === 1 ? styles.markerOne : count >= 10 ? styles.markerLarge : undefined;
+
   return (
     <View style={[styles.markerWrap, { left, top }]}>
-      <View style={styles.markerBubble}>
-        <Image source={ssirenMarkerLogo} style={styles.markerIcon} resizeMode="contain" />
-        <Text style={styles.markerText}>{count}개</Text>
+      <View style={[styles.markerShell, sizeStyle]}>
+        <View style={styles.markerTailOuter} />
+        <View style={styles.markerTailInner} />
+        <View style={[styles.markerBubble, sizeStyle]}>
+          <Image source={ssirenMarkerLogo} style={styles.markerIcon} resizeMode="contain" />
+          <Text style={styles.markerText}>{count}개</Text>
+        </View>
       </View>
-      <View style={styles.markerTail} />
     </View>
   );
 }
@@ -67,14 +73,16 @@ export default function HomeMapScreenWeb() {
       </View>
 
       <View style={styles.mapArea}>
-        <View style={styles.searchBox}>
-          <Icon name="search" size={25} color="#6D6D6D" strokeWidth={2.2} />
-          <TextInput
-            placeholder="지역 · 주소로 제보 찾기"
-            placeholderTextColor="#666666"
-            style={styles.searchInput}
-          />
-          <Icon name="mic" size={26} color="#6D6D6D" strokeWidth={2.4} />
+        <View style={styles.searchShadow}>
+          <View style={styles.searchBox}>
+            <Icon name="search" size={25} color="#6D6D6D" strokeWidth={2.2} />
+            <TextInput
+              placeholder="지역 · 주소로 제보 찾기"
+              placeholderTextColor="#666666"
+              style={styles.searchInput}
+            />
+            <Icon name="mic" size={26} color="#6D6D6D" strokeWidth={2.4} />
+          </View>
         </View>
 
         <View style={styles.mockMap}>
@@ -116,6 +124,7 @@ export default function HomeMapScreenWeb() {
 
           <ScrollView
             horizontal
+            style={styles.cardScroller}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.cardList}
           >
@@ -149,9 +158,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    height: 78,
-    paddingHorizontal: 34,
-    paddingTop: 14,
+    height: 60,
+    paddingLeft: 28,
+    paddingRight: 24,
+    paddingTop: 8,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
@@ -171,29 +181,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#E8EEE1',
   },
-  searchBox: {
+  searchShadow: {
     position: 'absolute',
     top: 22,
     left: 31,
     right: 31,
     height: 52,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'transparent',
     zIndex: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    overflow: 'visible',
+  },
+  searchBox: {
+    height: 52,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.92)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 19,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 7,
+    overflow: 'hidden',
   },
   searchInput: {
     flex: 1,
     marginLeft: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: 'transparent',
     fontFamily: fonts.semibold,
     fontSize: 18,
     color: TEXT,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    boxShadow: 'none' as never,
     outlineStyle: 'none' as never,
   },
   mockMap: {
@@ -266,42 +289,78 @@ const styles = StyleSheet.create({
   markerWrap: {
     position: 'absolute',
     alignItems: 'center',
+    overflow: 'visible',
+  },
+  markerShell: {
+    position: 'relative',
+    minWidth: 110,
+    height: 84,
+    alignItems: 'center',
+    overflow: 'visible',
   },
   markerBubble: {
-    minWidth: 105,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
+    minWidth: 110,
+    height: 58,
+    borderRadius: 999,
+    borderWidth: 4,
     borderColor: '#ffffff',
     backgroundColor: '#9BDCF4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 13,
+    paddingLeft: 13,
+    paddingRight: 13,
     gap: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.14,
     shadowRadius: 10,
+    zIndex: 2,
   },
   markerIcon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
   },
   markerText: {
     fontFamily: fonts.bold,
-    fontSize: 25,
+    fontSize: 23,
     color: TEXT,
   },
-  markerTail: {
-    width: 24,
-    height: 24,
-    marginTop: -13,
-    transform: [{ rotate: '45deg' }],
-    backgroundColor: '#9BDCF4',
-    borderRightWidth: 3,
-    borderBottomWidth: 3,
-    borderColor: '#ffffff',
+  markerOne: {
+    minWidth: 88,
+  },
+  markerLarge: {
+    minWidth: 122,
+  },
+  markerTailOuter: {
+    position: 'absolute',
+    left: '50%',
+    bottom: 0,
+    width: 0,
+    height: 0,
+    marginLeft: -26,
+    borderLeftWidth: 26,
+    borderRightWidth: 26,
+    borderTopWidth: 30,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#ffffff',
+    zIndex: 1,
+  },
+  markerTailInner: {
+    position: 'absolute',
+    left: '50%',
+    bottom: 5,
+    width: 0,
+    height: 0,
+    marginLeft: -21,
+    borderLeftWidth: 21,
+    borderRightWidth: 21,
+    borderTopWidth: 25,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#9BDCF4',
+    zIndex: 3,
   },
   currentMarker: {
     position: 'absolute',
@@ -351,10 +410,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 326,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FAFAFA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingHorizontal: 34,
+    paddingHorizontal: 24,
     overflow: 'hidden',
     zIndex: 9,
     shadowColor: '#000',
@@ -397,38 +456,47 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 14,
     color: TEXT,
   },
   cardList: {
     gap: 20,
-    paddingTop: 30,
-    paddingRight: 34,
+    paddingTop: 22,
+    paddingLeft: 24,
+    paddingRight: 24,
     paddingBottom: 20,
   },
+  cardScroller: {
+    marginHorizontal: -24,
+  },
   card: {
-    width: 250,
-    height: 132,
+    width: 280,
+    height: 144,
     borderRadius: 15,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 19,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.012,
+    shadowRadius: 5,
   },
   cardKeyword: {
     fontFamily: fonts.bold,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     color: SKY,
-    marginBottom: 10,
+    marginBottom: 4,
   },
   cardTitle: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.black,
     fontSize: 19,
     lineHeight: 27,
     color: TEXT,
+    fontWeight: '900',
+    textShadowColor: TEXT,
+    textShadowOffset: { width: 0.35, height: 0 },
+    textShadowRadius: 0,
   },
   cardMetaRow: {
     marginTop: 'auto',

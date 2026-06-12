@@ -5,10 +5,8 @@ import {
   Dimensions,
   FlatList,
   Image,
-  Modal,
   PanResponder,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,12 +28,15 @@ import {
   type KakaoMapViewHandle,
 } from '../../../components/map/KakaoMapView';
 import { fetchIssueDetail, fetchIssues } from '../../report/api/issueApi';
-import type { IssueDetail } from '../../report/types/issue';
+import { ReportDetailBottomSheet } from '../../report/components/ReportDetailBottomSheet';
+import type { ReportDetail } from '../../report/types/reportDetail';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import {
   hasValidIssueCoordinate,
   hasValidReportCoordinate,
+  issueDetailToPublicReportItem,
   issueToPublicReportItem,
+  toMapReportDetail,
 } from '../../report/utils/publicReportMap';
 import { fonts } from '../../../theme';
 
@@ -50,14 +51,14 @@ const SKY_SOFT = 'rgba(126, 200, 247, 0.22)';
 const TEXT = '#050505';
 const MUTED = '#777777';
 const DANGER = '#D95E5E';
-const HEADER_BODY_HEIGHT = Math.min(55, Math.max(46, SCREEN_HEIGHT * 0.056));
+const HEADER_BODY_HEIGHT = Math.min(49, Math.max(40, SCREEN_HEIGHT * 0.05));
 const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 const SEARCH_TOP_OFFSET = 14;
 const SEARCH_HEIGHT = 48;
 const SEARCH_SIDE = 27;
 const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.37, 292), 326);
 const COLLAPSED_SHEET_HEIGHT = 74;
-const CARD_WIDTH = Math.min(280, Math.max(240, SCREEN_WIDTH * 0.56));
+const CARD_WIDTH = Math.min(304, Math.max(264, SCREEN_WIDTH * 0.64));
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
 const EXPANDED_DELTA = { latitudeDelta: 0.0045, longitudeDelta: 0.0045 };
@@ -229,7 +230,7 @@ function mapPublicReport(item: PublicReportItem): NearbyReport {
     latitude: item.report.latitude,
     longitude: item.report.longitude,
     keyword: item.category.categoryName || '제보',
-    title: item.report.title || item.issueGroup.title || '주변 제보',
+    title: item.issueGroup.title || item.report.title || '주변 제보',
     riskScore: Number(item.report.riskScore ?? item.issueGroup.riskScore ?? 0),
     createdAt: item.report.createdAt || item.issueGroup.recentReportedAt,
     address: item.report.roadAddress || item.report.jibunAddress,
@@ -239,6 +240,32 @@ function mapPublicReport(item: PublicReportItem): NearbyReport {
     issueGroupId: item.issueGroup.id,
     reportId: item.report.id,
     source: item,
+  };
+}
+
+function toNearbyReportDetail(
+  item: NearbyReport,
+  userLocation?: LatLng | null
+): ReportDetail {
+  if (item.source) {
+    return toMapReportDetail(item.source, userLocation);
+  }
+
+  return {
+    id: item.reportId != null ? String(item.reportId) : item.id,
+    title: item.title,
+    riskLabel: `위험지수 ${Number(item.riskScore).toFixed(1)}`,
+    timeAgo: formatTimeAgo(item.createdAt),
+    distance:
+      userLocation != null
+        ? `${Math.round(distanceMeters(userLocation, item))}m`
+        : '-',
+    address: item.address || compactAddress(item),
+    summary: item.title,
+    category: item.keyword,
+    yesCount: item.count,
+    organization: item.keyword,
+    status: '접수됨',
   };
 }
 
@@ -357,6 +384,7 @@ async function resolveAddressLabel(location: LatLng, fallback?: NearbyReport | n
 
 export default function HomeMapScreen() {
   const mapRef = useRef<KakaoMapViewHandle | null>(null);
+  const detailRequestIdRef = useRef(0);
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
   const [currentRegion, setCurrentRegion] = useState<KakaoMapRegion>({
     ...DEFAULT_MAP_CENTER,
@@ -370,9 +398,12 @@ export default function HomeMapScreen() {
   const [searchText, setSearchText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSheetExpanded, setIsSheetExpanded] = useState(true);
-  const [detailReport, setDetailReport] = useState<NearbyReport | null>(null);
-  const [detailIssue, setDetailIssue] = useState<IssueDetail | null>(null);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [detailSheetReport, setDetailSheetReport] = useState<ReportDetail | null>(null);
+
+  const closeReportDetail = useCallback(() => {
+    detailRequestIdRef.current += 1;
+    setDetailSheetReport(null);
+  }, []);
 
   const sheetPanResponder = useMemo(
     () =>
@@ -623,22 +654,22 @@ export default function HomeMapScreen() {
   };
 
   const openReportDetail = async (item: NearbyReport) => {
-    setDetailReport(item);
-    setDetailIssue(null);
+    const requestId = ++detailRequestIdRef.current;
+    setDetailSheetReport(toNearbyReportDetail(item, currentLocation));
 
     if (item.issueGroupId == null) {
       console.log('[NearbyReport] missing public issue id', item);
       return;
     }
 
-    setIsDetailLoading(true);
     try {
       const detail = await fetchIssueDetail(item.issueGroupId);
-      setDetailIssue(detail);
+      const publicReport = issueDetailToPublicReportItem(detail);
+      if (publicReport && detailRequestIdRef.current === requestId) {
+        setDetailSheetReport(toMapReportDetail(publicReport, currentLocation));
+      }
     } catch (nextError) {
       console.warn('[Issues] public detail fetch failed', nextError);
-    } finally {
-      setIsDetailLoading(false);
     }
   };
 
@@ -694,24 +725,26 @@ export default function HomeMapScreen() {
         />
 
         <View style={styles.searchWrap} pointerEvents="box-none">
-          <Pressable style={styles.searchBox} onPress={handleSearchPress}>
-            <Icon name="search" size={24} color="#6B6B6B" strokeWidth={2.25} />
-            <TextInput
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="지역 · 주소로 제보 찾기"
-              placeholderTextColor="#666666"
-              underlineColorAndroid="transparent"
-              selectionColor={SKY}
-              cursorColor={SKY}
-              style={styles.searchInput}
-              returnKeyType="search"
-              onSubmitEditing={handleSearchPress}
-            />
-            <Pressable style={styles.micButton} onPress={handleMicPress}>
-              <Icon name="mic" size={24} color="#6B6B6B" strokeWidth={2.25} />
+          <View style={styles.searchShadow}>
+            <Pressable style={styles.searchBox} onPress={handleSearchPress}>
+              <Icon name="search" size={24} color="#6B6B6B" strokeWidth={2.25} />
+              <TextInput
+                value={searchText}
+                onChangeText={setSearchText}
+                placeholder="지역 · 주소로 제보 찾기"
+                placeholderTextColor="#666666"
+                underlineColorAndroid="transparent"
+                selectionColor={SKY}
+                cursorColor={SKY}
+                style={styles.searchInput}
+                returnKeyType="search"
+                onSubmitEditing={handleSearchPress}
+              />
+              <Pressable style={styles.micButton} onPress={handleMicPress}>
+                <Icon name="mic" size={24} color="#6B6B6B" strokeWidth={2.25} />
+              </Pressable>
             </Pressable>
-          </Pressable>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -774,6 +807,7 @@ export default function HomeMapScreen() {
                   data={visibleReports}
                   keyExtractor={(item) => item.id}
                   renderItem={renderReportCard}
+                  style={styles.reportListScroller}
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.reportList}
                 />
@@ -788,88 +822,13 @@ export default function HomeMapScreen() {
           ) : null}
         </View>
 
-        <Modal
-          transparent
-          animationType="fade"
-          visible={detailReport != null}
-          onRequestClose={() => {
-            setDetailReport(null);
-            setDetailIssue(null);
-          }}
-        >
-          <View style={styles.detailOverlay}>
-            <Pressable
-              style={styles.detailBackdrop}
-              onPress={() => {
-                setDetailReport(null);
-                setDetailIssue(null);
-              }}
-            />
-            <View style={styles.detailSheet}>
-              <View style={styles.detailHeaderRow}>
-                <Text style={styles.detailKeyword}>
-                  {detailIssue?.category?.categoryName ?? detailReport?.keyword ?? '제보'}
-                </Text>
-                <Pressable
-                  style={styles.detailCloseButton}
-                  onPress={() => {
-                    setDetailReport(null);
-                    setDetailIssue(null);
-                  }}
-                >
-                  <Icon name="x" size={20} color="#777777" strokeWidth={2.1} />
-                </Pressable>
-              </View>
-
-              {isDetailLoading ? (
-                <View style={styles.detailLoading}>
-                  <ActivityIndicator color={SKY} />
-                </View>
-              ) : (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  <Text style={styles.detailTitle}>
-                    {detailIssue?.representativeReport?.title ?? detailReport?.title}
-                  </Text>
-                  <View style={styles.detailMetaRow}>
-                    <Text style={styles.riskText}>
-                      위험지수{' '}
-                      {Number(
-                        detailIssue?.representativeReport?.riskScore ?? detailReport?.riskScore ?? 0
-                      ).toFixed(1)}
-                    </Text>
-                    <Text style={styles.metaDivider}>|</Text>
-                    <Text style={styles.timeText}>
-                      {formatTimeAgo(
-                        detailIssue?.representativeReport?.createdAt ??
-                          detailReport?.createdAt ??
-                          new Date().toISOString()
-                      )}
-                    </Text>
-                  </View>
-                  <Text style={styles.detailAddress}>
-                    {compactAddress({
-                      sigungu: detailIssue?.representativeReport?.sigungu ?? detailReport?.sigungu,
-                      eupmyeondong:
-                        detailIssue?.representativeReport?.eupmyeondong ??
-                        detailReport?.eupmyeondong,
-                      address:
-                        detailIssue?.representativeReport?.roadAddress ??
-                        detailIssue?.representativeReport?.jibunAddress ??
-                        detailReport?.address,
-                    })}
-                  </Text>
-                  <Text style={styles.detailBody}>
-                    {typeof detailIssue?.representativeReport?.contents === 'object' &&
-                    detailIssue.representativeReport.contents != null &&
-                    'summary' in detailIssue.representativeReport.contents
-                      ? String(detailIssue.representativeReport.contents.summary ?? '')
-                      : detailIssue?.issueGroup?.content ?? '상세 내용을 확인 중입니다.'}
-                  </Text>
-                </ScrollView>
-              )}
-            </View>
-          </View>
-        </Modal>
+        {detailSheetReport ? (
+          <ReportDetailBottomSheet
+            visible
+            report={detailSheetReport}
+            onClose={closeReportDetail}
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -886,9 +845,11 @@ const styles = StyleSheet.create({
   },
   header: {
     height: HEADER_BODY_HEIGHT,
-    paddingHorizontal: 28,
+    paddingLeft: 22,
+    paddingRight: 20,
+    paddingTop: 2,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
   },
@@ -916,19 +877,25 @@ const styles = StyleSheet.create({
     right: SEARCH_SIDE,
     zIndex: 12,
   },
+  searchShadow: {
+    height: SEARCH_HEIGHT,
+    borderRadius: 15,
+    backgroundColor: 'transparent',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
+    elevation: 3,
+    overflow: 'visible',
+  },
   searchBox: {
     height: SEARCH_HEIGHT,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: 17,
     paddingRight: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 7,
-    elevation: 6,
     overflow: 'hidden',
   },
   searchInput: {
@@ -974,10 +941,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#FAFAFA',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingHorizontal: 34,
+    paddingHorizontal: 24,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.12,
@@ -1031,40 +998,49 @@ const styles = StyleSheet.create({
   },
   addressText: {
     fontFamily: fonts.medium,
-    fontSize: 15,
+    fontSize: 14,
     color: TEXT,
   },
   reportList: {
     gap: 20,
-    paddingTop: 24,
-    paddingRight: 34,
+    paddingTop: 16,
+    paddingLeft: 24,
+    paddingRight: 24,
     paddingBottom: 20,
+  },
+  reportListScroller: {
+    marginHorizontal: -24,
   },
   reportCard: {
     width: CARD_WIDTH,
-    height: 142,
+    height: 154,
     borderRadius: 15,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 18,
+    paddingHorizontal: 22,
+    paddingTop: 21,
+    paddingBottom: 19,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.012,
+    shadowRadius: 5,
+    elevation: 1,
   },
   cardKeyword: {
     fontFamily: fonts.bold,
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 20,
     color: SKY,
-    marginBottom: 14,
+    marginBottom: 5,
   },
   cardTitle: {
-    fontFamily: fonts.bold,
+    fontFamily: fonts.black,
     fontSize: 19,
     lineHeight: 28,
     color: TEXT,
+    fontWeight: '900',
+    textShadowColor: TEXT,
+    textShadowOffset: { width: 0.35, height: 0 },
+    textShadowRadius: 0,
   },
   cardMetaRow: {
     marginTop: 'auto',
@@ -1098,76 +1074,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: 15,
     color: MUTED,
-  },
-  detailOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  detailBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.22)',
-  },
-  detailSheet: {
-    maxHeight: '46%',
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 22,
-    paddingTop: 18,
-    paddingBottom: 30,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 18,
-  },
-  detailHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  detailKeyword: {
-    fontFamily: fonts.bold,
-    fontSize: 15,
-    color: SKY,
-  },
-  detailCloseButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#F2F2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailLoading: {
-    height: 130,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    lineHeight: 30,
-    color: TEXT,
-    fontWeight: '900',
-  },
-  detailMetaRow: {
-    marginTop: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailAddress: {
-    marginTop: 14,
-    fontFamily: fonts.medium,
-    fontSize: 14,
-    color: '#555555',
-  },
-  detailBody: {
-    marginTop: 14,
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#333333',
   },
 });

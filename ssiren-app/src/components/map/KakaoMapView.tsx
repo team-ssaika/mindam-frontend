@@ -282,65 +282,91 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: visible;
             transform: translateY(-10px);
           }
           .marker-report {
-            min-width: 94px;
-            height: 52px;
-            padding: 0 13px 0 11px;
-            border-radius: 26px;
+            position: relative;
+            min-width: 104px;
+            height: 84px;
+            padding: 0;
+            display: inline-block;
+            overflow: visible;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,.14));
+          }
+          .marker-report-body {
+            position: relative;
+            z-index: 2;
+            min-width: 104px;
+            height: 58px;
+            padding: 0 18px 0 16px;
+            border-radius: 999px;
             background: #9BDCF4;
-            border: 3px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,.14);
+            border: 4px solid #fff;
+            box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             color: #050505;
-            font: 500 23px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font: 500 21px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
             letter-spacing: -0.5px;
             white-space: nowrap;
           }
-          .marker-report.marker-one {
-            min-width: 76px;
-            height: 46px;
-            border-radius: 23px;
-            padding: 0 11px 0 10px;
-            gap: 6px;
-            font-size: 19px;
-          }
-          .marker-report.marker-large {
-            min-width: 116px;
-            height: 58px;
-            border-radius: 29px;
-            padding: 0 16px 0 14px;
-            font-size: 25px;
-          }
-          .marker-report-tail {
+          .marker-report-tail-outer {
             position: absolute;
             left: 50%;
-            bottom: -12px;
-            width: 13px;
-            height: 22px;
-            background: #9BDCF4;
-            border-right: 3px solid #fff;
-            border-bottom: 3px solid #fff;
-            transform: translateX(-50%) rotate(45deg);
-            box-shadow: 4px 4px 7px rgba(0,0,0,.08);
+            bottom: 0;
+            width: 0;
+            height: 0;
+            border-left: 26px solid transparent;
+            border-right: 26px solid transparent;
+            border-top: 30px solid #fff;
+            transform: translateX(-50%);
+            z-index: 1;
+          }
+          .marker-report-tail-inner {
+            position: absolute;
+            left: 50%;
+            bottom: 5px;
+            width: 0;
+            height: 0;
+            border-left: 21px solid transparent;
+            border-right: 21px solid transparent;
+            border-top: 25px solid #9BDCF4;
+            transform: translateX(-50%);
+            z-index: 3;
+          }
+          .marker-report.marker-one,
+          .marker-report.marker-one .marker-report-body {
+            min-width: 88px;
+          }
+          .marker-report.marker-one .marker-report-body {
+            padding: 0 15px 0 14px;
+            gap: 6px;
+            font-size: 18px;
+          }
+          .marker-report.marker-large,
+          .marker-report.marker-large .marker-report-body {
+            min-width: 122px;
+          }
+          .marker-report.marker-large .marker-report-body {
+            padding: 0 20px 0 18px;
+            font-size: 23px;
           }
           .marker-report-icon {
-            width: 29px;
-            height: 29px;
+            width: 33px;
+            height: 33px;
             object-fit: contain;
             flex: 0 0 auto;
           }
           .marker-report.marker-one .marker-report-icon {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
           }
           .marker-report.marker-large .marker-report-icon {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
           }
           .marker-officer {
             min-width: 32px; min-height: 32px; padding: 0 8px; border-radius: 999px;
@@ -482,7 +508,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               var icon = marker.iconUri
                 ? '<img class="marker-report-icon" src="' + marker.iconUri + '" />'
                 : '';
-              return '<div class="marker-report-wrap"><button class="marker-report ' + sizeClass + '" data-id="' + marker.id + '">' + icon + '<span>' + count + '개</span></button><div class="marker-report-tail"></div></div>';
+              return '<div class="marker-report-wrap"><button class="marker-report ' + sizeClass + '" data-id="' + marker.id + '"><span class="marker-report-tail-outer"></span><span class="marker-report-tail-inner"></span><span class="marker-report-body">' + icon + '<span>' + count + '개</span></span></button></div>';
             }
 
             function renderMarkers(markers) {

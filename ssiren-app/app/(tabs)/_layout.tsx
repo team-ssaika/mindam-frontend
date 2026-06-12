@@ -1,6 +1,7 @@
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Icon } from '../../src/components/ui';
 import { colors, fonts } from '../../src/theme';
 import { TAB_BAR_TOP_PADDING } from '../../src/constants/layout';
@@ -39,6 +40,16 @@ function PlusButton() {
       accessibilityLabel="제보하기"
     >
       <View style={styles.plusButton}>
+        <Svg width={62} height={62} viewBox="0 0 62 62" style={styles.plusGradient}>
+          <Defs>
+            <LinearGradient id="plusGradient" x1="6" y1="6" x2="54" y2="58">
+              <Stop offset="0" stopColor="#70B9F5" />
+              <Stop offset="0.5" stopColor="#8FD0FA" />
+              <Stop offset="1" stopColor="#B8E1F6" />
+            </LinearGradient>
+          </Defs>
+          <Circle cx={31} cy={31} r={31} fill="url(#plusGradient)" />
+        </Svg>
         <Image source={ssirenWhiteLogo} style={styles.plusIcon} resizeMode="contain" />
       </View>
       <Text style={styles.plusLabel}>제보하기</Text>
@@ -48,14 +59,70 @@ function PlusButton() {
 
 function ChatbotTabIcon({ color }: { color: string }) {
   return (
-    <View style={[styles.chatBubbleIcon, { backgroundColor: color }]}>
+    <View style={[styles.chatBubbleIcon, { borderColor: color }]}>
       <View style={styles.chatFaceRow}>
         <View style={styles.chatEye} />
         <View style={styles.chatEye} />
       </View>
       <View style={styles.chatMouth} />
-      <View style={[styles.chatTail, { borderTopColor: color }]} />
+      <View style={[styles.chatTailOuter, { borderTopColor: color }]} />
+      <View style={styles.chatTailInner} />
     </View>
+  );
+}
+
+function CitizenHomeTabIcon({ color }: { color: string }) {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path
+        d="M4 10.5 12 4l8 6.5v8.4A2.1 2.1 0 0 1 17.9 21H6.1A2.1 2.1 0 0 1 4 18.9v-8.4Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.35}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M9.2 21v-7h5.6v7"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.35}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CitizenUserTabIcon({ color }: { color: string }) {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Circle cx={12} cy={7.2} r={3.15} fill="none" stroke={color} strokeWidth={2.45} />
+      <Path
+        d="M5 20v-1.4c0-3 3.1-5 7-5s7 2 7 5V20H5Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.45}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CitizenGearTabIcon({ color }: { color: string }) {
+  return (
+    <Svg width={28} height={28} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={3.05} fill="none" stroke={color} strokeWidth={2.15} />
+      <Path
+        d="M19.2 13.7c.1-.55.15-1.1.15-1.7s-.05-1.15-.15-1.7l2-1.5-2-3.45-2.4.95a7.7 7.7 0 0 0-2.75-1.6L13.7 2h-3.4l-.35 2.7a7.7 7.7 0 0 0-2.75 1.6l-2.4-.95-2 3.45 2 1.5c-.1.55-.15 1.1-.15 1.7s.05 1.15.15 1.7l-2 1.5 2 3.45 2.4-.95a7.7 7.7 0 0 0 2.75 1.6l.35 2.7h3.4l.35-2.7a7.7 7.7 0 0 0 2.75-1.6l2.4.95 2-3.45-2-1.5Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.15}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
   );
 }
 
@@ -158,9 +225,7 @@ export default function TabLayout() {
           name="index"
           options={{
             title: '홈',
-            tabBarIcon: ({ color }) => (
-              <Icon name="home" size={29} color={color} strokeWidth={2.1} />
-            ),
+            tabBarIcon: ({ color }) => <CitizenHomeTabIcon color={color} />,
           }}
         />
         <Tabs.Screen
@@ -182,18 +247,14 @@ export default function TabLayout() {
           name="profile"
           options={{
             title: '내 정보',
-            tabBarIcon: ({ color }) => (
-              <Icon name="user" size={29} color={color} strokeWidth={2.1} />
-            ),
+            tabBarIcon: ({ color }) => <CitizenUserTabIcon color={color} />,
           }}
         />
         <Tabs.Screen
           name="settings"
           options={{
             title: '설정',
-            tabBarIcon: ({ color }) => (
-              <Icon name="gear" size={31} color={color} strokeWidth={2.1} />
-            ),
+            tabBarIcon: ({ color }) => <CitizenGearTabIcon color={color} />,
           }}
         />
       </Tabs>
@@ -218,20 +279,25 @@ const styles = StyleSheet.create({
     height: 62,
     marginTop: -24,
     borderRadius: 31,
-    backgroundColor: SKY,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 5,
     borderColor: '#FFFFFF',
+    overflow: 'hidden',
     shadowColor: SKY,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 7,
   },
+  plusGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
   plusIcon: {
-    width: 42,
-    height: 42,
+    width: 57,
+    height: 57,
+    zIndex: 1,
   },
   plusLabel: {
     marginTop: 1,
@@ -240,39 +306,54 @@ const styles = StyleSheet.create({
     color: SKY,
   },
   chatBubbleIcon: {
-    width: 32,
-    height: 25,
-    borderRadius: 10,
+    width: 29,
+    height: 23,
+    borderRadius: 9,
+    borderWidth: 2.3,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  chatTail: {
+  chatTailOuter: {
     position: 'absolute',
     left: 4,
-    bottom: -6,
+    bottom: -7,
     width: 0,
     height: 0,
     borderLeftWidth: 5,
     borderRightWidth: 5,
-    borderTopWidth: 8,
+    borderTopWidth: 7,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
   },
+  chatTailInner: {
+    position: 'absolute',
+    left: 6,
+    bottom: -4,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderTopWidth: 5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#FFFFFF',
+  },
   chatFaceRow: {
     flexDirection: 'row',
-    gap: 7,
+    gap: 6,
   },
   chatEye: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.white,
+    backgroundColor: '#8D8D8D',
   },
   chatMouth: {
-    marginTop: 5,
-    width: 12,
+    marginTop: 4,
+    width: 11,
     height: 3,
     borderRadius: 2,
-    backgroundColor: colors.white,
+    backgroundColor: '#8D8D8D',
   },
 });
