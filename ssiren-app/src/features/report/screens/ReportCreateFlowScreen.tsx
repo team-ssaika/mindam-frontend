@@ -143,7 +143,7 @@ function makeCompletionFromCreateResponse(data: CreateReportResponse): EditableR
     department: data.department?.name ?? '',
     receiptNumber: `SR-${data.report.id}`,
     eta: '처리 상태는 내 제보에서 확인해주세요.',
-    assignmentReason: data.issueGroup?.title ?? data.category?.categoryName ?? '',
+    assignmentReason: data.report.assignmentReason ?? '',
   };
 }
 
