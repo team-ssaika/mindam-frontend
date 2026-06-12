@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 56,
   },
   titleText: {
-    fontFamily: fonts.black,
+    fontFamily: fonts.bold,
     fontSize: fontSize['2xl'],
     color: colors.ink,
     textAlign: 'center',

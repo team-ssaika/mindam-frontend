@@ -744,8 +744,8 @@ function WriteStep({
 }) {
   return (
     <View style={styles.stepContent}>
-      <AppText variant="display" color={colors.ink}>무슨 일이{'\n'}있었나요?</AppText>
-      <AppText style={styles.heroSub}>한두 줄이면 충분해요. 나머지는 AI가 정리해 드려요.</AppText>
+      <AppText variant="display" color={colors.ink} style={styles.writeTitle}>무슨 일이 있었나요?</AppText>
+      <View style={styles.writeTitleDivider} />
 
       <View style={styles.textAreaWrap}>
         <TextInput
@@ -753,8 +753,8 @@ function WriteStep({
           onChangeText={(text) => onChangeContent(text.slice(0, MAX_CONTENT_LENGTH))}
           multiline
           textAlignVertical="top"
-          placeholder={'예) 역삼로 124 앞 인도에 보도블록이 깨져서\n사람들이 자꾸 걸려 넘어져요.'}
-          placeholderTextColor={colors.faint}
+          placeholder={'한두 줄이면 충분해요. 나머지는 AI가 정리해 드려요.\n\n예) 역삼로 124 앞 인도에 보도블록이 깨져서\n사람들이 자꾸 걸려 넘어져요.'}
+          placeholderTextColor="#A8A8A8"
           style={styles.textArea}
         />
       </View>
@@ -1090,6 +1090,13 @@ const styles = StyleSheet.create({
   stepContent: { gap: 12 },
 
   // write step
+  writeTitle: {
+    marginTop: 10,
+  },
+  writeTitleDivider: {
+    height: 1,
+    backgroundColor: colors.hairline,
+  },
   heroSub: { fontSize: fontSize.mdLg, color: colors.muted, marginTop: 8, lineHeight: 22 },
   textAreaWrap: {
     marginTop: 8,
@@ -1097,15 +1104,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   textArea: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink, lineHeight: 24, minHeight: 120 },
-  counter: { textAlign: 'right', fontSize: fontSize.xs, color: colors.faint, marginTop: 6 },
+  counter: { textAlign: 'right', fontSize: fontSize.xs, color: colors.faint, marginTop: 50 },
   attachRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: 60,
     paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.hairline,
   },
   attachLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   attachOptional: { fontFamily: fonts.regular, fontSize: fontSize.md, color: colors.muted },
