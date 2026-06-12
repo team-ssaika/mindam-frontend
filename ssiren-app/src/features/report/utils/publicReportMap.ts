@@ -141,8 +141,8 @@ export function issueDetailToPublicReportItem(detail: IssueDetail): PublicReport
     reportImages: [],
     category,
     issueGroup,
-    department: departmentFromReport(representativeReport),
-    agencyType: agencyTypeFromReport(representativeReport),
+    department: detail.department ?? departmentFromReport(representativeReport),
+    agencyType: detail.agencyType ?? agencyTypeFromReport(representativeReport),
   };
 }
 

@@ -28,6 +28,8 @@ export type IssueDetail = {
   representativeReport: IssueReport | null;
   reports: IssueReport[];
   category: IssueCategory | null;
+  department: ReportDepartment | null;
+  agencyType: ReportAgencyType | null;
 };
 
 export type IssuesQuery = {
