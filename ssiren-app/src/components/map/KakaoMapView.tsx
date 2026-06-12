@@ -14,6 +14,7 @@ export type KakaoMapMarker = {
   latitude: number;
   longitude: number;
   kind: 'report' | 'officer' | 'search';
+  iconUri?: string;
   label?: string;
   reportCount?: number;
 };
@@ -67,6 +68,7 @@ type KakaoMapViewProps = {
   showsUserLocation?: boolean;
   userLocation?: { latitude: number; longitude: number } | null;
   onMapDragStart?: () => void;
+  onMapPress?: () => void;
   onMarkerPress?: (markerId: string) => void;
   onRegionChangeComplete?: (region: KakaoMapRegion) => void;
   style?: object;
@@ -108,6 +110,7 @@ export const KakaoMapView = forwardRef<KakaoMapViewHandle, KakaoMapViewProps>(
       initialRegion,
       markers = [],
       onMapDragStart,
+      onMapPress,
       onMarkerPress,
       onRegionChangeComplete,
       circles = [],
@@ -191,6 +194,11 @@ export const KakaoMapView = forwardRef<KakaoMapViewHandle, KakaoMapViewProps>(
           return;
         }
 
+        if (payload.type === 'MAP_PRESS') {
+          onMapPress?.();
+          return;
+        }
+
         if (payload.type === 'MARKER_PRESS') {
           onMarkerPress?.(payload.markerId);
           return;
@@ -269,12 +277,71 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
         <style>
           html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
           button { appearance: none; border: 0; margin: 0; padding: 0; background: transparent; }
-          .marker-report {
-            width: 28px; height: 28px; border-radius: 999px; background: #6C63FF;
-            border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.28);
-            display: flex; align-items: center; justify-content: center;
+          .marker-report-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(-10px);
           }
-          .marker-report::after { content: ''; width: 7px; height: 7px; border-radius: 999px; background: #fff; }
+          .marker-report {
+            min-width: 94px;
+            height: 52px;
+            padding: 0 13px 0 11px;
+            border-radius: 26px;
+            background: #9BDCF4;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,.14);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #050505;
+            font: 500 23px system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+          }
+          .marker-report.marker-one {
+            min-width: 76px;
+            height: 46px;
+            border-radius: 23px;
+            padding: 0 11px 0 10px;
+            gap: 6px;
+            font-size: 19px;
+          }
+          .marker-report.marker-large {
+            min-width: 116px;
+            height: 58px;
+            border-radius: 29px;
+            padding: 0 16px 0 14px;
+            font-size: 25px;
+          }
+          .marker-report-tail {
+            position: absolute;
+            left: 50%;
+            bottom: -12px;
+            width: 13px;
+            height: 22px;
+            background: #9BDCF4;
+            border-right: 3px solid #fff;
+            border-bottom: 3px solid #fff;
+            transform: translateX(-50%) rotate(45deg);
+            box-shadow: 4px 4px 7px rgba(0,0,0,.08);
+          }
+          .marker-report-icon {
+            width: 29px;
+            height: 29px;
+            object-fit: contain;
+            flex: 0 0 auto;
+          }
+          .marker-report.marker-one .marker-report-icon {
+            width: 24px;
+            height: 24px;
+          }
+          .marker-report.marker-large .marker-report-icon {
+            width: 32px;
+            height: 32px;
+          }
           .marker-officer {
             min-width: 32px; min-height: 32px; padding: 0 8px; border-radius: 999px;
             background: #6C63FF; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,.28);
@@ -287,8 +354,21 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             font-size: 34px; line-height: 34px;
           }
           .marker-user {
-            width: 18px; height: 18px; border-radius: 999px; background: #1976D2;
-            border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(25,118,210,.16), 0 2px 8px rgba(0,0,0,.24);
+            width: 18px; height: 18px; border-radius: 999px; background: #E23E33;
+            border: 3px solid #fff; box-shadow: 0 0 0 9px rgba(80,87,98,.14), 0 3px 8px rgba(0,0,0,.24);
+            position: relative;
+          }
+          .marker-user::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: -1px;
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 12px solid #E23E33;
+            transform: rotate(-18deg);
           }
         </style>
         <script>
@@ -396,7 +476,13 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               if (marker.kind === 'search') {
                 return '<button class="marker-search" data-id="' + marker.id + '">●</button>';
               }
-              return '<button class="marker-report" data-id="' + marker.id + '"></button>';
+              var rawCount = marker.reportCount || 1;
+              var count = rawCount > 99 ? '99+' : String(rawCount);
+              var sizeClass = rawCount === 1 ? 'marker-one' : rawCount >= 10 ? 'marker-large' : '';
+              var icon = marker.iconUri
+                ? '<img class="marker-report-icon" src="' + marker.iconUri + '" />'
+                : '';
+              return '<div class="marker-report-wrap"><button class="marker-report ' + sizeClass + '" data-id="' + marker.id + '">' + icon + '<span>' + count + '개</span></button><div class="marker-report-tail"></div></div>';
             }
 
             function renderMarkers(markers) {
@@ -410,7 +496,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
                 var overlay = new kakao.maps.CustomOverlay({
                   position: new kakao.maps.LatLng(marker.latitude, marker.longitude),
                   content: content,
-                  yAnchor: marker.kind === 'search' ? 1 : 0.5
+                  yAnchor: marker.kind === 'search' ? 1 : 1
                 });
                 overlay.setMap(map);
                 overlays.push(overlay);
@@ -511,6 +597,9 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               places = new kakao.maps.services.Places();
               kakao.maps.event.addListener(map, 'dragstart', function () {
                 send({ type: 'MAP_DRAG_START' });
+              });
+              kakao.maps.event.addListener(map, 'click', function () {
+                send({ type: 'MAP_PRESS' });
               });
               kakao.maps.event.addListener(map, 'idle', function () {
                 send({ type: 'REGION_CHANGE_COMPLETE', region: regionFromMap() });
