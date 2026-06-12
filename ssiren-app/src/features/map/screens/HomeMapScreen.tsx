@@ -1,3 +1,3 @@
-import HomeMapScreenWeb from './HomeMapScreen.web';
+import HomeMapScreenNative from './HomeMapScreen.native';
 
-export default HomeMapScreenWeb;
+export default HomeMapScreenNative;

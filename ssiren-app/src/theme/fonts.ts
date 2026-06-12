@@ -7,4 +7,5 @@ export const fontAssets = {
   'Pretendard-Medium': require('../assets/fonts/Pretendard-Medium.otf'),
   'Pretendard-SemiBold': require('../assets/fonts/Pretendard-SemiBold.otf'),
   'Pretendard-Bold': require('../assets/fonts/Pretendard-Bold.otf'),
+  'Pretendard-Black': require('../assets/fonts/Pretendard-Black.otf'),
 };

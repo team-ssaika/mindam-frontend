@@ -63,7 +63,7 @@ export function toMapReportDetail(
 
   return {
     id: String(report.id),
-    title: report.title,
+    title: report.contents.summary ?? issueGroup.content ?? report.title,
     riskLabel: `위험지수 ${report.riskScore}`,
     timeAgo: formatTimeAgo(report.createdAt),
     distance:
@@ -74,7 +74,7 @@ export function toMapReportDetail(
           })
         : '-',
     address: report.roadAddress || report.jibunAddress,
-    summary: report.contents.summary ?? issueGroup.content,
+    summary: report.title,
     category: category.categoryName,
     yesCount: issueGroup.yesCount ?? 0,
     organization: issueGroup.title,

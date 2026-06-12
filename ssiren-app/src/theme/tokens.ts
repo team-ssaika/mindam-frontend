@@ -80,6 +80,7 @@ export const fonts = {
   medium: 'Pretendard-Medium',
   semibold: 'Pretendard-SemiBold',
   bold: 'Pretendard-Bold',
+  black: 'Pretendard-Black',
 } as const;
 
 export type FontWeightToken = keyof typeof fonts;
