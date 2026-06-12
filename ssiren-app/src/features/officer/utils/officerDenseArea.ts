@@ -49,12 +49,12 @@ export function denseAreaRadiusMeters(item: AdminDashboardDenseAreaItem) {
 export function getDenseAreaColors(issueGroupCount: number, maxCount: number) {
   const ratio = maxCount > 0 ? issueGroupCount / maxCount : 0;
   if (ratio >= 0.66) {
-    return { fill: 'rgba(108, 99, 255, 0.32)', stroke: colors.brand };
+    return { fill: 'rgba(126, 200, 247, 0.32)', stroke: colors.brand };
   }
   if (ratio >= 0.33) {
-    return { fill: 'rgba(139, 131, 240, 0.26)', stroke: colors.mustard };
+    return { fill: 'rgba(126, 200, 247, 0.24)', stroke: colors.brandActive };
   }
-  return { fill: 'rgba(212, 204, 255, 0.24)', stroke: colors.peach };
+  return { fill: 'rgba(126, 200, 247, 0.18)', stroke: colors.peach };
 }
 
 export function getMaxDenseAreaCount(areas: AdminDashboardDenseAreaItem[]) {

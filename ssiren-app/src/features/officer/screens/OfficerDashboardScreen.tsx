@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -200,7 +201,7 @@ export function OfficerDashboardScreen() {
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.ink} />
             ) : (
-              <Icon name="refresh" size={20} color={colors.body} />
+              <Icon name="refresh" size={22} color={colors.brand} strokeWidth={2.2} />
             )}
           </Pressable>
         }
@@ -316,7 +317,12 @@ export function OfficerDashboardScreen() {
           <View style={styles.sectionDivider} />
 
           <View style={styles.ctaSection}>
-            <View style={styles.cta}>
+            <LinearGradient
+              colors={[colors.brand, colors.brandActive]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.cta}
+            >
               <View style={styles.ctaText}>
                 <AppText style={styles.ctaTitle}>{ctaTitle}</AppText>
                 <AppText style={styles.ctaSub}>제보함에서 오래된 순으로 처리해 보세요</AppText>
@@ -325,7 +331,7 @@ export function OfficerDashboardScreen() {
                 <AppText style={styles.ctaButtonText}>처리하기</AppText>
                 <Icon name="chevR" size={15} color={colors.ink} />
               </Pressable>
-            </View>
+            </LinearGradient>
           </View>
         </ScrollView>
       ) : null}
@@ -481,12 +487,12 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
   cta: {
-    backgroundColor: colors.ink,
     borderRadius: radius.lg,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    overflow: 'hidden',
   },
   ctaText: { flex: 1 },
   ctaTitle: { fontFamily: fonts.bold, fontSize: 15, color: colors.white },

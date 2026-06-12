@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
+  Image,
   PanResponder,
   Pressable,
   ScrollView,
@@ -18,7 +20,7 @@ import {
   type KakaoMapRegion,
   type KakaoMapViewHandle,
 } from '../../../components/map/KakaoMapView';
-import { colors, fonts, radius, shadow, statusColors } from '../../../theme';
+import { colors, fonts, shadow, statusColors } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
@@ -31,10 +33,15 @@ import {
   hasValidAdminIssueCoordinate,
 } from '../utils/adminIssueMap';
 
+const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.02, longitudeDelta: 0.02 };
 const PEEK_LIST_HEIGHT = 124;
 const PEEK_COLLAPSE_DRAG_THRESHOLD = 24;
+const HEADER_BODY_HEIGHT = Math.min(49, Math.max(40, SCREEN_HEIGHT * 0.05));
+const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 
 function distanceMeters(
   a: { latitude: number; longitude: number },
@@ -277,70 +284,69 @@ export default function OfficerHomeScreen() {
 
   return (
     <View style={styles.container}>
-      <KakaoMapView
-        ref={mapRef}
-        style={styles.map}
-        initialRegion={initialMapRegionRef.current}
-        region={region}
-        markers={mapMarkers}
-        userLocation={userLocation}
-        showsUserLocation
-        onMapDragStart={() => {
-          isUserDraggingMapRef.current = true;
-        }}
-        onRegionChangeComplete={handleRegionChangeComplete}
-        onMarkerPress={(markerId) => {
-          router.push(`/officer-report/${markerId}`);
-        }}
-      />
-
-      <SafeAreaView edges={['top']} style={styles.topSafe} pointerEvents="box-none">
-        <View style={styles.topBar} pointerEvents="box-none">
-          <View style={styles.logoCard}>
-            <View style={styles.logoMark}>
-              <Icon name="marker" size={15} color={colors.white} fill />
+      <SafeAreaView edges={['top']} style={styles.headerSafe}>
+        <View style={styles.header}>
+          <Image source={ssirenNameLogo} style={styles.nameLogo} resizeMode="contain" />
+          <View style={styles.headerRight}>
+            <View style={styles.jurisPill}>
+              <Icon name="building" size={15} color={colors.brand} strokeWidth={2.1} />
+              <AppText style={styles.jurisText} numberOfLines={1}>
+                {jurisdictionLabel}
+              </AppText>
             </View>
-            <AppText variant="heading" color={colors.ink}>
-              시민제보
-            </AppText>
-            <View style={styles.roleBadge}>
-              <AppText style={styles.roleBadgeText}>담당자</AppText>
-            </View>
-          </View>
-          <Pressable style={styles.bellButton} accessibilityLabel="알림">
-            <Icon name="bell" size={22} color={colors.ink} />
-          </Pressable>
-        </View>
-
-        <View style={styles.chipRow} pointerEvents="box-none">
-          <View style={styles.jurisChip}>
-            <Icon name="building" size={16} color={colors.brand} />
-            <AppText style={styles.jurisText}>{jurisdictionLabel}</AppText>
+            <Pressable style={styles.bellButton} accessibilityLabel="알림">
+              <Icon name="bell" size={26} color={colors.brand} strokeWidth={2.2} />
+            </Pressable>
           </View>
         </View>
       </SafeAreaView>
 
-      <Animated.View style={[styles.fabColumn, { bottom: fabBottom }]} pointerEvents="box-none">
-        <TouchableOpacity
-          style={[styles.fab, styles.fabPrimary]}
-          onPress={moveToCurrentLocation}
-          disabled={resolving}
-        >
-          {resolving ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <Icon name="location" size={22} color={colors.white} />
-          )}
-        </TouchableOpacity>
-      </Animated.View>
+      <View style={styles.mapArea}>
+        <KakaoMapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={initialMapRegionRef.current}
+          region={region}
+          markers={mapMarkers}
+          userLocation={userLocation}
+          showsUserLocation
+          onMapDragStart={() => {
+            isUserDraggingMapRef.current = true;
+          }}
+          onRegionChangeComplete={handleRegionChangeComplete}
+          onMarkerPress={(markerId) => {
+            router.push(`/officer-report/${markerId}`);
+          }}
+        />
 
-      <View style={styles.peek}>
+        <Animated.View style={[styles.fabWrap, { bottom: fabBottom }]} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.currentLocationButton}
+            onPress={moveToCurrentLocation}
+            disabled={resolving}
+            accessibilityRole="button"
+            accessibilityLabel="현재 위치로 이동"
+          >
+            {resolving ? (
+              <ActivityIndicator size="small" color={colors.brandActive} />
+            ) : (
+              <Icon name="location" size={25} color={colors.brandActive} strokeWidth={2.4} />
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={styles.peek}>
         <View style={styles.peekDragZone} {...peekPanResponder.panHandlers}>
           <View style={styles.peekHandle} />
           <View style={styles.peekHeader}>
             <View style={styles.peekHeaderMain}>
-              <AppText variant="section" color={colors.ink}>
-                {isLoadingIssues ? '관할 제보 불러오는 중...' : `내 관할 제보 ${summary.total}건`}
+              <AppText style={styles.peekTitle}>
+                {isLoadingIssues
+                  ? '관할 제보 불러오는 중...'
+                  : `내 관할 제보 `}
+                {!isLoadingIssues ? (
+                  <AppText style={styles.peekCount}>{summary.total}건</AppText>
+                ) : null}
               </AppText>
               <View style={styles.countsRow}>
                 <Count tone="wait" label="대기" n={summary.wait} />
@@ -350,7 +356,7 @@ export default function OfficerHomeScreen() {
             </View>
             <Pressable style={styles.inboxLink} onPress={() => router.push('/(officer)/inbox')}>
               <AppText style={styles.inboxLinkText}>제보함</AppText>
-              <Icon name="chevR" size={16} color={colors.brand} />
+              <Icon name="chevR" size={16} color={colors.brand} strokeWidth={2.2} />
             </Pressable>
           </View>
         </View>
@@ -429,6 +435,7 @@ export default function OfficerHomeScreen() {
             </ScrollView>
           )}
         </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -444,95 +451,87 @@ function Count({ tone, label, n }: { tone: 'wait' | 'prog' | 'done'; label: stri
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.canvas },
-  map: { flex: 1 },
-
-  topSafe: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  topBar: {
+  headerSafe: {
+    backgroundColor: colors.canvas,
+    zIndex: 20,
+    paddingBottom: 6,
+  },
+  header: {
+    height: HEADER_BODY_HEIGHT,
+    paddingLeft: 22,
+    paddingRight: 20,
+    paddingTop: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 4,
   },
-  logoCard: {
-    height: 44,
+  nameLogo: {
+    width: LOGO_WIDTH,
+    height: LOGO_WIDTH * 0.31,
+  },
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.canvas,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    ...shadow.float,
+    gap: 10,
   },
-  logoMark: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    backgroundColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roleBadge: { backgroundColor: colors.brandSoft, borderRadius: 6, paddingVertical: 2, paddingHorizontal: 7 },
-  roleBadgeText: { fontFamily: fonts.bold, fontSize: 11, color: colors.brand },
   bellButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.canvas,
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.float,
   },
-  chipRow: { paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-  jurisChip: {
-    alignSelf: 'flex-start',
+  jurisPill: {
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
-    backgroundColor: colors.canvas,
-    borderRadius: radius.pill,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    ...shadow.float,
-  },
-  jurisText: { fontFamily: fonts.bold, fontSize: 13, color: colors.ink },
-
-  fabColumn: { position: 'absolute', right: 16, gap: 10 },
-  fab: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.canvas,
+    gap: 6,
     borderWidth: 1,
-    borderColor: colors.hairline,
+    borderColor: '#D4D4D4',
+    borderRadius: 999,
+    backgroundColor: colors.canvas,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    maxWidth: SCREEN_WIDTH * 0.52,
+  },
+  jurisText: { flexShrink: 1, fontFamily: fonts.medium, fontSize: 13, color: colors.ink },
+
+  mapArea: { flex: 1, backgroundColor: '#eef2e8' },
+  map: { flex: 1 },
+
+  fabWrap: { position: 'absolute', right: 30, zIndex: 11 },
+  currentLocationButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.canvas,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.float,
+    ...shadow.fab,
   },
-  fabPrimary: { backgroundColor: colors.brand, borderWidth: 0 },
 
   peek: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.canvas,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 18,
-    paddingTop: 16,
+    backgroundColor: colors.soft,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 24,
+    paddingTop: 14,
     paddingBottom: 12,
     ...shadow.sheet,
+    zIndex: 10,
   },
   peekDragZone: {
     paddingTop: 4,
     paddingBottom: 4,
   },
   peekHandle: {
-    width: 38,
+    width: 56,
     height: 5,
-    borderRadius: 3,
-    backgroundColor: '#d8dbe1',
+    borderRadius: 999,
+    backgroundColor: '#B8B8B8',
     alignSelf: 'center',
     marginBottom: 12,
   },
@@ -546,21 +545,38 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   peekHeaderMain: { flex: 1 },
-  countsRow: { flexDirection: 'row', gap: 12, marginTop: 6 },
+  peekTitle: {
+    fontFamily: fonts.black,
+    fontSize: 28,
+    lineHeight: 36,
+    color: colors.ink,
+  },
+  peekCount: {
+    fontFamily: fonts.black,
+    fontSize: 28,
+    lineHeight: 36,
+    color: colors.brand,
+  },
+  countsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
   count: { fontFamily: fonts.semibold, fontSize: 12.5 },
-  inboxLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 2 },
-  inboxLinkText: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.brand },
+  inboxLink: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 6 },
+  inboxLinkText: { fontFamily: fonts.bold, fontSize: 14, color: colors.brand },
   peekLoading: { paddingTop: 12, paddingBottom: 0, alignItems: 'center' },
   peekEmpty: { fontSize: 13.5, color: colors.muted, paddingTop: 12, paddingBottom: 0 },
   peekListContent: { gap: 10, paddingTop: 12, paddingBottom: 0, paddingRight: 4 },
   peekCard: {
-    width: 228,
-    backgroundColor: colors.soft,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    padding: 13,
+    width: 264,
+    minHeight: 140,
+    backgroundColor: colors.canvas,
+    borderRadius: 15,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     gap: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 1,
   },
   peekCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   peekCardTitle: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink, lineHeight: 19 },

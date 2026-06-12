@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: colors.canvas,
-    borderColor: 'rgba(108, 99, 255, 0.28)',
+    borderColor: 'rgba(126, 200, 247, 0.35)',
     ...shadow.card,
   },
   chipPressed: { opacity: 0.94 },
