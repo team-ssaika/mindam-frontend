@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
@@ -25,6 +26,7 @@ type ReportDetailBottomSheetProps = {
   visible: boolean;
   report: ReportDetail;
   onClose: () => void;
+  onReactionUpdated?: (issueGroupId: number | undefined, discomfortCount: number) => void;
 };
 
 function TimelineDot({ active }: { active: boolean }) {
@@ -189,12 +191,20 @@ function buildTimeline(report: ReportDetail) {
   ];
 }
 
-function ReportDetailContent({ report }: { report: ReportDetail }) {
+function ReportDetailContent({
+  report,
+  onReactionUpdated,
+}: {
+  report: ReportDetail;
+  onReactionUpdated?: ReportDetailBottomSheetProps['onReactionUpdated'];
+}) {
   const riskToneStyle = getReportMarkerToneStyle(resolveReportMarkerTone(report));
   const requestClose = useBottomSheetClose();
   const [isPressed, setIsPressed] = useState(false);
   const [discomfortCount, setDiscomfortCount] = useState(report.yesCount);
   const [isSubmittingReaction, setIsSubmittingReaction] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const timeline = buildTimeline(report);
   const latestHistory = sortStatusHistories(report.statusHistories ?? []).at(-1);
   const activeStatusIndex = latestHistory
@@ -207,8 +217,28 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
     setIsSubmittingReaction(false);
   }, [report.id, report.yesCount]);
 
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    },
+    []
+  );
+
+  const showToast = (message: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+
+    setToastMessage(message);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 1600);
+  };
+
   const handleClose = () => {
-    setIsPressed(false);
     requestClose();
   };
 
@@ -223,23 +253,27 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
       return;
     }
 
-    const previousPressed = isPressed;
-    const previousCount = discomfortCount;
-    const nextPressed = !previousPressed;
-    const reactionType = nextPressed ? 'YES' : 'UNKNOWN';
-
-    setIsPressed(nextPressed);
-    setDiscomfortCount((count) => Math.max(0, count + (nextPressed ? 1 : -1)));
     setIsSubmittingReaction(true);
 
     try {
-      const result = await submitReportReaction(reportId, reactionType);
+      const result = await submitReportReaction(reportId, 'YES');
+      const nextDiscomfortCount = getIssueGroupDiscomfortCount(result.issueGroup);
       setIsPressed(result.reactionLog.reactionType === 'YES');
-      setDiscomfortCount(getIssueGroupDiscomfortCount(result.issueGroup));
+      setDiscomfortCount(nextDiscomfortCount);
+      onReactionUpdated?.(report.issueGroupId ?? result.issueGroup.id, nextDiscomfortCount);
     } catch (error) {
       console.log('[ReportDetail] reaction submit failed', error);
-      setIsPressed(previousPressed);
-      setDiscomfortCount(previousCount);
+      if (axios.isAxiosError(error)) {
+        const message = error.response?.data?.message;
+        if (typeof message === 'string' && message.length > 0) {
+          showToast(message);
+          return;
+        }
+        if (error.response?.status === 409) {
+          showToast('이미 공감한 제보입니다! 하루 뒤에 다시 시도해주세요!');
+          return;
+        }
+      }
       Alert.alert('반영하지 못했어요', '잠시 후 다시 시도해주세요.');
     } finally {
       setIsSubmittingReaction(false);
@@ -346,6 +380,14 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
           })}
         </View>
       </ScrollView>
+
+      {toastMessage ? (
+        <View style={styles.toastWrap} pointerEvents="none">
+          <View style={styles.toast}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -354,6 +396,7 @@ export function ReportDetailBottomSheet({
   visible,
   report,
   onClose,
+  onReactionUpdated,
 }: ReportDetailBottomSheetProps) {
   return (
     <BottomSheet
@@ -363,7 +406,7 @@ export function ReportDetailBottomSheet({
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >
-      <ReportDetailContent report={report} />
+      <ReportDetailContent report={report} onReactionUpdated={onReactionUpdated} />
     </BottomSheet>
   );
 }
@@ -535,6 +578,29 @@ const styles = StyleSheet.create({
   },
   discomfortCountPressed: {
     color: TEXT,
+  },
+  toastWrap: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    bottom: 120,
+    alignItems: 'center',
+    zIndex: 30,
+    elevation: 30,
+  },
+  toast: {
+    minHeight: 42,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(34, 34, 38, 0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toastText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.md,
+    lineHeight: 20,
+    color: '#FFFFFF',
   },
   divider: {
     height: 1,

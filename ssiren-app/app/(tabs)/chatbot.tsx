@@ -1,19 +1,25 @@
 import axios from 'axios';
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Keyboard,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppBar, AppText, ChatBubble, Icon } from '../../src/components/ui';
+import { useTabBarMetrics } from '../../src/hooks/useTabBarMetrics';
 import {
   createChatbotSession,
   deleteChatbotSession,
@@ -28,7 +34,7 @@ import type {
 } from '../../src/features/chatbot/types/chatbot';
 import { resolveApiBaseUrl } from '../../src/lib/api/client';
 import { getAppCurrentPosition } from '../../src/lib/location/appLocation';
-import { colors, fonts, radius } from '../../src/theme';
+import { colors, fontSize, fonts, radius, shadow, spacing } from '../../src/theme';
 
 type ChatMessage = {
   id: string;
@@ -41,11 +47,20 @@ type LatLng = {
   longitude: number;
 };
 
+type HeaderMenuPosition = {
+  top: number;
+  left: number;
+};
+
 const GREETING: ChatMessage = {
   id: 'bot-initial',
   role: 'bot',
   text: '안녕하세요. 무엇을 도와드릴까요?\n주변 신고 확인이나 내 신고 현황에 대해 물어보세요.',
 };
+
+const REPORT_BUTTON_OVERLAP = 24;
+const INPUT_ROW_HEIGHT = 44;
+const INPUT_BAR_TOP_PADDING = 8;
 
 function toChatMessage(message: ApiChatbotMessage): ChatMessage {
   return {
@@ -82,26 +97,117 @@ async function getCurrentCoordinate(): Promise<LatLng> {
   return getAppCurrentPosition();
 }
 
+function formatSessionTitle(session: ChatbotSession | null) {
+  return session?.title?.trim() || '새 대화';
+}
+
+function MoreDots() {
+  return (
+    <View style={styles.moreDots} pointerEvents="none">
+      <View style={styles.moreDot} />
+      <View style={styles.moreDot} />
+      <View style={styles.moreDot} />
+    </View>
+  );
+}
+
 export default function Chatbot() {
   const insets = useSafeAreaInsets();
+  const tabBarMetrics = useTabBarMetrics();
+  const { width: windowWidth } = useWindowDimensions();
+  const panelWidth = windowWidth * 0.65;
   const [inputText, setInputText] = useState('');
   const [sessions, setSessions] = useState<ChatbotSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatbotSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isUpdatingTitle, setIsUpdatingTitle] = useState(false);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [actionSessionId, setActionSessionId] = useState<number | null>(null);
   const [editingSession, setEditingSession] = useState<ChatbotSession | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const [headerMenuPosition, setHeaderMenuPosition] = useState<HeaderMenuPosition | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
+  const panelProgress = useRef(new Animated.Value(0)).current;
+  const inputBarTranslateY = useRef(new Animated.Value(0)).current;
+  const isHeaderMenuOpen =
+    Boolean(currentSession) && !isPanelOpen && actionSessionId === currentSession?.id;
+  const isEditingCurrentSession =
+    Boolean(currentSession) && !isPanelOpen && editingSession?.id === currentSession?.id;
+  const hasOpenActionMenu = actionSessionId !== null;
 
   const scrollToEnd = () => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   };
+
+  const dismissActionMenu = useCallback(() => {
+    setActionSessionId(null);
+    setHeaderMenuPosition(null);
+  }, []);
+
+  const refreshSessions = useCallback(async () => {
+    setIsLoadingSessions(true);
+    try {
+      const sessionPage = await fetchChatbotSessions({ page: 0, size: 20 });
+      const nextSessions = Array.isArray(sessionPage.contents) ? sessionPage.contents : [];
+      setSessions(nextSessions);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, '대화 목록을 불러오지 못했습니다.'));
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, []);
+
+  const closePanel = useCallback(() => {
+    panelProgress.stopAnimation();
+    Animated.timing(panelProgress, {
+      toValue: 0,
+      duration: 210,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setIsPanelOpen(false);
+        setActionSessionId(null);
+        setHeaderMenuPosition(null);
+        setEditingSession(null);
+      }
+    });
+  }, [panelProgress]);
+
+  const openPanel = useCallback(() => {
+    Keyboard.dismiss();
+    setIsPanelOpen(true);
+    panelProgress.stopAnimation();
+    panelProgress.setValue(0);
+    requestAnimationFrame(() => {
+      Animated.timing(panelProgress, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [panelProgress]);
+
+  const resetToFreshChat = useCallback(() => {
+    Keyboard.dismiss();
+    setCurrentSession(null);
+    setMessages([GREETING]);
+    setInputText('');
+    setErrorMessage(null);
+    setEditingSession(null);
+    setEditingTitle('');
+    setActionSessionId(null);
+    setHeaderMenuPosition(null);
+    setIsPanelOpen(false);
+    panelProgress.setValue(0);
+  }, [panelProgress]);
 
   const setSessionMessages = (apiMessages: ApiChatbotMessage[]) => {
     const nextMessages = sortMessages(apiMessages);
@@ -114,10 +220,10 @@ export default function Chatbot() {
   };
 
   const selectSession = async (session: ChatbotSession) => {
-    if (currentSession?.id === session.id) {
-      return;
-    }
-
+    Keyboard.dismiss();
+    closePanel();
+    setActionSessionId(null);
+    setEditingSession(null);
     setErrorMessage(null);
     setCurrentSession(session);
     setMessages([GREETING]);
@@ -129,103 +235,25 @@ export default function Chatbot() {
     }
   };
 
-  const loadInitialSession = async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const sessionPage = await fetchChatbotSessions({ page: 0, size: 20 });
-      const nextSessions = Array.isArray(sessionPage.contents) ? sessionPage.contents : [];
-      setSessions(nextSessions);
-
-      if (nextSessions.length > 0) {
-        const firstSession = nextSessions[0];
-        setCurrentSession(firstSession);
-        await loadSessionMessages(firstSession.id);
-        return;
-      }
-
-      const newSession = await createChatbotSession();
-      setSessions([newSession]);
-      setCurrentSession(newSession);
-      setMessages([GREETING]);
-    } catch (error) {
-      setMessages([GREETING]);
-      setErrorMessage(getApiErrorMessage(error, '챗봇 세션을 준비하지 못했습니다.'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateSession = async () => {
-    if (isCreatingSession) {
-      return;
-    }
-
+  const handleCreateSession = () => {
     Keyboard.dismiss();
-    setIsCreatingSession(true);
+    setCurrentSession(null);
+    setMessages([GREETING]);
+    setInputText('');
     setErrorMessage(null);
-
-    try {
-      const newSession = await createChatbotSession();
-      setSessions((prev) => [newSession, ...prev.filter((item) => item.id !== newSession.id)]);
-      setCurrentSession(newSession);
-      setEditingSession(null);
-      setMessages([GREETING]);
-      setInputText('');
-    } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, '새 대화를 만들지 못했습니다.'));
-    } finally {
-      setIsCreatingSession(false);
-    }
-  };
-
-  const handleDeleteCurrentSession = () => {
-    if (!currentSession || isCreatingSession) {
-      return;
-    }
-
-    Alert.alert('대화 삭제', '현재 챗봇 대화를 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: async () => {
-          const sessionId = currentSession.id;
-          setIsCreatingSession(true);
-          setErrorMessage(null);
-
-          try {
-            await deleteChatbotSession(sessionId);
-            const remainingSessions = sessions.filter((session) => session.id !== sessionId);
-
-            if (remainingSessions.length > 0) {
-              const nextSession = remainingSessions[0];
-              setSessions(remainingSessions);
-              setCurrentSession(nextSession);
-              setEditingSession(null);
-              await loadSessionMessages(nextSession.id);
-              return;
-            }
-
-            const newSession = await createChatbotSession();
-            setSessions([newSession]);
-            setCurrentSession(newSession);
-            setEditingSession(null);
-            setMessages([GREETING]);
-          } catch (error) {
-            setErrorMessage(getApiErrorMessage(error, '대화를 삭제하지 못했습니다.'));
-          } finally {
-            setIsCreatingSession(false);
-          }
-        },
-      },
-    ]);
+    setActionSessionId(null);
+    setHeaderMenuPosition(null);
+    setEditingSession(null);
+    setEditingTitle('');
+    setIsPanelOpen(false);
+    panelProgress.setValue(0);
   };
 
   const beginTitleEdit = (session: ChatbotSession) => {
     setEditingSession(session);
     setEditingTitle(session.title || '새 대화');
+    setActionSessionId(null);
+    setHeaderMenuPosition(null);
   };
 
   const handleUpdateTitle = async () => {
@@ -247,6 +275,8 @@ export default function Chatbot() {
       if (currentSession?.id === session.id) {
         setCurrentSession(nextSession);
       }
+      setActionSessionId(null);
+      setHeaderMenuPosition(null);
       setEditingSession(null);
       setEditingTitle('');
     } catch (error) {
@@ -254,6 +284,38 @@ export default function Chatbot() {
     } finally {
       setIsUpdatingTitle(false);
     }
+  };
+
+  const handleDeleteSession = (session: ChatbotSession) => {
+    if (isCreatingSession) {
+      return;
+    }
+
+    Alert.alert('대화 삭제', '선택한 챗봇 대화를 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          setIsCreatingSession(true);
+          setErrorMessage(null);
+
+          try {
+            await deleteChatbotSession(session.id);
+            setSessions((prev) => prev.filter((item) => item.id !== session.id));
+            setActionSessionId(null);
+            if (currentSession?.id === session.id) {
+              setCurrentSession(null);
+              setMessages([GREETING]);
+            }
+          } catch (error) {
+            setErrorMessage(getApiErrorMessage(error, '대화를 삭제하지 못했습니다.'));
+          } finally {
+            setIsCreatingSession(false);
+          }
+        },
+      },
+    ]);
   };
 
   const handleSend = async () => {
@@ -311,18 +373,7 @@ export default function Chatbot() {
       };
       setMessages((prev) => [...prev, botMessage]);
 
-      void fetchChatbotSessions({ page: 0, size: 20 })
-        .then((sessionPage) => {
-          const nextSessions = Array.isArray(sessionPage.contents) ? sessionPage.contents : [];
-          setSessions(nextSessions);
-          const updatedSession = nextSessions.find((item) => item.id === session.id);
-          if (updatedSession) {
-            setCurrentSession(updatedSession);
-          }
-        })
-        .catch((error) => {
-          console.log('[Chatbot] session refresh after send failed', error);
-        });
+      void refreshSessions();
     } catch (error) {
       setMessages((prev) => prev.filter((message) => message.id !== optimisticMessage.id));
       setErrorMessage(getApiErrorMessage(error, '메시지를 전송하지 못했습니다.'));
@@ -339,179 +390,275 @@ export default function Chatbot() {
     } catch {}
   };
 
-  useEffect(() => {
-    loadInitialSession();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      resetToFreshChat();
+      void refreshSessions();
+    }, [refreshSessions, resetToFreshChat])
+  );
 
   useEffect(() => {
     scrollToEnd();
   }, [messages, keyboardHeight]);
 
-  // Edge-to-edge Android ignores adjustResize for the IME, so KeyboardAvoidingView
-  // can't lift the input. Track the keyboard height ourselves and pad the bar up.
+  // Edge-to-edge Android ignores adjustResize for the IME, so track the IME height.
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const showSub = Keyboard.addListener(showEvent, (event) => {
-      setKeyboardHeight(event.endCoordinates?.height ?? 0);
+      const nextKeyboardHeight = event.endCoordinates?.height ?? 0;
+      const duration = Math.max(event.duration ?? 250, 180);
+      setKeyboardHeight(nextKeyboardHeight);
+      Animated.timing(inputBarTranslateY, {
+        toValue: -nextKeyboardHeight,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
+      Animated.timing(inputBarTranslateY, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => {
+        setKeyboardHeight(0);
+      });
     });
 
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [inputBarTranslateY]);
+
+  const inputBarBottomPadding =
+    keyboardHeight > 0 ? Math.max(insets.bottom, 12) : REPORT_BUTTON_OVERLAP;
+  const inputAreaHeight = INPUT_BAR_TOP_PADDING + INPUT_ROW_HEIGHT + inputBarBottomPadding;
+  const scrollBottomPadding =
+    inputAreaHeight + spacing.lg + (keyboardHeight > 0 ? keyboardHeight : 0);
 
   return (
     <View style={styles.container}>
-      <AppBar
-        title="제보 도우미"
-        logo={false}
-        right={
-          <View style={styles.headerActions}>
+      <AppBar title="제보 도우미" logo={false} backgroundColor={colors.canvas} />
+
+      <View
+        style={styles.chatHeader}
+        onTouchStart={() => {
+          Keyboard.dismiss();
+        }}
+      >
+        <Pressable
+          onPress={openPanel}
+          hitSlop={8}
+          accessibilityLabel="대화 목록 열기"
+          style={styles.headerIconButton}
+        >
+          <Icon name="list" size={23} color={colors.ink} strokeWidth={2.1} />
+        </Pressable>
+
+        <View style={styles.activeTitleWrap}>
+          <Pressable
+            onPress={() => {
+              if (isHeaderMenuOpen) {
+                dismissActionMenu();
+              }
+            }}
+            style={styles.activeTitleButton}
+          >
+            <AppText numberOfLines={1} style={styles.activeTitle}>
+              {formatSessionTitle(currentSession)}
+            </AppText>
+          </Pressable>
+          <View style={styles.headerMoreWrap}>
             <Pressable
-              onPress={handleCreateSession}
-              disabled={isCreatingSession}
+              onPress={(event) => {
+                if (!currentSession) {
+                  return;
+                }
+
+                const nextOpen = !isHeaderMenuOpen;
+                if (!nextOpen) {
+                  dismissActionMenu();
+                  return;
+                }
+
+                setEditingSession(null);
+                setActionSessionId(currentSession.id);
+                setHeaderMenuPosition({
+                  top: event.nativeEvent.pageY + 8,
+                  left: Math.min(event.nativeEvent.pageX + 8, windowWidth - 136),
+                });
+              }}
+              disabled={!currentSession}
               hitSlop={8}
-              accessibilityLabel="새 대화"
+              accessibilityLabel="현재 대화 메뉴"
+              style={styles.headerMoreButton}
             >
-              <Icon name="plus" size={21} color={colors.body} />
-            </Pressable>
-            <Pressable
-              onPress={handleDeleteCurrentSession}
-              disabled={!currentSession || isCreatingSession}
-              hitSlop={8}
-              accessibilityLabel="대화 삭제"
-            >
-              <Icon name="x" size={20} color={currentSession ? colors.body : colors.faint} />
+              <MoreDots />
             </Pressable>
           </View>
-        }
-      />
+        </View>
 
-      <View style={styles.sessionBar}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sessionList}
+        <Pressable
+          onPress={handleCreateSession}
+          disabled={isCreatingSession}
+          hitSlop={8}
+          accessibilityLabel="새 대화"
+          style={styles.headerIconButton}
         >
-          {sessions.map((session) => {
-            const selected = currentSession?.id === session.id;
-            return (
+          {isCreatingSession ? (
+            <ActivityIndicator size="small" color={colors.brand} />
+          ) : (
+            <Icon name="plus" size={23} color={colors.brandActive} strokeWidth={2.2} />
+          )}
+        </Pressable>
+      </View>
+
+      <Modal
+        visible={isHeaderMenuOpen && Boolean(currentSession) && Boolean(headerMenuPosition)}
+        transparent
+        animationType="fade"
+        onRequestClose={dismissActionMenu}
+      >
+        <View style={styles.headerMenuModalRoot}>
+          <Pressable
+            onPress={dismissActionMenu}
+            accessibilityLabel="현재 대화 메뉴 닫기"
+            style={styles.headerMenuDismissLayer}
+          />
+          {currentSession && headerMenuPosition ? (
+            <View
+              style={[
+                styles.headerMenu,
+                {
+                  top: headerMenuPosition.top,
+                  left: headerMenuPosition.left,
+                },
+              ]}
+            >
               <Pressable
-                key={session.id}
-                onPress={() => {
-                  if (selected) {
-                    beginTitleEdit(session);
-                    return;
-                  }
-                  void selectSession(session);
-                }}
-                onLongPress={() => beginTitleEdit(session)}
-                accessibilityRole="button"
-                accessibilityLabel={selected ? '챗봇 제목 변경' : '챗봇 세션 열기'}
-                style={[styles.sessionChip, selected && styles.sessionChipSelected]}
+                onPress={() => beginTitleEdit(currentSession)}
+                style={styles.itemMenuRow}
+                accessibilityLabel="현재 대화 이름 변경"
               >
-                <AppText
-                  numberOfLines={1}
-                  style={[styles.sessionChipText, selected && styles.sessionChipTextSelected]}
-                >
-                  {session.title || '새 대화'}
-                </AppText>
+                <Icon name="doc" size={16} color={colors.body} />
+                <AppText style={styles.itemMenuText}>이름 변경</AppText>
               </Pressable>
-            );
-          })}
-        </ScrollView>
-        {editingSession ? (
-          <View style={styles.titleEditor}>
-            <TextInput
-              value={editingTitle}
-              onChangeText={setEditingTitle}
-              maxLength={10}
-              placeholder="제목 입력"
-              placeholderTextColor={colors.faint}
-              style={styles.titleInput}
-              returnKeyType="done"
-              onSubmitEditing={handleUpdateTitle}
-            />
+              <Pressable
+                onPress={() => {
+                  dismissActionMenu();
+                  handleDeleteSession(currentSession);
+                }}
+                style={styles.itemMenuRow}
+                accessibilityLabel="현재 대화 삭제"
+              >
+                <Icon name="x" size={16} color={colors.danger} />
+                <AppText style={[styles.itemMenuText, styles.itemMenuDanger]}>삭제</AppText>
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
+
+      {isEditingCurrentSession ? (
+        <View style={styles.headerTitleEditor}>
+          <TextInput
+            value={editingTitle}
+            onChangeText={setEditingTitle}
+            maxLength={10}
+            placeholder="제목 입력"
+            placeholderTextColor={colors.faint}
+            style={styles.titleInput}
+            returnKeyType="done"
+            onSubmitEditing={handleUpdateTitle}
+          />
+          <View style={styles.editActions}>
             <Pressable
               onPress={() => {
                 setEditingSession(null);
                 setEditingTitle('');
               }}
-              style={styles.titleGhostButton}
+              style={styles.editGhostButton}
             >
-              <AppText style={styles.titleGhostText}>취소</AppText>
+              <AppText style={styles.editGhostText}>취소</AppText>
             </Pressable>
             <Pressable
               onPress={handleUpdateTitle}
               disabled={!editingTitle.trim() || isUpdatingTitle}
               style={[
-                styles.titleSaveButton,
-                (!editingTitle.trim() || isUpdatingTitle) && styles.titleSaveButtonDisabled,
+                styles.editSaveButton,
+                (!editingTitle.trim() || isUpdatingTitle) && styles.editSaveButtonDisabled,
               ]}
             >
-              <AppText style={styles.titleSaveText}>
+              <AppText style={styles.editSaveText}>
                 {isUpdatingTitle ? '저장 중' : '저장'}
               </AppText>
             </Pressable>
           </View>
-        ) : null}
-      </View>
-
-      {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.brand} />
-          <AppText style={styles.centerText}>챗봇을 준비하고 있어요.</AppText>
         </View>
-      ) : (
-        <ScrollView
-          ref={(ref) => {
-            scrollRef.current = ref;
-          }}
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={scrollToEnd}
-        >
-          {messages.map((message) =>
-            message.role === 'user' ? (
-              <ChatBubble key={message.id}>{message.text}</ChatBubble>
-            ) : (
-              <Pressable key={message.id} onLongPress={() => handleCopyMessage(message.text)}>
-                <ChatBubble bot>{message.text}</ChatBubble>
-              </Pressable>
-            )
-          )}
-          {isSending ? (
-            <View style={styles.typingRow}>
-              <ActivityIndicator size="small" color={colors.brand} />
-              <AppText style={styles.typingText}>답변을 작성하고 있어요.</AppText>
-            </View>
-          ) : null}
-          {errorMessage ? (
-            <View style={styles.errorBox}>
-              <AppText style={styles.errorText}>{errorMessage}</AppText>
-            </View>
-          ) : null}
-        </ScrollView>
-      )}
+      ) : null}
 
-      <View
+      <ScrollView
+        ref={(ref) => {
+          scrollRef.current = ref;
+        }}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        onContentSizeChange={scrollToEnd}
+        onTouchStart={() => {
+          Keyboard.dismiss();
+          if (!isPanelOpen && hasOpenActionMenu) {
+            dismissActionMenu();
+          }
+        }}
+      >
+        {messages.map((message) =>
+          message.role === 'user' ? (
+            <ChatBubble key={message.id}>{message.text}</ChatBubble>
+          ) : (
+            <Pressable key={message.id} onLongPress={() => handleCopyMessage(message.text)}>
+              <ChatBubble bot>{message.text}</ChatBubble>
+            </Pressable>
+          )
+        )}
+        {isSending ? (
+          <View style={styles.typingRow}>
+            <ActivityIndicator size="small" color={colors.brand} />
+            <AppText style={styles.typingText}>답변을 작성하고 있어요.</AppText>
+          </View>
+        ) : null}
+        {errorMessage ? (
+          <View style={styles.errorBox}>
+            <AppText style={styles.errorText}>{errorMessage}</AppText>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <Animated.View
+        onTouchStart={() => {
+          if (!isPanelOpen && hasOpenActionMenu) {
+            dismissActionMenu();
+          }
+        }}
         style={[
           styles.inputBar,
-          // Keyboard height excludes the bottom nav-bar inset under edge-to-edge,
-          // so add it back to fully clear the keyboard.
-          { marginBottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : 0 },
+          {
+            paddingBottom: inputBarBottomPadding,
+            bottom: 0,
+            transform: [{ translateY: inputBarTranslateY }],
+          },
         ]}
       >
         <Pressable style={styles.cameraButton} accessibilityLabel="사진 첨부">
-          <Icon name="camera" size={21} color={colors.faint} />
+          <Icon name="camera" size={21} color={colors.body} />
         </Pressable>
         <View style={styles.inputPill}>
           <TextInput
@@ -521,15 +668,18 @@ export default function Chatbot() {
             placeholderTextColor={colors.faint}
             style={styles.input}
             returnKeyType="send"
-            editable={!isLoading && !isSending}
+            editable={!isSending}
+            onFocus={() => {
+              setTimeout(scrollToEnd, 120);
+            }}
             onSubmitEditing={handleSend}
           />
           <Pressable
             onPress={handleSend}
-            disabled={!inputText.trim() || isLoading || isSending}
+            disabled={!inputText.trim() || isSending}
             style={[
               styles.sendButton,
-              (!inputText.trim() || isLoading || isSending) && styles.sendButtonDisabled,
+              (!inputText.trim() || isSending) && styles.sendButtonDisabled,
             ]}
             accessibilityLabel="전송"
           >
@@ -540,10 +690,198 @@ export default function Chatbot() {
             )}
           </Pressable>
         </View>
-      </View>
+      </Animated.View>
+
+      {isPanelOpen ? (
+        <View style={styles.panelOverlay}>
+          <Animated.View style={[styles.panelBackdrop, { opacity: panelProgress }]}>
+            <Pressable
+              onPress={closePanel}
+              onTouchStart={() => {
+                Keyboard.dismiss();
+              }}
+              accessibilityLabel="대화 목록 닫기"
+              style={styles.panelBackdropTouch}
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              styles.panel,
+              {
+                width: panelWidth,
+                paddingTop: insets.top + 18,
+                transform: [
+                  {
+                    translateX: panelProgress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-panelWidth, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.panelHeader}>
+              <AppText style={styles.logoText}>SSIREN</AppText>
+              <Pressable
+                onPress={closePanel}
+                hitSlop={10}
+                accessibilityLabel="대화 목록 닫기"
+                style={styles.closeButton}
+              >
+                <Icon name="x" size={26} color={colors.ink} strokeWidth={2.1} />
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={handleCreateSession}
+              disabled={isCreatingSession}
+              style={styles.newChatRow}
+              accessibilityLabel="새 채팅"
+            >
+              <View style={styles.newChatIcon}>
+                <Icon name="plus" size={20} color={colors.brandActive} strokeWidth={2.2} />
+              </View>
+              <AppText style={styles.newChatText}>새 채팅</AppText>
+            </Pressable>
+
+            <View style={styles.panelSectionTitleRow}>
+              <AppText style={styles.panelSectionTitle}>내 대화</AppText>
+              {isLoadingSessions ? <ActivityIndicator size="small" color={colors.brand} /> : null}
+            </View>
+            <View style={styles.panelDivider} />
+            {isPanelOpen && hasOpenActionMenu ? (
+              <Pressable
+                onPress={dismissActionMenu}
+                accessibilityLabel="대화 메뉴 닫기"
+                style={styles.panelMenuDismissLayer}
+              />
+            ) : null}
+
+            <View style={styles.sessionListFrame}>
+              <ScrollView
+                style={styles.sessionPanelList}
+                contentContainerStyle={styles.sessionPanelContent}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                onScrollBeginDrag={() => {
+                  Keyboard.dismiss();
+                  if (hasOpenActionMenu) {
+                    dismissActionMenu();
+                  }
+                }}
+              >
+                {sessions.length === 0 && !isLoadingSessions ? (
+                  <View style={styles.emptySessions}>
+                    <Icon name="chat" size={24} color={colors.faint} />
+                    <AppText style={styles.emptyTitle}>저장된 대화가 없어요</AppText>
+                    <AppText style={styles.emptyBody}>메시지를 보내면 새 대화가 만들어집니다.</AppText>
+                  </View>
+                ) : null}
+
+                {sessions.map((session) => {
+                  const selected = currentSession?.id === session.id;
+                  const isEditing = editingSession?.id === session.id;
+                  const isActionOpen = actionSessionId === session.id;
+
+                  return (
+                    <View key={session.id} style={styles.sessionItemWrap}>
+                      {isEditing ? (
+                        <View style={styles.editBox}>
+                          <TextInput
+                            value={editingTitle}
+                            onChangeText={setEditingTitle}
+                            maxLength={10}
+                            placeholder="제목 입력"
+                            placeholderTextColor={colors.faint}
+                            style={styles.titleInput}
+                            returnKeyType="done"
+                            onSubmitEditing={handleUpdateTitle}
+                          />
+                          <View style={styles.editActions}>
+                            <Pressable
+                              onPress={() => {
+                                setEditingSession(null);
+                                setEditingTitle('');
+                              }}
+                              style={styles.editGhostButton}
+                            >
+                              <AppText style={styles.editGhostText}>취소</AppText>
+                            </Pressable>
+                            <Pressable
+                              onPress={handleUpdateTitle}
+                              disabled={!editingTitle.trim() || isUpdatingTitle}
+                              style={[
+                                styles.editSaveButton,
+                                (!editingTitle.trim() || isUpdatingTitle) &&
+                                  styles.editSaveButtonDisabled,
+                              ]}
+                            >
+                              <AppText style={styles.editSaveText}>
+                                {isUpdatingTitle ? '저장 중' : '저장'}
+                              </AppText>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.sessionItem}>
+                          <Pressable
+                            onPress={() => void selectSession(session)}
+                            style={styles.sessionTitleButton}
+                            accessibilityLabel="대화 열기"
+                          >
+                            <AppText
+                              numberOfLines={1}
+                              style={[styles.sessionTitle, selected && styles.sessionTitleSelected]}
+                            >
+                              {session.title || '새 대화'}
+                            </AppText>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => setActionSessionId(isActionOpen ? null : session.id)}
+                            hitSlop={8}
+                            accessibilityLabel="대화 메뉴"
+                            style={[styles.itemMoreButton, isActionOpen && styles.itemMoreButtonActive]}
+                          >
+                            <MoreDots />
+                          </Pressable>
+                        </View>
+                      )}
+
+                      {isActionOpen ? (
+                        <View style={styles.itemMenu}>
+                          <Pressable
+                            onPress={() => beginTitleEdit(session)}
+                            style={styles.itemMenuRow}
+                            accessibilityLabel="이름 변경"
+                          >
+                            <Icon name="doc" size={16} color={colors.body} />
+                            <AppText style={styles.itemMenuText}>이름 변경</AppText>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeleteSession(session)}
+                            style={styles.itemMenuRow}
+                            accessibilityLabel="삭제"
+                          >
+                            <Icon name="x" size={16} color={colors.danger} />
+                            <AppText style={[styles.itemMenuText, styles.itemMenuDanger]}>
+                              삭제
+                            </AppText>
+                          </Pressable>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </Animated.View>
+        </View>
+      ) : null}
 
       {showCopyToast ? (
-        <View style={styles.toastWrapper} pointerEvents="none">
+        <View style={[styles.toastWrapper, { bottom: tabBarMetrics.contentOffset + 86 }]} pointerEvents="none">
           <View style={styles.toast}>
             <AppText style={styles.toastText}>클립보드에 복사했습니다</AppText>
           </View>
@@ -555,102 +893,132 @@ export default function Chatbot() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.soft },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  sessionBar: {
+  chatHeader: {
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.canvas,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
+    zIndex: 12,
+  },
+  headerIconButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  activeTitleButton: {
+    flexShrink: 1,
+    flexGrow: 0,
+    minWidth: 0,
+    maxWidth: '82%',
+    justifyContent: 'center',
+    height: 44,
+  },
+  activeTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.base,
+    color: colors.ink,
+  },
+  headerMoreButton: {
+    width: 34,
+    height: 44,
+    marginLeft: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 12,
+  },
+  headerMoreWrap: {
+    position: 'relative',
+    width: 34,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 12,
+  },
+  headerMenuModalRoot: {
+    flex: 1,
+  },
+  headerMenuDismissLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 6,
+  },
+  headerMenu: {
+    position: 'absolute',
+    zIndex: 40,
+    minWidth: 118,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.canvas,
+    paddingVertical: spacing.xs,
+    ...shadow.float,
+  },
+  headerTitleEditor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     backgroundColor: colors.canvas,
     borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
   },
-  sessionList: { paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
-  sessionChip: {
-    maxWidth: 132,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.soft,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  sessionChipSelected: {
-    borderColor: colors.brand,
-    backgroundColor: colors.brandSoft,
-  },
-  sessionChipText: {
-    fontFamily: fonts.semibold,
-    fontSize: 12.5,
-    color: colors.muted,
-  },
-  sessionChipTextSelected: { color: colors.brand },
-  titleEditor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
-  },
-  titleInput: {
-    flex: 1,
-    height: 38,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    backgroundColor: colors.soft,
-    paddingHorizontal: 12,
-    fontFamily: fonts.regular,
-    fontSize: 13.5,
-    color: colors.ink,
-  },
-  titleGhostButton: {
-    height: 38,
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  titleGhostText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.muted },
-  titleSaveButton: {
-    height: 38,
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    backgroundColor: colors.brand,
-    paddingHorizontal: 13,
-  },
-  titleSaveButtonDisabled: { opacity: 0.45 },
-  titleSaveText: { fontFamily: fonts.semibold, fontSize: 13, color: colors.white },
-  centered: {
-    flex: 1,
+  moreDots: {
+    width: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 24,
+    gap: 3,
   },
-  centerText: { fontSize: 14, color: colors.muted },
+  moreDot: {
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 2,
+    backgroundColor: colors.body,
+  },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12, gap: 12 },
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing['3xl'],
+    gap: spacing.md,
+  },
   typingRow: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  typingText: { fontSize: 13, color: colors.muted },
+  typingText: { fontSize: fontSize.xs, color: colors.muted },
   errorBox: {
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.hairline,
     backgroundColor: colors.canvas,
-    paddingHorizontal: 13,
+    paddingHorizontal: spacing.md,
     paddingVertical: 11,
   },
-  errorText: { fontSize: 13.5, lineHeight: 20, color: colors.danger },
-
+  errorText: { fontSize: fontSize.sm, lineHeight: 20, color: colors.danger },
   inputBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 12,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: INPUT_BAR_TOP_PADDING,
     backgroundColor: colors.soft,
     borderTopWidth: 1,
     borderTopColor: colors.hairline,
@@ -674,14 +1042,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.hairline,
-    paddingLeft: 16,
+    paddingLeft: spacing.lg,
     paddingRight: 6,
-    gap: 8,
+    gap: spacing.sm,
   },
   input: {
     flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontSize: fontSize.mdLg,
     color: colors.ink,
     paddingVertical: 0,
   },
@@ -694,20 +1062,222 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: { opacity: 0.4 },
-
+  panelOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 30,
+  },
+  panelBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(5, 5, 5, 0.18)',
+  },
+  panelBackdropTouch: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  panel: {
+    flex: 1,
+    height: '100%',
+    backgroundColor: colors.canvas,
+    paddingHorizontal: spacing.lg,
+    overflow: 'hidden',
+    ...shadow.float,
+  },
+  panelMenuDismissLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 3,
+  },
+  panelHeader: {
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  logoText: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize['2xl'],
+    color: colors.ink,
+  },
+  closeButton: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newChatRow: {
+    marginTop: spacing.lg,
+    height: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  newChatIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 18,
+    backgroundColor: colors.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newChatText: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.xl,
+    color: colors.ink,
+  },
+  panelSectionTitleRow: {
+    marginTop: spacing['2xl'],
+    minHeight: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  panelSectionTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.lg,
+    color: colors.ink,
+  },
+  panelDivider: {
+    height: 1,
+    backgroundColor: colors.hairline,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  sessionListFrame: {
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  sessionPanelList: { flex: 1, minHeight: 0 },
+  sessionPanelContent: { paddingBottom: spacing.md, gap: spacing.xs },
+  emptySessions: {
+    marginTop: spacing['3xl'],
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  emptyTitle: {
+    marginTop: spacing.xs,
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.md,
+    color: colors.body,
+  },
+  emptyBody: {
+    fontSize: fontSize.xs,
+    color: colors.muted,
+  },
+  sessionItemWrap: {
+    position: 'relative',
+  },
+  sessionItem: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sessionTitleButton: {
+    flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    paddingRight: spacing.xs,
+    paddingVertical: spacing.sm,
+  },
+  sessionTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.md,
+    color: colors.body,
+  },
+  sessionTitleSelected: {
+    color: colors.brandActive,
+  },
+  itemMoreButton: {
+    width: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemMoreButtonActive: {
+    zIndex: 5,
+  },
+  itemMenu: {
+    position: 'absolute',
+    top: 42,
+    right: 12,
+    zIndex: 6,
+    minWidth: 110,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.canvas,
+    paddingVertical: spacing.xs,
+    ...shadow.float,
+  },
+  itemMenuRow: {
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  itemMenuText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.xs,
+    color: colors.body,
+  },
+  itemMenuDanger: { color: colors.danger },
+  editBox: {
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    backgroundColor: colors.canvas,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  titleInput: {
+    height: 40,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+    backgroundColor: colors.soft,
+    paddingHorizontal: spacing.md,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.md,
+    color: colors.ink,
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  editGhostButton: {
+    height: 34,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  editGhostText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.xs,
+    color: colors.muted,
+  },
+  editSaveButton: {
+    height: 34,
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+    backgroundColor: colors.brand,
+    paddingHorizontal: spacing.md,
+  },
+  editSaveButtonDisabled: { opacity: 0.45 },
+  editSaveText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.xs,
+    color: colors.white,
+  },
   toastWrapper: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 90,
     alignItems: 'center',
-    zIndex: 20,
+    zIndex: 40,
   },
   toast: {
     backgroundColor: 'rgba(24,29,38,0.92)',
     borderRadius: radius.pill,
-    paddingHorizontal: 18,
+    paddingHorizontal: spacing.xl,
     paddingVertical: 11,
   },
-  toastText: { fontFamily: fonts.semibold, color: colors.white, fontSize: 14 },
+  toastText: { fontFamily: fonts.semibold, color: colors.white, fontSize: fontSize.md },
 });

@@ -117,10 +117,12 @@ export async function deleteMyReport(reportId: number) {
 }
 
 export async function submitReportReaction(reportId: number, reactionType: ReportReactionType) {
+  console.log('[ReportReaction] submit', { reportId, reactionType });
   const response = await apiClient.post<ApiResponse<ReportReactionResponse>>(
     `/api/v1/reports/${reportId}/reactions`,
     { reactionType }
   );
+  console.log('[ReportReaction] response', response.data);
 
   return response.data.data;
 }

@@ -251,6 +251,7 @@ function toNearbyReportDetail(
 
   return {
     id: item.reportId != null ? String(item.reportId) : item.id,
+    issueGroupId: item.issueGroupId,
     title: item.title,
     riskLabel: `위험지수 ${Number(item.riskScore).toFixed(1)}`,
     markerTone: item.markerTone,
@@ -392,6 +393,24 @@ export default function HomeMapScreen() {
     detailRequestIdRef.current += 1;
     setDetailSheetReport(null);
   }, []);
+
+  const handleReactionUpdated = useCallback(
+    (issueGroupId: number | undefined, discomfortCount: number) => {
+      if (issueGroupId == null) {
+        return;
+      }
+
+      const updateReport = (item: NearbyReport) =>
+        item.issueGroupId === issueGroupId ? { ...item, discomfortCount } : item;
+
+      setNearbyReports((prev) => prev.map(updateReport));
+      setSelectedReports((prev) => prev.map(updateReport));
+      setDetailSheetReport((prev) =>
+        prev?.issueGroupId === issueGroupId ? { ...prev, yesCount: discomfortCount } : prev
+      );
+    },
+    []
+  );
 
   const visibleReports = selectedReports.length > 0 ? selectedReports : nearbyReports;
   const sheetReports = useMemo(
@@ -1114,6 +1133,7 @@ export default function HomeMapScreen() {
           visible
           report={detailSheetReport}
           onClose={closeReportDetail}
+          onReactionUpdated={handleReactionUpdated}
         />
       ) : null}
     </View>

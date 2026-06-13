@@ -3,6 +3,7 @@ import type { ReportMarkerTone } from '../utils/publicReportMap';
 
 export type ReportDetail = {
   id: string;
+  issueGroupId?: number;
   title: string;
   riskLabel: string;
   markerTone?: ReportMarkerTone;
