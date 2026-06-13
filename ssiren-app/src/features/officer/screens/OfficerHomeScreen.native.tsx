@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -104,6 +104,7 @@ export default function OfficerHomeScreen() {
   const [isPeekExpanded, setIsPeekExpanded] = useState(true);
   const peekExpandAnim = useRef(new Animated.Value(1)).current;
   const peekDragStart = useRef(1);
+  const didFocusOnceRef = useRef(false);
 
   const setPeekExpanded = (expanded: boolean) => {
     setIsPeekExpanded(expanded);
@@ -271,9 +272,11 @@ export default function OfficerHomeScreen() {
     moveToCurrentLocation();
   }, []);
 
-  useEffect(() => {
+  const loadIssues = useCallback((options?: { silent?: boolean }) => {
     let mounted = true;
-    setIsLoadingIssues(true);
+    if (!options?.silent) {
+      setIsLoadingIssues(true);
+    }
 
     fetchAdminIssues({
       ...buildAdminIssueQuery(region, userLocation),
@@ -296,6 +299,21 @@ export default function OfficerHomeScreen() {
       mounted = false;
     };
   }, [region, userLocation]);
+
+  useEffect(() => {
+    return loadIssues();
+  }, [loadIssues]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!didFocusOnceRef.current) {
+        didFocusOnceRef.current = true;
+        return undefined;
+      }
+
+      return loadIssues({ silent: true });
+    }, [loadIssues])
+  );
 
   return (
     <View style={styles.container}>
