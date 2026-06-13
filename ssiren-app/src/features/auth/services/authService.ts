@@ -11,7 +11,8 @@ import {
 } from '../../../lib/api/client';
 import {
   deactivateStoredPushToken,
-  registerDevicePushToken,
+  markPendingNotificationPrompt,
+  restorePushTokenIfEnabled,
 } from '../../notifications/services/pushNotificationService';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
@@ -33,8 +34,14 @@ type UserConsentResponse = {
   locationAgreed: boolean;
   sensitiveInfoAgreed: boolean;
   sensitiveInfoAgreedAt: string | null;
+  pushNotificationAgreed: boolean;
+  pushNotificationAgreedAt: string | null;
   requiredAgreed: boolean;
   updatedAt: string;
+};
+
+type CompleteLoginOptions = {
+  notificationAgreed?: boolean;
 };
 
 let isKakaoInitialized = false;
@@ -81,7 +88,7 @@ async function persistBackendTokens(tokens: BackendTokenResponse) {
 }
 
 function registerPushTokenInBackground(logPrefix: string) {
-  registerDevicePushToken().catch((error: unknown) => {
+  restorePushTokenIfEnabled().catch((error: unknown) => {
     console.log(`[Auth] push token ${logPrefix} skipped`, error);
   });
 }
@@ -104,7 +111,9 @@ export async function restoreAuthSession() {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_STORAGE_KEY);
   setApiAccessToken(accessToken);
   if (accessToken) {
-    registerPushTokenInBackground('restore');
+    restorePushTokenIfEnabled().catch((error: unknown) => {
+      console.log('[Auth] push token restore skipped', error);
+    });
   }
   return accessToken;
 }
@@ -149,8 +158,16 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
   return backendTokens;
 }
 
-export async function completeLogin(tokens: PendingLoginResult) {
+export async function completeLogin(tokens: PendingLoginResult, options?: CompleteLoginOptions) {
   await persistBackendTokens(tokens);
+
+  if (tokens.isNewUser) {
+    if (options?.notificationAgreed) {
+      await markPendingNotificationPrompt();
+    }
+    return;
+  }
+
   registerPushTokenInBackground('registration');
 }
 
@@ -179,8 +196,9 @@ export async function submitTermsAgreement(
     await apiClient.put<ApiResponse<UserConsentResponse>>('/api/v1/users/me/consents', {
       locationAgreed: agreement.location,
       sensitiveInfoAgreed: agreement.privacy,
+      pushNotificationAgreed: agreement.notification,
     });
-    await completeLogin(loginResult);
+    await completeLogin(loginResult, { notificationAgreed: agreement.notification });
   } catch (error) {
     setApiAccessToken(null);
     throw error;

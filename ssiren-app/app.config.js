@@ -59,6 +59,7 @@ module.exports = {
         ...(appJson.expo.android.permissions ?? []),
         'ACCESS_COARSE_LOCATION',
         'ACCESS_FINE_LOCATION',
+        'POST_NOTIFICATIONS',
       ]),
     ],
   },
@@ -92,6 +93,13 @@ module.exports = {
       {
         cameraPermission: '민원 현장을 사진으로 촬영해 첨부하기 위해 카메라 권한이 필요합니다.',
         photosPermission: '민원에 첨부할 사진을 선택하기 위해 사진 접근 권한이 필요합니다.',
+      },
+    ],
+    [
+      'expo-notifications',
+      {
+        icon: './src/assets/icon.png',
+        color: '#7EC8F7',
       },
     ],
   ],

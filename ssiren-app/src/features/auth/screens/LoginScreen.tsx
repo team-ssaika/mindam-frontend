@@ -6,6 +6,7 @@ import { colors, fonts, fontSize } from '../../../theme';
 import {
   checkUserTermsAgreement,
   clearStoredAuthSession,
+  completeLogin,
   kakaoLogin,
   submitTermsAgreement,
 } from '../services/authService';
@@ -21,6 +22,7 @@ import {
 const INITIAL_TERMS_STATE: TermsAgreementState = {
   location: false,
   privacy: false,
+  notification: false,
 };
 
 export function LoginScreen() {
@@ -66,6 +68,7 @@ export function LoginScreen() {
         return;
       }
 
+      await completeLogin(loginResult);
       goCitizenHome();
     } catch (error) {
       console.log('[Auth] kakao login error', error);
@@ -81,6 +84,7 @@ export function LoginScreen() {
     setTermsState({
       location: nextValue,
       privacy: nextValue,
+      notification: nextValue,
     });
   };
 

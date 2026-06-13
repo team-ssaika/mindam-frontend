@@ -5,10 +5,16 @@ import { colors, fonts, radius, fontSize } from '../../../theme';
 import type { TermsAgreementState, TermsItem } from '../types/auth.types';
 import { TermsAgreementItem } from './TermsAgreementItem';
 
-const TERMS_ITEMS: TermsItem[] = [
-  { key: 'location', label: '위치기반 서비스 이용약관 (필수)' },
-  { key: 'privacy', label: '민감정보 처리방침 (필수)' },
+const REQUIRED_TERMS_ITEMS: TermsItem[] = [
+  { key: 'location', label: '위치기반 서비스 이용약관 (필수)', required: true },
+  { key: 'privacy', label: '민감정보 처리방침 (필수)', required: true },
 ];
+
+const OPTIONAL_TERMS_ITEMS: TermsItem[] = [
+  { key: 'notification', label: '푸시 알림 수신 동의 (선택)', required: false },
+];
+
+const TERMS_ITEMS = [...REQUIRED_TERMS_ITEMS, ...OPTIONAL_TERMS_ITEMS];
 
 type TermsAgreementBottomSheetProps = {
   errorMessage: string | null;
@@ -31,8 +37,12 @@ export function TermsAgreementBottomSheet({
   state,
   visible,
 }: TermsAgreementBottomSheetProps) {
-  const isAllChecked = useMemo(() => Object.values(state).every(Boolean), [state]);
-  const isConfirmEnabled = isAllChecked && !isSubmitting;
+  const isAllChecked = useMemo(() => TERMS_ITEMS.every((item) => state[item.key]), [state]);
+  const isRequiredChecked = useMemo(
+    () => REQUIRED_TERMS_ITEMS.every((item) => state[item.key]),
+    [state]
+  );
+  const isConfirmEnabled = isRequiredChecked && !isSubmitting;
 
   const handlePressDetail = (label: string) => {
     console.log(`[Auth] open terms detail: ${label}`);
@@ -44,7 +54,7 @@ export function TermsAgreementBottomSheet({
       visible={visible}
       onClose={onClose}
       backdropOpacity={0.68}
-      minHeight="42%"
+      minHeight="46%"
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >

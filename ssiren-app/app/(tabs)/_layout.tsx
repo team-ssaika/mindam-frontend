@@ -10,6 +10,7 @@ import { hasStoredAuthSession } from '../../src/features/auth/services/authServi
 import { RoleOnboardingBottomSheet } from '../../src/features/auth/components/RoleOnboardingBottomSheet';
 import type { UserRole } from '../../src/features/auth/types/auth.types';
 import { fetchMyProfile, updateUserRole } from '../../src/features/profile/api/userApi';
+import { applyPendingPushNotificationConsentIfNeeded } from '../../src/features/notifications/services/pushNotificationService';
 
 const SKY = '#7EC8F7';
 const INACTIVE = '#8D8D8D';
@@ -160,6 +161,12 @@ export default function TabLayout() {
         setCurrentUserId(profile.id);
         setIsRoleSheetVisible(profile.roleSelected === false);
 
+        if (profile.roleSelected) {
+          applyPendingPushNotificationConsentIfNeeded().catch((error: unknown) => {
+            console.log('[Notifications] pending push consent apply skipped', error);
+          });
+        }
+
         if (profile.roleSelected && profile.role === 'OFFICER') {
           router.replace('/(officer)');
         }
@@ -190,6 +197,7 @@ export default function TabLayout() {
 
       await updateUserRole(currentUserId, { role, departmentId });
       setIsRoleSheetVisible(false);
+      await applyPendingPushNotificationConsentIfNeeded();
 
       if (role === 'OFFICER') {
         router.replace('/(officer)');

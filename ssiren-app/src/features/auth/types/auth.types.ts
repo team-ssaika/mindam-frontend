@@ -13,11 +13,12 @@ export type UserTermsStatus = {
 
 export type UserRole = 'CITIZEN' | 'OFFICER';
 
-export type TermsKey = 'location' | 'privacy';
+export type TermsKey = 'location' | 'privacy' | 'notification';
 
 export type TermsAgreementState = Record<TermsKey, boolean>;
 
 export type TermsItem = {
   key: TermsKey;
   label: string;
+  required?: boolean;
 };
