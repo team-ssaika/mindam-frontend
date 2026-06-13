@@ -87,5 +87,12 @@ module.exports = {
         },
       },
     ],
+    [
+      'expo-image-picker',
+      {
+        cameraPermission: '민원 현장을 사진으로 촬영해 첨부하기 위해 카메라 권한이 필요합니다.',
+        photosPermission: '민원에 첨부할 사진을 선택하기 위해 사진 접근 권한이 필요합니다.',
+      },
+    ],
   ],
 };
