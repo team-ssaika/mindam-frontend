@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -125,50 +125,6 @@ const ENGLISH_ADDRESS_FALLBACKS: Record<string, string> = {
   Mapo: '마포구 공덕동',
 };
 
-function makeMockReports(center: LatLng = DEFAULT_MAP_CENTER): NearbyReport[] {
-  return [
-    {
-      id: 'mock-7',
-      latitude: center.latitude + 0.0018,
-      longitude: center.longitude - 0.0014,
-      keyword: '쓰레기 무단투기',
-      title: '역삼동 인근 일반 쓰레기 봉투 무단투기',
-      riskScore: 64.5,
-      createdAt: new Date(Date.now() - 19 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 7,
-    },
-    {
-      id: 'mock-13',
-      latitude: center.latitude - 0.0009,
-      longitude: center.longitude - 0.0026,
-      keyword: '쓰레기 무단투기',
-      title: '역삼동 인근 일반 쓰레기 봉투 무단투기',
-      riskScore: 64.5,
-      createdAt: new Date(Date.now() - 36 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 13,
-    },
-    {
-      id: 'mock-22',
-      latitude: center.latitude - 0.0015,
-      longitude: center.longitude + 0.0018,
-      keyword: '도로 파손',
-      title: '역삼역 주변 보도블록 파손으로 보행 위험',
-      riskScore: 72,
-      createdAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 22,
-    },
-  ];
-}
-
 function distanceMeters(a: LatLng, b: LatLng): number {
   const toRad = (value: number) => (value * Math.PI) / 180;
   const earthRadius = 6371000;
@@ -210,14 +166,14 @@ function formatTimeAgo(createdAt: string) {
   }
 
   const diffMinutes = Math.max(Math.floor((Date.now() - time) / 60_000), 0);
-  if (diffMinutes < 1) return '방금전';
-  if (diffMinutes < 60) return `${diffMinutes}분전`;
+  if (diffMinutes < 1) return '방금 전';
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}시간전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
 
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}일전`;
+  return `${diffDays}일 전`;
 }
 
 function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' | 'address'> | null) {
@@ -240,12 +196,12 @@ function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' |
     }
   }
 
-  const koreanTokens = address.match(/[가-힣]+(?:구|군|시|동|읍|면|로|길)/g);
+  const koreanTokens = address.match(/[가-힣]+(?:시|군|구|읍|면|동|로|길)/g);
   if (koreanTokens && koreanTokens.length > 0) {
     return koreanTokens.slice(0, 2).join(' ');
   }
 
-  return '강남구 역삼동';
+  return '내 주변';
 }
 
 function mapPublicReport(item: PublicReportItem): NearbyReport {
@@ -488,27 +444,23 @@ export default function HomeMapScreen() {
         const data = await fetchIssues(buildIssueQuery(region, location));
         const reports = Array.isArray(data.issues)
           ? data.issues
-              .filter(hasValidIssueCoordinate)
-              .map(issueToPublicReportItem)
-              .filter((item): item is PublicReportItem => item != null)
-              .filter(hasValidReportCoordinate)
-              .map(mapPublicReport)
+            .filter(hasValidIssueCoordinate)
+            .map(issueToPublicReportItem)
+            .filter((item): item is PublicReportItem => item != null)
+            .filter(hasValidReportCoordinate)
+            .map(mapPublicReport)
           : [];
-        const displayReports =
-          reports.length >= 3 ? reports : makeMockReports(location ?? region);
-
-        setNearbyReports(displayReports);
-        setSelectedReports(displayReports);
+        setNearbyReports(reports);
+        setSelectedReports(reports);
         setCurrentAddressLabel(
-          await resolveAddressLabel(location ?? region, displayReports[0] ?? null)
+          await resolveAddressLabel(location ?? region, reports[0] ?? null)
         );
       } catch (nextError) {
         console.log('[Issues] nearby fetch failed', nextError);
-        const fallbackReports = makeMockReports(location ?? region);
         setError('nearby_fetch_failed');
-        setNearbyReports(fallbackReports);
-        setSelectedReports(fallbackReports);
-        setCurrentAddressLabel(compactAddress(fallbackReports[0]));
+        setNearbyReports([]);
+        setSelectedReports([]);
+        setCurrentAddressLabel(compactAddress(null));
       } finally {
         setIsLoadingReports(false);
       }
@@ -597,10 +549,10 @@ export default function HomeMapScreen() {
       const results = await mapRef.current?.searchPlaces(trimmed, {
         ...(currentLocation
           ? {
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              radiusMeters: 5000,
-            }
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            radiusMeters: 5000,
+          }
           : {}),
       });
       const first = results?.[0];
@@ -653,7 +605,7 @@ export default function HomeMapScreen() {
       console.warn('[VoiceSearch] speech recognition is not available in this runtime');
       Alert.alert(
         '음성 검색 준비 중',
-        '현재 실행 환경에서는 음성 인식을 바로 사용할 수 없어요. dev build에서 음성 인식 모듈을 연결하면 이 버튼에 붙일 수 있습니다.'
+        '현재 실행 환경에서는 음성 인식을 바로 사용할 수 없습니다.'
       );
       return;
     }
@@ -800,7 +752,7 @@ export default function HomeMapScreen() {
 
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>
-              내 주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
+              주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
             </Text>
             <TouchableOpacity
               style={styles.refreshButton}
