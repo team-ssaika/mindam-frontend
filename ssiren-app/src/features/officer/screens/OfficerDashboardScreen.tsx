@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -118,6 +118,7 @@ export function OfficerDashboardScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(
     null
   );
+  const didFocusOnceRef = useRef(false);
 
   const {
     denseAreas,
@@ -184,6 +185,23 @@ export function OfficerDashboardScreen() {
     loadStatistics();
     loadUserLocation();
   }, [loadStatistics, loadUserLocation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!didFocusOnceRef.current) {
+        didFocusOnceRef.current = true;
+        return undefined;
+      }
+
+      loadStatistics();
+      loadUserLocation();
+      if (userLocation) {
+        reloadDenseAreas();
+      }
+
+      return undefined;
+    }, [loadStatistics, loadUserLocation, reloadDenseAreas, userLocation])
+  );
 
   const getDenseAreaDistance = useCallback(
     (area: AdminDashboardDenseAreaItem) => {
