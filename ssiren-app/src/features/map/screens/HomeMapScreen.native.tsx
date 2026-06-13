@@ -35,6 +35,7 @@ import type { ReportDetail } from '../../report/types/reportDetail';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import { searchLocations } from '../api/locationSearchApi';
 import {
+  BOTTOM_SHEET_HEIGHT,
   NearbyReportsSheet,
   type NearbyReportsSheetHandle,
 } from '../components/NearbyReportsSheet';
@@ -430,9 +431,30 @@ export default function HomeMapScreen() {
   );
 
   const syncMapRegion = useCallback((nextRegion: KakaoMapRegion, duration = 600) => {
-    setCurrentRegion(nextRegion);
+    const { centerOffsetYPx: _centerOffset, ...persistedRegion } = nextRegion;
+    setCurrentRegion(persistedRegion);
     mapRef.current?.animateToRegion(nextRegion, duration);
   }, []);
+
+  const handleActiveReportChange = useCallback(
+    (reportId: string) => {
+      const report = visibleReports.find((item) => item.id === reportId);
+      if (!report) {
+        return;
+      }
+
+      syncMapRegion(
+        {
+          latitude: report.latitude,
+          longitude: report.longitude,
+          ...EXPANDED_DELTA,
+          centerOffsetYPx: BOTTOM_SHEET_HEIGHT / 2,
+        },
+        420
+      );
+    },
+    [syncMapRegion, visibleReports]
+  );
 
   useEffect(() => {
     SecureStore.getItemAsync(RECENT_SEARCHES_STORAGE_KEY)
@@ -1082,6 +1104,7 @@ export default function HomeMapScreen() {
           onCurrentLocationPress={moveToCurrentLocation}
           onRefresh={handleRefresh}
           onReportPress={handleReportCardPress}
+          onActiveReportChange={handleActiveReportChange}
         />
 
         {detailSheetReport ? (

@@ -7,6 +7,8 @@ export type KakaoMapRegion = {
   longitude: number;
   latitudeDelta: number;
   longitudeDelta: number;
+  /** 화면 중앙 대신 위쪽(가시 영역 중앙)에 마커를 두기 위한 Y 오프셋(px). 양수면 마커가 위로 올라감. */
+  centerOffsetYPx?: number;
 };
 
 export type KakaoMapMarker = {
@@ -493,6 +495,18 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               };
             }
 
+            function centerWithOffset(region) {
+              var offsetYPx = region.centerOffsetYPx || 0;
+              if (!offsetYPx) {
+                return new kakao.maps.LatLng(region.latitude, region.longitude);
+              }
+              var mapEl = document.getElementById('map');
+              var mapHeight = mapEl && mapEl.offsetHeight ? mapEl.offsetHeight : window.innerHeight;
+              var latitudeDelta = region.latitudeDelta || 0.01;
+              var latOffset = (offsetYPx / mapHeight) * latitudeDelta;
+              return new kakao.maps.LatLng(region.latitude - latOffset, region.longitude);
+            }
+
             function clearOverlays() {
               overlays.forEach(function (overlay) { overlay.setMap(null); });
               overlays = [];
@@ -628,9 +642,8 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
                 return;
               }
               if (state.region && state.moveCamera !== false) {
-                var center = new kakao.maps.LatLng(state.region.latitude, state.region.longitude);
                 map.setLevel(levelFromDelta(state.region), { animate: !!state.duration });
-                map.panTo(center);
+                map.panTo(centerWithOffset(state.region));
               }
               renderMarkers(state.markers);
               renderPolygons(state.polygons);

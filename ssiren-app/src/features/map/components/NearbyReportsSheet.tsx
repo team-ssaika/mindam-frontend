@@ -1,8 +1,10 @@
-import { forwardRef, memo, useCallback, useImperativeHandle, useRef, useState, type ForwardedRef } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type ForwardedRef } from 'react';
 import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
   PanResponder,
   Pressable,
   ScrollView,
@@ -23,11 +25,13 @@ const TEXT = '#050505';
 const MUTED = '#777777';
 const DANGER = '#D95E5E';
 
-const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.35, 304), 324);
-const COLLAPSED_SHEET_HEIGHT = 104;
+export const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.27, 248), 268);
+const COLLAPSED_SHEET_HEIGHT = 92;
 const SHEET_EXPANDABLE_HEIGHT = BOTTOM_SHEET_HEIGHT - COLLAPSED_SHEET_HEIGHT;
 const SHEET_COLLAPSE_DRAG_THRESHOLD = 28;
-const CARD_WIDTH = Math.min(304, Math.max(264, SCREEN_WIDTH * 0.64));
+const CARD_WIDTH = Math.min(288, Math.max(248, SCREEN_WIDTH * 0.6));
+const CARD_GAP = 12;
+const CARD_SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
 
 export type NearbyReportCard = {
   id: string;
@@ -48,6 +52,7 @@ type NearbyReportsSheetProps = {
   error: string | null;
   isLoading: boolean;
   isLoadingLocation: boolean;
+  onActiveReportChange?: (reportId: string) => void;
   onCurrentLocationPress: () => void;
   onRefresh: () => void;
   onReportPress: (reportId: string) => void;
@@ -95,6 +100,35 @@ function formatTimeAgo(createdAt: string) {
   return `${diffDays}일 전`;
 }
 
+const CarouselPageBar = memo(function CarouselPageBar({
+  count,
+  scrollX,
+  snapInterval,
+}: {
+  count: number;
+  scrollX: number;
+  snapInterval: number;
+}) {
+  const segmentWidth = 100 / count;
+  const maxScroll = Math.max((count - 1) * snapInterval, 1);
+  const travelWidth = 100 - segmentWidth;
+  const left = count <= 1 ? 0 : (scrollX / maxScroll) * travelWidth;
+
+  return (
+    <View style={styles.pageBarTrack}>
+      <View
+        style={[
+          styles.pageBarFill,
+          {
+            width: `${segmentWidth}%`,
+            left: `${left}%`,
+          },
+        ]}
+      />
+    </View>
+  );
+});
+
 const ReportCard = memo(function ReportCard({
   item,
   onPress,
@@ -125,6 +159,7 @@ function NearbyReportsSheetComponent(
     error,
     isLoading,
     isLoadingLocation,
+    onActiveReportChange,
     onCurrentLocationPress,
     onRefresh,
     onReportPress,
@@ -133,9 +168,53 @@ function NearbyReportsSheetComponent(
   ref: ForwardedRef<NearbyReportsSheetHandle>
 ) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [carouselScrollX, setCarouselScrollX] = useState(0);
   const expandAnim = useRef(new Animated.Value(0)).current;
   const dragStart = useRef(0);
   const isExpandedRef = useRef(false);
+  const lastActiveIndexRef = useRef(0);
+
+  useEffect(() => {
+    lastActiveIndexRef.current = 0;
+    setCarouselScrollX(0);
+  }, [reports]);
+
+  const updateActiveIndex = useCallback(
+    (offsetX: number) => {
+      if (reports.length === 0) {
+        return;
+      }
+
+      const index = Math.min(
+        reports.length - 1,
+        Math.max(0, Math.round(offsetX / CARD_SNAP_INTERVAL))
+      );
+
+      if (!onActiveReportChange || index === lastActiveIndexRef.current) {
+        return;
+      }
+
+      lastActiveIndexRef.current = index;
+      onActiveReportChange(reports[index].id);
+    },
+    [onActiveReportChange, reports]
+  );
+
+  const handleCarouselScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      setCarouselScrollX(offsetX);
+      updateActiveIndex(offsetX);
+    },
+    [updateActiveIndex]
+  );
+
+  const handleCarouselScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      updateActiveIndex(event.nativeEvent.contentOffset.x);
+    },
+    [updateActiveIndex]
+  );
 
   const setExpanded = useCallback(
     (expanded: boolean) => {
@@ -238,22 +317,29 @@ function NearbyReportsSheetComponent(
           </Pressable>
 
           <View style={styles.sheetTitleRow}>
-            <Text style={styles.sheetTitle}>
+            <Text style={styles.sheetTitle} numberOfLines={1}>
               내 주변 제보 <Text style={styles.sheetCount}>{reports.length}건</Text>
             </Text>
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={onRefresh}
-              disabled={isLoading}
-              accessibilityRole="button"
-              accessibilityLabel="주변 제보 새로고침"
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#AFAFAF" />
-              ) : (
-                <NearbyRefreshIcon />
-              )}
-            </TouchableOpacity>
+            <View style={styles.sheetTitleActions}>
+              <View style={styles.addressPill}>
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {addressLabel}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={onRefresh}
+                disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="주변 제보 새로고침"
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#AFAFAF" />
+                ) : (
+                  <NearbyRefreshIcon size={26} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -261,24 +347,35 @@ function NearbyReportsSheetComponent(
           style={[styles.sheetListWrap, { height: listHeight, opacity: listOpacity }]}
           pointerEvents={isExpanded ? 'auto' : 'none'}
         >
-          <View style={styles.addressPill}>
-            <Text style={styles.addressText} numberOfLines={1}>
-              {addressLabel}
-            </Text>
-          </View>
-
           {reports.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.reportListScroller}
-              contentContainerStyle={styles.reportList}
-              nestedScrollEnabled
-            >
-              {reports.map((item) => (
-                <ReportCard key={item.id} item={item} onPress={onReportPress} />
-              ))}
-            </ScrollView>
+            <View style={styles.carouselWrap}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.reportListScroller}
+                contentContainerStyle={styles.reportList}
+                nestedScrollEnabled
+                decelerationRate="fast"
+                snapToInterval={CARD_SNAP_INTERVAL}
+                snapToAlignment="start"
+                disableIntervalMomentum
+                scrollEventThrottle={16}
+                onScroll={handleCarouselScroll}
+                onMomentumScrollEnd={handleCarouselScrollEnd}
+                onScrollEndDrag={handleCarouselScrollEnd}
+              >
+                {reports.map((item) => (
+                  <ReportCard key={item.id} item={item} onPress={onReportPress} />
+                ))}
+              </ScrollView>
+              {reports.length > 1 ? (
+                <CarouselPageBar
+                  count={reports.length}
+                  scrollX={carouselScrollX}
+                  snapInterval={CARD_SNAP_INTERVAL}
+                />
+              ) : null}
+            </View>
           ) : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>
@@ -322,8 +419,8 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 24,
-    paddingTop: 14,
-    paddingBottom: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.12,
@@ -340,7 +437,7 @@ const styles = StyleSheet.create({
   },
   handleTouch: {
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   handle: {
     width: 56,
@@ -351,34 +448,40 @@ const styles = StyleSheet.create({
   sheetTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
   },
   sheetTitle: {
+    flex: 1,
+    flexShrink: 1,
     fontFamily: fonts.black,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 25,
+    lineHeight: 30,
     color: TEXT,
+  },
+  sheetTitleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 2,
   },
   sheetCount: {
     fontFamily: fonts.black,
     color: SKY,
   },
   refreshButton: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addressPill: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
     borderWidth: 1,
     borderColor: '#D4D4D4',
     borderRadius: 999,
     backgroundColor: '#ffffff',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    maxWidth: '70%',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    maxWidth: 118,
   },
   addressText: {
     fontFamily: fonts.medium,
@@ -388,35 +491,52 @@ const styles = StyleSheet.create({
   reportListScroller: {
     marginHorizontal: -24,
   },
+  carouselWrap: {
+    flex: 1,
+  },
+  pageBarTrack: {
+    marginTop: 8,
+    height: 3,
+    borderRadius: 999,
+    backgroundColor: '#D8D8D8',
+    overflow: 'hidden',
+  },
+  pageBarFill: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    borderRadius: 999,
+    backgroundColor: SKY_DARK,
+  },
   reportList: {
-    gap: 12,
-    paddingTop: 10,
+    gap: CARD_GAP,
+    paddingTop: 8,
     paddingLeft: 24,
     paddingRight: 24,
-    paddingBottom: 4,
+    paddingBottom: 0,
   },
   reportCard: {
     width: CARD_WIDTH,
-    height: 154,
-    borderRadius: 15,
+    height: 132,
+    borderRadius: 13,
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#F1F1F1',
-    paddingHorizontal: 22,
-    paddingTop: 21,
-    paddingBottom: 19,
+    paddingHorizontal: 18,
+    paddingTop: 17,
+    paddingBottom: 15,
   },
   cardKeyword: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.md,
-    lineHeight: 20,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     color: SKY,
-    marginBottom: 5,
+    marginBottom: 3,
   },
   cardTitle: {
     fontFamily: fonts.black,
-    fontSize: fontSize.xl,
-    lineHeight: 26,
+    fontSize: fontSize.base,
+    lineHeight: 21,
     color: TEXT,
     fontWeight: '900',
     textShadowColor: TEXT,
@@ -430,22 +550,22 @@ const styles = StyleSheet.create({
   },
   riskText: {
     fontFamily: fonts.medium,
-    fontSize: fontSize.mdLg,
+    fontSize: fontSize.sm,
     color: DANGER,
   },
   metaDivider: {
-    marginHorizontal: 12,
-    fontSize: fontSize.mdLg,
+    marginHorizontal: 10,
+    fontSize: fontSize.sm,
     color: '#C8C8C8',
   },
   timeText: {
     fontFamily: fonts.medium,
-    fontSize: fontSize.mdLg,
+    fontSize: fontSize.sm,
     color: TEXT,
   },
   emptyBox: {
-    marginTop: 30,
-    height: 120,
+    marginTop: 16,
+    height: 100,
     borderRadius: 14,
     backgroundColor: '#ffffff',
     alignItems: 'center',
