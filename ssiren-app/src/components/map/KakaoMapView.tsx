@@ -393,7 +393,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
           .marker-report.marker-one .marker-report-body {
             padding: 0 15px 0 14px;
             gap: 6px;
-            font-size: 19px;
+            font-size: 17px;
           }
           .marker-report.marker-large,
           .marker-report.marker-large .marker-report-body {
@@ -401,7 +401,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
           }
           .marker-report.marker-large .marker-report-body {
             padding: 0 20px 0 18px;
-            font-size: 24px;
+            font-size: 22px;
           }
           .marker-report-icon {
             width: 30px;

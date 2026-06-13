@@ -107,13 +107,15 @@ async function syncAlarmEnabledSetting(enabled: boolean) {
 }
 
 export async function enablePushNotificationsWithProfile() {
-  const fcmToken = await registerDevicePushToken();
-  if (!fcmToken) {
+  await syncAlarmEnabledSetting(true);
+
+  try {
+    const fcmToken = await registerDevicePushToken();
+    return Boolean(fcmToken);
+  } catch (error) {
+    console.log('[Notifications] push token registration failed', error);
     return false;
   }
-
-  await syncAlarmEnabledSetting(true);
-  return true;
 }
 
 export async function disablePushNotificationsWithProfile() {

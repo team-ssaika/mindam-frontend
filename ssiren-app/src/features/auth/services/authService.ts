@@ -10,10 +10,13 @@ import {
   setApiAccessToken,
 } from '../../../lib/api/client';
 import {
-  deactivateStoredPushToken,
+  clearPendingNotificationPrompt,
+  getStoredFcmToken,
   markPendingNotificationPrompt,
+  registerDevicePushToken,
   restorePushTokenIfEnabled,
 } from '../../notifications/services/pushNotificationService';
+import { updateMyProfile } from '../../profile/api/userApi';
 import type { ApiResponse } from '../../../lib/api/types';
 import type {
   KakaoLoginResult,
@@ -40,9 +43,28 @@ type UserConsentResponse = {
   updatedAt: string;
 };
 
-type CompleteLoginOptions = {
-  notificationAgreed?: boolean;
-};
+async function applyNotificationConsentFromTerms(notificationAgreed: boolean) {
+  if (notificationAgreed) {
+    await updateMyProfile({ isAlarmEnabled: true });
+
+    try {
+      await registerDevicePushToken();
+    } catch (error) {
+      console.log('[Auth] push token registration after terms skipped', error);
+    }
+
+    const storedToken = await getStoredFcmToken();
+    if (!storedToken) {
+      await markPendingNotificationPrompt();
+    } else {
+      await clearPendingNotificationPrompt();
+    }
+    return;
+  }
+
+  await updateMyProfile({ isAlarmEnabled: false });
+  await clearPendingNotificationPrompt();
+}
 
 let isKakaoInitialized = false;
 
@@ -158,13 +180,10 @@ export async function kakaoLogin(): Promise<PendingLoginResult> {
   return backendTokens;
 }
 
-export async function completeLogin(tokens: PendingLoginResult, options?: CompleteLoginOptions) {
+export async function completeLogin(tokens: PendingLoginResult) {
   await persistBackendTokens(tokens);
 
   if (tokens.isNewUser) {
-    if (options?.notificationAgreed) {
-      await markPendingNotificationPrompt();
-    }
     return;
   }
 
@@ -198,7 +217,8 @@ export async function submitTermsAgreement(
       sensitiveInfoAgreed: agreement.privacy,
       pushNotificationAgreed: agreement.notification,
     });
-    await completeLogin(loginResult, { notificationAgreed: agreement.notification });
+    await applyNotificationConsentFromTerms(agreement.notification);
+    await completeLogin(loginResult);
   } catch (error) {
     setApiAccessToken(null);
     throw error;
