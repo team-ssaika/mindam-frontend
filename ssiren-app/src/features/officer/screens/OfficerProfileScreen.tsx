@@ -5,7 +5,7 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Icon } from '../../../components/ui';
 import { colors, fonts, fontSize } from '../../../theme';
 import { fetchMyProfile } from '../../profile/api/userApi';
-import { OfficerTransferRequestsPanel } from './OfficerTransferRequestsScreen';
+import { OfficerTransferRequestsPanel } from '../transfer-requests';
 import { formatOfficerDepartments } from '../utils/officerDepartmentDisplay';
 
 const PROFILE_BG = '#F4F5F8';
