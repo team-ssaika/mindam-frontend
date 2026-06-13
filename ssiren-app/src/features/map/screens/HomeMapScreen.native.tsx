@@ -253,6 +253,7 @@ function toNearbyReportDetail(
     id: item.reportId != null ? String(item.reportId) : item.id,
     title: item.title,
     riskLabel: `위험지수 ${Number(item.riskScore).toFixed(1)}`,
+    markerTone: item.markerTone,
     timeAgo: formatTimeAgo(item.createdAt),
     distance:
       userLocation != null
@@ -1106,15 +1107,15 @@ export default function HomeMapScreen() {
           onReportPress={handleReportCardPress}
           onActiveReportChange={handleActiveReportChange}
         />
-
-        {detailSheetReport ? (
-          <ReportDetailBottomSheet
-            visible
-            report={detailSheetReport}
-            onClose={closeReportDetail}
-          />
-        ) : null}
       </View>
+
+      {detailSheetReport ? (
+        <ReportDetailBottomSheet
+          visible
+          report={detailSheetReport}
+          onClose={closeReportDetail}
+        />
+      ) : null}
     </View>
   );
 }

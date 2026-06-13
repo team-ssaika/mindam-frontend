@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import {
-  BottomSheet,
-  useBottomSheetClose,
-  useBottomSheetDragHandlers,
-} from '../../../components/ui/BottomSheet';
+import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
 import { fonts, fontSize } from '../../../theme';
 import { submitReportReaction } from '../api/reportApi';
 import type { ReportStatus } from '../types/myReport';
 import type { ReportDetail } from '../types/reportDetail';
-import { getIssueGroupDiscomfortCount } from '../utils/publicReportMap';
+import {
+  getIssueGroupDiscomfortCount,
+  getReportMarkerToneStyle,
+  resolveReportMarkerTone,
+} from '../utils/publicReportMap';
 import { sortStatusHistories } from '../utils/reportStatus';
 
 const SKY = '#75C7F4';
@@ -190,8 +190,8 @@ function buildTimeline(report: ReportDetail) {
 }
 
 function ReportDetailContent({ report }: { report: ReportDetail }) {
+  const riskToneStyle = getReportMarkerToneStyle(resolveReportMarkerTone(report));
   const requestClose = useBottomSheetClose();
-  const dragHandlers = useBottomSheetDragHandlers();
   const [isPressed, setIsPressed] = useState(false);
   const [discomfortCount, setDiscomfortCount] = useState(report.yesCount);
   const [isSubmittingReaction, setIsSubmittingReaction] = useState(false);
@@ -247,99 +247,106 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
   };
 
   return (
-    <ScrollView
-      {...dragHandlers}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
-    >
-      <View style={styles.handle} />
+    <View style={styles.contentRoot}>
+      <View style={styles.sheetHeader}>
+        <View style={styles.handle} />
+        <View style={styles.topRow}>
+          <View style={styles.riskPill}>
+            <Ionicons name="warning-outline" size={14} color={riskToneStyle.iconColor} />
+            <Text style={[styles.riskText, { color: riskToneStyle.textColor }]}>
+              {formatRiskLabel(report.riskLabel)}
+            </Text>
+          </View>
 
-      <View style={styles.topRow}>
-        <View style={styles.riskPill}>
-          <Ionicons name="warning-outline" size={16} color="#2F2F2F" />
-          <Text style={styles.riskText}>{formatRiskLabel(report.riskLabel)}</Text>
+          <Pressable
+            style={styles.closeButton}
+            onPress={handleClose}
+            accessibilityRole="button"
+            accessibilityLabel="민원 상세 닫기"
+          >
+            <Ionicons name="close" size={26} color="#2F2F2F" />
+          </Pressable>
         </View>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.categoryText}>{report.category || '제보'}</Text>
+
+        <Text style={styles.title} numberOfLines={3}>
+          {report.title}
+        </Text>
+
+        <View style={styles.addressRow}>
+          <Ionicons name="location-outline" size={18} color="#7D7B83" />
+          <Text style={styles.addressText} numberOfLines={2}>
+            {report.address || '위치 정보 없음'}
+          </Text>
+        </View>
+
+        <View style={styles.summaryBox}>
+          <View style={styles.aiLabelRow}>
+            <Ionicons name="sparkles-outline" size={12} color="#F2C55C" />
+            <Text style={styles.aiLabel}>AI 요약</Text>
+          </View>
+          <Text style={styles.summaryText}>{report.summary || '요약 정보가 없습니다.'}</Text>
+        </View>
+
+        <Text style={styles.metaText}>{joinMeta(report.timeAgo, report.distance)}</Text>
 
         <Pressable
-          style={styles.closeButton}
-          onPress={handleClose}
+          style={({ pressed }) => [
+            styles.discomfortButton,
+            isSubmittingReaction ? styles.discomfortButtonDisabled : null,
+            pressed || isPressed ? styles.discomfortButtonPressed : null,
+          ]}
+          onPress={handleDiscomfortPress}
+          disabled={isSubmittingReaction}
           accessibilityRole="button"
-          accessibilityLabel="민원 상세 닫기"
+          accessibilityLabel="나도 불편해요"
         >
-          <Ionicons name="close" size={30} color="#2F2F2F" />
+          <Text style={[styles.discomfortText, isPressed ? styles.discomfortTextPressed : null]}>
+            나도 불편해요
+          </Text>
+          <Ionicons name="hand-left-outline" size={16} color={TEXT} />
+          <Text style={[styles.discomfortCount, isPressed ? styles.discomfortCountPressed : null]}>
+            {discomfortCount}
+          </Text>
         </Pressable>
-      </View>
 
-      <Text style={styles.categoryText}>{report.category || '제보'}</Text>
+        <View style={styles.divider} />
 
-      <Text style={styles.title} numberOfLines={3}>
-        {report.title}
-      </Text>
+        <View style={styles.timeline}>
+          {timeline.map((item, index) => {
+            const isActive = index === activeStatusIndex;
+            const isLast = index === timeline.length - 1;
 
-      <View style={styles.addressRow}>
-        <Ionicons name="location-outline" size={24} color="#7D7B83" />
-        <Text style={styles.addressText} numberOfLines={2}>
-          {report.address || '위치 정보 없음'}
-        </Text>
-      </View>
+            return (
+              <View key={`${item.label}-${index}`} style={styles.timelineItem}>
+                <View style={styles.timelineRail}>
+                  <TimelineDot active={isActive} />
+                  {!isLast ? <View style={styles.timelineLine} /> : null}
+                </View>
 
-      <View style={styles.summaryBox}>
-        <View style={styles.aiLabelRow}>
-          <Ionicons name="sparkles-outline" size={14} color="#F2C55C" />
-          <Text style={styles.aiLabel}>AI 요약</Text>
+                <View style={styles.timelineContent}>
+                  <Text style={[styles.timelineTitle, isActive ? styles.timelineTitleActive : null]}>
+                    {item.label}
+                  </Text>
+                  {item.description ? (
+                    <Text style={styles.timelineDescription}>{item.description}</Text>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
         </View>
-        <Text style={styles.summaryText}>{report.summary || '요약 정보가 없습니다.'}</Text>
-      </View>
-
-      <Text style={styles.metaText}>{joinMeta(report.timeAgo, report.distance)}</Text>
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.discomfortButton,
-          isSubmittingReaction ? styles.discomfortButtonDisabled : null,
-          pressed || isPressed ? styles.discomfortButtonPressed : null,
-        ]}
-        onPress={handleDiscomfortPress}
-        disabled={isSubmittingReaction}
-        accessibilityRole="button"
-        accessibilityLabel="나도 불편해요"
-      >
-        <Text style={[styles.discomfortText, isPressed ? styles.discomfortTextPressed : null]}>
-          나도 불편해요
-        </Text>
-        <Ionicons name="hand-left-outline" size={23} color={TEXT} />
-        <Text style={[styles.discomfortCount, isPressed ? styles.discomfortCountPressed : null]}>
-          {discomfortCount}
-        </Text>
-      </Pressable>
-
-      <View style={styles.divider} />
-
-      <View style={styles.timeline}>
-        {timeline.map((item, index) => {
-          const isActive = index === activeStatusIndex;
-          const isLast = index === timeline.length - 1;
-
-          return (
-            <View key={`${item.label}-${index}`} style={styles.timelineItem}>
-              <View style={styles.timelineRail}>
-                <TimelineDot active={isActive} />
-                {!isLast ? <View style={styles.timelineLine} /> : null}
-              </View>
-
-              <View style={styles.timelineContent}>
-                <Text style={[styles.timelineTitle, isActive ? styles.timelineTitleActive : null]}>
-                  {item.label}
-                </Text>
-                {item.description ? (
-                  <Text style={styles.timelineDescription}>{item.description}</Text>
-                ) : null}
-              </View>
-            </View>
-          );
-        })}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -352,7 +359,7 @@ export function ReportDetailBottomSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      minHeight="82%"
+      minHeight="76%"
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >
@@ -363,69 +370,77 @@ export function ReportDetailBottomSheet({
 
 const styles = StyleSheet.create({
   sheetContainer: {
-    height: '82%',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 12,
-    paddingHorizontal: 24,
+    height: '76%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 14,
+    paddingHorizontal: 22,
     backgroundColor: '#FFFFFF',
+  },
+  contentRoot: {
+    flex: 1,
+  },
+  sheetHeader: {
+    paddingBottom: 8,
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: 28,
   },
   handle: {
     alignSelf: 'center',
-    width: 56,
-    height: 5,
+    width: 48,
+    height: 4,
     borderRadius: 999,
     backgroundColor: '#B8B8B8',
     marginTop: 10,
-    marginBottom: 22,
+    marginBottom: 14,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 14,
+    gap: 12,
   },
   riskPill: {
-    minHeight: 29,
+    minHeight: 26,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#D0D0D0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    transform: [{ translateY: 4 }],
+    gap: 3,
+    transform: [{ translateY: 2 }],
   },
   riskText: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.sm,
-    lineHeight: 19,
-    color: TEXT,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
   },
   closeButton: {
-    width: 34,
-    height: 34,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ translateY: 4 }],
+    transform: [{ translateY: 2 }],
   },
   categoryText: {
-    marginTop: 22,
+    marginTop: 12,
     fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-    lineHeight: 23,
+    fontSize: fontSize.md,
+    lineHeight: 18,
     color: SKY,
   },
   title: {
-    marginTop: 12,
+    marginTop: 14,
     fontFamily: fonts.black,
-    fontSize: fontSize.display,
-    lineHeight: 34,
+    fontSize: fontSize['2xl'],
+    lineHeight: 28,
     color: TEXT,
     letterSpacing: 0,
   },
@@ -438,13 +453,13 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     fontFamily: fonts.bold,
-    fontSize: fontSize.lg,
-    lineHeight: 24,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     color: '#7D7B83',
   },
   summaryBox: {
-    marginTop: 22,
-    borderRadius: 14,
+    marginTop: 20,
+    borderRadius: 12,
     backgroundColor: '#F7F7F8',
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -457,35 +472,36 @@ const styles = StyleSheet.create({
   },
   aiLabel: {
     fontFamily: fonts.medium,
-    fontSize: fontSize.md,
-    lineHeight: 17,
+    fontSize: fontSize.sm,
+    lineHeight: 16,
     color: '#77777E',
   },
   summaryText: {
     fontFamily: fonts.medium,
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: fontSize.md,
+    lineHeight: 20,
     color: TEXT,
   },
   metaText: {
     marginTop: 16,
     fontFamily: fonts.medium,
-    fontSize: fontSize.base,
-    lineHeight: 23,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     color: BODY,
   },
   discomfortButton: {
     alignSelf: 'flex-start',
     marginTop: 16,
-    minHeight: 50,
+    minHeight: 36,
     borderRadius: 999,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#D6E4EA',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     shadowColor: '#58BEF5',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0,
@@ -504,8 +520,8 @@ const styles = StyleSheet.create({
   },
   discomfortText: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-    lineHeight: 23,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     color: '#5C7280',
   },
   discomfortTextPressed: {
@@ -513,8 +529,8 @@ const styles = StyleSheet.create({
   },
   discomfortCount: {
     fontFamily: fonts.bold,
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     color: TEXT,
   },
   discomfortCountPressed: {
@@ -523,8 +539,8 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: LINE,
-    marginTop: 24,
-    marginBottom: 22,
+    marginTop: 22,
+    marginBottom: 20,
   },
   timeline: {
     gap: 0,
@@ -532,39 +548,39 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     flexDirection: 'row',
-    minHeight: 68,
+    minHeight: 62,
     overflow: 'visible',
   },
   timelineRail: {
-    width: 44,
+    width: 36,
     alignItems: 'center',
-    paddingLeft: 10,
+    paddingLeft: 8,
     overflow: 'visible',
     zIndex: 2,
   },
   timelineDotWrap: {
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -12,
-    marginBottom: -12,
+    marginTop: -10,
+    marginBottom: -10,
     overflow: 'visible',
     zIndex: 3,
     elevation: 6,
   },
   timelineDotPulse: {
     position: 'absolute',
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: SKY,
     zIndex: 1,
   },
   timelineDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     borderWidth: 1.5,
     borderColor: '#D8D8D8',
     backgroundColor: '#8F8F8F',
@@ -587,22 +603,22 @@ const styles = StyleSheet.create({
   },
   timelineContent: {
     flex: 1,
-    paddingBottom: 12,
+    paddingBottom: 14,
   },
   timelineTitle: {
     fontFamily: fonts.black,
-    fontSize: fontSize.lg,
-    lineHeight: 22,
+    fontSize: fontSize.md,
+    lineHeight: 18,
     color: '#9C9C9C',
   },
   timelineTitleActive: {
     color: SKY,
   },
   timelineDescription: {
-    marginTop: 3,
+    marginTop: 4,
     fontFamily: fonts.medium,
-    fontSize: fontSize.sm,
-    lineHeight: 19,
+    fontSize: fontSize.micro,
+    lineHeight: 16,
     color: MUTED,
   },
 });
