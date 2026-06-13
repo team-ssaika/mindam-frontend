@@ -80,6 +80,27 @@ export type AdminIssueStatusUpdateResponse = {
   changedReportIds: number[];
 };
 
+export type AdminIssueTransferRequestCreateBody = {
+  targetDepartmentId: number;
+  requestReason: string;
+};
+
+export type AdminIssueTransferRequestResponse = {
+  transferId: number;
+  issueGroupId: number;
+  issueGroupTitle: string;
+  fromDepartment: AdminDepartment;
+  targetDepartment: AdminDepartment;
+  requestUserId: number;
+  responseUserId: number | null;
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'CANCELED';
+  requestReason: string;
+  requestedAt: string;
+  responseReason: string | null;
+  responseAt: string | null;
+  transferredReportCount: number;
+};
+
 export type AdminIssueSortType = 'LATEST' | 'RISK_DESC';
 
 export type AdminIssuesQuery = {
