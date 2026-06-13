@@ -1,46 +1,17 @@
 import axios from 'axios';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
-import { AppBar, AppText, Icon, ListRow } from '../../../components/ui';
-import { colors, fonts, statusColors, fontSize } from '../../../theme';
-import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
+import { Alert, StyleSheet, View } from 'react-native';
+import { AppBar, AppText, Icon } from '../../../components/ui';
+import { colors, fonts, fontSize } from '../../../theme';
 import { fetchMyProfile } from '../../profile/api/userApi';
-import { officerStats } from '../mocks/officerMock';
+import { OfficerTransferRequestsPanel } from './OfficerTransferRequestsScreen';
 import { formatOfficerDepartments } from '../utils/officerDepartmentDisplay';
 
 const PROFILE_BG = '#F4F5F8';
 
-const MENU_ITEMS = [
-  { icon: 'gear' as const, label: '설정', route: '/(officer)/config' as const },
-  { icon: 'doc' as const, label: '처리 이력' },
-  {
-    icon: 'layers' as const,
-    label: '제보 이관',
-    route: '/(officer)/transfer-requests' as const,
-    officerOnly: true,
-  },
-  { icon: 'headset' as const, label: '내부 문의' },
-  { icon: 'info' as const, label: '담당 구역 설정' },
-];
-
 function SectionCard({ children }: { children: ReactNode }) {
   return <View style={styles.card}>{children}</View>;
-}
-
-function ProfileSectionTitle({
-  title,
-  actionLabel,
-}: {
-  title: string;
-  actionLabel?: string;
-}) {
-  return (
-    <View style={styles.sectionHeader}>
-      <AppText style={styles.sectionTitle}>{title}</AppText>
-      {actionLabel ? <AppText style={styles.sectionMeta}>{actionLabel}</AppText> : null}
-    </View>
-  );
 }
 
 function getProfileFallbackName(_role: string | null) {
@@ -49,7 +20,6 @@ function getProfileFallbackName(_role: string | null) {
 
 export function OfficerProfileScreen() {
   const router = useRouter();
-  const { contentOffset: tabBarOffset } = useTabBarMetrics();
   const [name, setName] = useState<string | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -88,18 +58,10 @@ export function OfficerProfileScreen() {
 
   useFocusEffect(loadProfile);
 
-  const visibleMenuItems = MENU_ITEMS.filter(
-    (item) => !('officerOnly' in item) || role === 'OFFICER'
-  );
-
   return (
     <View style={styles.flex}>
       <AppBar title="내 정보" logo={false} border={false} backgroundColor={PROFILE_BG} />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.profileWrap}>
         <SectionCard>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
@@ -115,59 +77,8 @@ export function OfficerProfileScreen() {
             </View>
           </View>
         </SectionCard>
-
-        <SectionCard>
-          <ProfileSectionTitle title="담당 제보 처리 현황" actionLabel="이번 달 142건" />
-          <View style={styles.statRow}>
-            {officerStats.map((stat, index) => (
-              <View key={stat.label} style={styles.statColumn}>
-                {index > 0 ? <View style={styles.statSeparator} /> : null}
-                <View style={styles.statPressable}>
-                  <AppText style={[styles.statCount, { color: statusColors[stat.tone].dot }]}>
-                    {stat.count}
-                  </AppText>
-                  <AppText style={styles.statLabel}>{stat.label}</AppText>
-                </View>
-              </View>
-            ))}
-          </View>
-        </SectionCard>
-
-        <SectionCard>
-          <View style={styles.avgRow}>
-            <View style={styles.avgText}>
-              <AppText style={styles.sectionTitle}>평균 처리 시간</AppText>
-              <View style={styles.avgValueRow}>
-                <AppText style={styles.avgValue}>1.8일</AppText>
-                <AppText style={styles.avgDelta}>▼ 0.4일</AppText>
-              </View>
-            </View>
-            <View style={styles.avgIcon}>
-              <Icon name="clock" size={24} color={statusColors.done.fg} />
-            </View>
-          </View>
-        </SectionCard>
-
-        <SectionCard>
-          <ProfileSectionTitle title="메뉴" />
-          <View style={styles.menuList}>
-            {visibleMenuItems.map((item, index) => (
-              <ListRow
-                key={item.label}
-                icon={item.icon}
-                label={item.label}
-                first={index === 0}
-                size="lg"
-                onPress={
-                  'route' in item && item.route
-                    ? () => router.push(item.route)
-                    : undefined
-                }
-              />
-            ))}
-          </View>
-        </SectionCard>
-      </ScrollView>
+      </View>
+      <OfficerTransferRequestsPanel embedded />
     </View>
   );
 }
@@ -177,10 +88,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: PROFILE_BG,
   },
-  content: {
+  profileWrap: {
     paddingTop: 22,
     paddingHorizontal: 16,
-    gap: 22,
+    paddingBottom: 8,
   },
   card: {
     borderRadius: 20,
@@ -222,95 +133,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: fontSize.base,
     color: '#8A8A8A',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: fontSize.base,
-    color: '#707070',
-    letterSpacing: -0.1,
-  },
-  sectionMeta: {
-    fontFamily: fonts.medium,
-    fontSize: fontSize.sm,
-    color: colors.brand,
-  },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    paddingTop: 6,
-    paddingBottom: 2,
-    marginHorizontal: -10,
-  },
-  statColumn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statSeparator: {
-    width: 1,
-    alignSelf: 'stretch',
-    backgroundColor: '#ECECEC',
-    marginVertical: 8,
-  },
-  statPressable: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  statCount: {
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontFamily: fonts.regular,
-    fontSize: fontSize.base,
-    color: '#777777',
-  },
-  avgRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avgText: {
-    flex: 1,
-  },
-  avgValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    marginTop: 10,
-  },
-  avgValue: {
-    fontFamily: fonts.bold,
-    fontSize: 34,
-    lineHeight: 40,
-    color: '#111111',
-    letterSpacing: -0.5,
-  },
-  avgDelta: {
-    fontFamily: fonts.semibold,
-    fontSize: fontSize.sm,
-    color: statusColors.done.fg,
-  },
-  avgIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#F0F1F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuList: {
-    marginHorizontal: -22,
-    marginBottom: -22,
   },
 });

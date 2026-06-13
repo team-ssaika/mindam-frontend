@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { AppBar, AppText, BottomSheet, Button, Card, Icon } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { colors, fontSize, fonts, layout, radius, statusColors } from '../../../theme';
@@ -103,9 +103,9 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-export function OfficerTransferRequestsScreen() {
+export function OfficerTransferRequestsPanel({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { insets, contentOffset: tabBarOffset } = useTabBarMetrics();
   const [activeTab, setActiveTab] = useState<ActiveTab>('received');
   const [received, setReceived] = useState<OfficerTransferRequest[]>([]);
   const [sent, setSent] = useState<OfficerTransferRequest[]>([]);
@@ -151,7 +151,7 @@ export function OfficerTransferRequestsScreen() {
       router.back();
       return;
     }
-    router.replace('/(officer)/profile');
+    router.replace('/(officer)/(main)/profile');
   };
 
   const openResponseSheet = (
@@ -190,36 +190,49 @@ export function OfficerTransferRequestsScreen() {
   };
 
   return (
-    <View style={styles.flex}>
-      <AppBar
-        title="제보 이관"
-        logo={false}
-        onBack={goBack}
-        right={
-          <Pressable onPress={loadRequests} disabled={isLoading} hitSlop={8}>
-            {isLoading ? (
-              <ActivityIndicator size="small" color={colors.brand} />
-            ) : (
-              <Icon name="refresh" size={22} color={colors.brand} strokeWidth={2.2} />
-            )}
-          </Pressable>
-        }
-      />
+    <View style={[styles.flex, embedded && styles.embeddedRoot]}>
+      {!embedded ? (
+        <AppBar
+          title="제보 이관"
+          logo={false}
+          onBack={goBack}
+          right={
+            <Pressable onPress={loadRequests} disabled={isLoading} hitSlop={8}>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.brand} />
+              ) : (
+                <Icon name="refresh" size={22} color={colors.brand} strokeWidth={2.2} />
+              )}
+            </Pressable>
+          }
+        />
+      ) : null}
 
-      <View style={styles.summary}>
+      <View style={[styles.summary, embedded && styles.embeddedSummary]}>
         <View style={styles.summaryText}>
           <AppText style={styles.summaryTitle}>부서 간 제보 이관</AppText>
           <AppText style={styles.summarySub}>
             요청받은 이관을 검토하고 승인 또는 거절할 수 있어요.
           </AppText>
         </View>
-        <View style={styles.pendingBadge}>
-          <AppText style={styles.pendingCount}>{pendingReceivedCount}</AppText>
-          <AppText style={styles.pendingLabel}>대기</AppText>
+        <View style={styles.summaryActions}>
+          {embedded ? (
+            <Pressable onPress={loadRequests} disabled={isLoading} hitSlop={8} style={styles.refreshButton}>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.brand} />
+              ) : (
+                <Icon name="refresh" size={20} color={colors.brand} strokeWidth={2.2} />
+              )}
+            </Pressable>
+          ) : null}
+          <View style={styles.pendingBadge}>
+            <AppText style={styles.pendingCount}>{pendingReceivedCount}</AppText>
+            <AppText style={styles.pendingLabel}>대기</AppText>
+          </View>
         </View>
       </View>
 
-      <View style={styles.tabWrap}>
+      <View style={[styles.tabWrap, embedded && styles.embeddedSection]}>
         <SegmentTab
           label={`요청 온 목록 ${received.length}`}
           active={activeTab === 'received'}
@@ -235,7 +248,7 @@ export function OfficerTransferRequestsScreen() {
       {activeTab === 'sent' ? (
         <ScrollView
           horizontal
-          style={styles.filterScroller}
+          style={[styles.filterScroller, embedded && styles.embeddedSection]}
           contentContainerStyle={styles.filterRow}
           showsHorizontalScrollIndicator={false}
         >
@@ -257,7 +270,7 @@ export function OfficerTransferRequestsScreen() {
           ))}
         </ScrollView>
       ) : (
-        <View style={styles.filterPlaceholder} />
+        <View style={[styles.filterPlaceholder, embedded && styles.embeddedSection]} />
       )}
 
       {isLoading ? (
@@ -276,7 +289,7 @@ export function OfficerTransferRequestsScreen() {
           style={styles.flex}
           contentContainerStyle={[
             styles.content,
-            { paddingBottom: insets.bottom + 24 },
+            { paddingBottom: embedded ? tabBarOffset + 16 : insets.bottom + 24 },
             activeItems.length === 0 && styles.emptyContent,
           ]}
           showsVerticalScrollIndicator={false}
@@ -362,6 +375,10 @@ export function OfficerTransferRequestsScreen() {
       </BottomSheet>
     </View>
   );
+}
+
+export function OfficerTransferRequestsScreen() {
+  return <OfficerTransferRequestsPanel />;
 }
 
 function SegmentTab({
@@ -502,6 +519,12 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.soft },
+  embeddedRoot: {
+    backgroundColor: '#F4F5F8',
+  },
+  embeddedSection: {
+    backgroundColor: '#F4F5F8',
+  },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
@@ -517,7 +540,31 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.hairline,
   },
+  embeddedSummary: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 20,
+    borderBottomWidth: 0,
+    shadowColor: '#AAB2C0',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
+    elevation: 2,
+  },
   summaryText: { flex: 1, gap: 4 },
+  summaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.brandSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   summaryTitle: { fontFamily: fonts.bold, fontSize: fontSize['2xl'], color: colors.ink },
   summarySub: { fontSize: fontSize.md, lineHeight: 21, color: colors.muted },
   pendingBadge: {
