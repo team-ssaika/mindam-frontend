@@ -36,7 +36,7 @@ import {
   hasValidAdminIssueCoordinate,
 } from '../utils/adminIssueMap';
 
-const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
+const mindamNameLogo = require('../../../assets/mindam_name.png');
 const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
 const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
 
@@ -49,7 +49,7 @@ const PEEK_LIST_BOTTOM_PADDING = 10;
 const PEEK_LIST_HEIGHT =
   PEEK_CARD_MIN_HEIGHT + PEEK_LIST_TOP_PADDING + PEEK_LIST_BOTTOM_PADDING;
 const PEEK_COLLAPSE_DRAG_THRESHOLD = 24;
-const HEADER_BODY_HEIGHT = Math.min(49, Math.max(40, SCREEN_HEIGHT * 0.05));
+const HEADER_BODY_HEIGHT = Math.min(56, Math.max(46, SCREEN_HEIGHT * 0.055));
 const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 
 function distanceMeters(
@@ -301,7 +301,7 @@ export default function OfficerHomeScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.header}>
-          <Image source={ssirenNameLogo} style={styles.nameLogo} resizeMode="contain" />
+          <Image source={mindamNameLogo} style={styles.nameLogo} resizeMode="contain" />
           <View style={styles.headerRight}>
             <View style={styles.jurisPill}>
               <Icon name="building" size={15} color={colors.brand} strokeWidth={2.1} />
@@ -310,7 +310,7 @@ export default function OfficerHomeScreen() {
               </AppText>
             </View>
             <Pressable style={styles.bellButton} accessibilityLabel="알림">
-              <Icon name="bell" size={26} color={colors.brand} strokeWidth={2.2} />
+              <Icon name="bell" size={26} color="#7EC8F7" strokeWidth={2.2} />
             </Pressable>
           </View>
         </View>
@@ -466,24 +466,24 @@ function Count({ tone, label, n }: { tone: 'wait' | 'prog' | 'done'; label: stri
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.canvas },
+  container: { flex: 1, backgroundColor: '#ffffff' },
   headerSafe: {
-    backgroundColor: colors.canvas,
+    backgroundColor: '#ffffff',
     zIndex: 20,
-    paddingBottom: 6,
+    paddingTop: 10,
   },
   header: {
     height: HEADER_BODY_HEIGHT,
-    paddingLeft: 22,
+    paddingLeft: 10,
     paddingRight: 20,
-    paddingTop: 2,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    backgroundColor: '#ffffff',
   },
   nameLogo: {
     width: LOGO_WIDTH,
-    height: LOGO_WIDTH * 0.31,
+    height: LOGO_WIDTH * 0.4,
   },
   headerRight: {
     flexDirection: 'row',
