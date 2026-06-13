@@ -122,7 +122,7 @@ export function LoginScreen() {
       <AuthScreen onBack={() => router.replace('/')}>
         <View style={styles.content}>
           <AuthHero
-            title="시민제보"
+            title="모두의 민원"
             subtitle="간편한 제보 하나로, 우리 동네를 더 안전하게"
             topPadding={58}
           />

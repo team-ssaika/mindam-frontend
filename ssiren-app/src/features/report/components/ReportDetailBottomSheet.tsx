@@ -169,11 +169,14 @@ function buildTimeline(report: ReportDetail) {
     }
     return acc;
   }, {});
+  const submittedDescription = descriptions['접수중'] || (
+    report.organization ? `${report.organization}에 접수되었습니다.` : undefined
+  );
 
   return [
     {
       label: '접수중',
-      description: descriptions['접수중'],
+      description: submittedDescription,
     },
     {
       label: '처리중',

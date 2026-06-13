@@ -115,23 +115,24 @@ export function toMapReportDetail(
   userLocation?: { latitude: number; longitude: number } | null
 ): ReportDetail {
   const { report, category, issueGroup } = item;
+  const groupLocation = {
+    latitude: issueGroup.groupLatitude,
+    longitude: issueGroup.groupLongitude,
+  };
 
   return {
     id: String(report.id),
-    title: report.title || issueGroup.title,
-    riskLabel: `위험지수 ${report.riskScore}`,
-    timeAgo: formatTimeAgo(report.createdAt),
+    title: issueGroup.title || report.title,
+    riskLabel: `위험지수 ${issueGroup.riskScore ?? report.riskScore}`,
+    timeAgo: formatTimeAgo(issueGroup.recentReportedAt || report.createdAt),
     distance:
       userLocation != null
-        ? formatDistanceMeters(userLocation, {
-            latitude: report.latitude,
-            longitude: report.longitude,
-          })
+        ? formatDistanceMeters(userLocation, groupLocation)
         : '-',
     address: report.roadAddress || report.jibunAddress,
-    summary: formatAiSummary(report.contents),
+    summary: issueGroup.content || formatAiSummary(report.contents),
     category: category.categoryName,
-    yesCount: getIssueGroupDiscomfortCount(issueGroup),
+    yesCount: Number(issueGroup.yesCount ?? 0),
     organization: formatDepartmentName(item.department) || issueGroup.title,
     status: getReportStatusLabel(report.status),
     statusHistories: item.statusHistories,

@@ -88,8 +88,8 @@ const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 const SEARCH_TOP_OFFSET = 14;
 const SEARCH_HEIGHT = 48;
 const SEARCH_SIDE = 27;
-const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.4, 336), 356);
-const COLLAPSED_SHEET_HEIGHT = 112;
+const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.35, 304), 324);
+const COLLAPSED_SHEET_HEIGHT = 104;
 const CARD_WIDTH = Math.min(304, Math.max(264, SCREEN_WIDTH * 0.64));
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
@@ -224,13 +224,13 @@ function mapPublicReport(item: PublicReportItem): NearbyReport {
   const riskScore = Number(item.issueGroup.riskScore ?? item.report.riskScore ?? 0);
 
   return {
-    id: reportId != null ? `${issueGroupId}-${reportId}` : String(issueGroupId),
+    id: String(issueGroupId),
     latitude: item.report.latitude,
     longitude: item.report.longitude,
     keyword: item.category.categoryName || '제보',
-    title: item.report.title || item.issueGroup.title || '주변 제보',
+    title: item.issueGroup.title || item.report.title || '주변 제보',
     riskScore,
-    createdAt: item.report.createdAt || item.issueGroup.recentReportedAt,
+    createdAt: item.issueGroup.recentReportedAt || item.report.createdAt,
     address: item.report.roadAddress || item.report.jibunAddress,
     sigungu: item.report.sigungu,
     eupmyeondong: item.report.eupmyeondong,
@@ -240,6 +240,19 @@ function mapPublicReport(item: PublicReportItem): NearbyReport {
     markerTone: getReportMarkerTone(item.report.status, riskScore),
     source: item,
   };
+}
+
+function dedupeReportsByIssueGroup(reports: NearbyReport[]) {
+  const reportMap = new Map<string, NearbyReport>();
+
+  reports.forEach((report) => {
+    const key = report.issueGroupId != null ? String(report.issueGroupId) : report.id;
+    if (!reportMap.has(key)) {
+      reportMap.set(key, report);
+    }
+  });
+
+  return [...reportMap.values()];
 }
 
 function isVisibleOnMap(item: PublicReportItem) {
@@ -542,10 +555,11 @@ export default function HomeMapScreen() {
             .filter(hasValidReportCoordinate)
             .map(mapPublicReport)
           : [];
-        setNearbyReports(reports);
-        setSelectedReports(reports);
+        const uniqueReports = dedupeReportsByIssueGroup(reports);
+        setNearbyReports(uniqueReports);
+        setSelectedReports(uniqueReports);
         setCurrentAddressLabel(
-          await resolveAddressLabel(location ?? region, reports[0] ?? null)
+          await resolveAddressLabel(location ?? region, uniqueReports[0] ?? null)
         );
       } catch (nextError) {
         console.log('[Issues] nearby fetch failed', nextError);
@@ -615,7 +629,7 @@ export default function HomeMapScreen() {
       return;
     }
 
-    setSelectedReports(cluster.reports);
+    setSelectedReports(dedupeReportsByIssueGroup(cluster.reports));
     setIsSheetExpanded(true);
     syncMapRegion(
       {
@@ -1296,7 +1310,7 @@ const styles = StyleSheet.create({
   handleTouch: {
     alignItems: 'center',
     paddingTop: 14,
-    paddingBottom: 26,
+    paddingBottom: 16,
   },
   handle: {
     width: 56,
@@ -1327,7 +1341,7 @@ const styles = StyleSheet.create({
   },
   addressPill: {
     alignSelf: 'flex-start',
-    marginTop: 13,
+    marginTop: 8,
     borderWidth: 1,
     borderColor: '#D4D4D4',
     borderRadius: 999,
@@ -1343,10 +1357,10 @@ const styles = StyleSheet.create({
   },
   reportList: {
     gap: 20,
-    paddingTop: 16,
+    paddingTop: 10,
     paddingLeft: 24,
     paddingRight: 24,
-    paddingBottom: 10,
+    paddingBottom: 4,
   },
   reportListScroller: {
     marginHorizontal: -24,
@@ -1374,12 +1388,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: fonts.black,
-    fontSize: 19,
-    lineHeight: 28,
+    fontSize: 20,
+    lineHeight: 29,
     color: TEXT,
     fontWeight: '900',
     textShadowColor: TEXT,
-    textShadowOffset: { width: 0.35, height: 0 },
+    textShadowOffset: { width: 0.5, height: 0 },
     textShadowRadius: 0,
   },
   cardMetaRow: {
