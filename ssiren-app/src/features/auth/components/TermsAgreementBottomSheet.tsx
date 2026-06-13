@@ -71,7 +71,9 @@ export function TermsAgreementBottomSheet({
           ))}
         </View>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        <View style={styles.errorSlot}>
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+        </View>
 
         <TouchableOpacity
           disabled={!isConfirmEnabled}
@@ -97,8 +99,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
     paddingTop: 40,
   },
+  // Natural-height flow (no flex:1): the sheet hugs its content so toggling a
+  // checkbox can never redistribute free space and shift the layout.
   content: {
-    flex: 1,
     paddingBottom: 8,
   },
   title: {
@@ -110,8 +113,13 @@ const styles = StyleSheet.create({
   list: {
     gap: 14,
   },
-  errorText: {
+  // Reserve a fixed slot so showing/hiding the error never resizes the sheet
+  // (the sheet height is content-driven, so a reflow here shifts its anchor).
+  errorSlot: {
+    minHeight: 44,
     marginTop: 16,
+  },
+  errorText: {
     fontSize: fontSize.md,
     lineHeight: 22,
     color: colors.danger,
@@ -121,7 +129,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 'auto',
+    marginTop: 24,
   },
   confirmButtonEnabled: {
     backgroundColor: colors.brand,
