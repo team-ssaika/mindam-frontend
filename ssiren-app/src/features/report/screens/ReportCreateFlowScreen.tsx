@@ -39,6 +39,7 @@ import type {
   CreateReportResponse,
   ReportDraftResponse,
 } from '../types/reportSubmission';
+import type { ReportContents } from '../types/myReport';
 
 type FlowStep = 1 | 2 | 3;
 
@@ -60,6 +61,7 @@ type EditableReviewData = {
     address: string;
     detail: string;
   };
+  contents: ReportContents;
   details: {
     occurredAt: string;
     issue: string;
@@ -92,6 +94,15 @@ function makeReviewState(): EditableReviewData {
   return {
     ...reportSubmissionMock,
     location: { ...reportSubmissionMock.location },
+    contents: {
+      when: reportSubmissionMock.details.occurredAt,
+      where: `${reportSubmissionMock.location.address} ${reportSubmissionMock.location.detail}`.trim(),
+      what: reportSubmissionMock.details.issue,
+      why: reportSubmissionMock.details.risk,
+      how: reportSubmissionMock.details.issue,
+      who: '확인되지 않음',
+      summary: reportSubmissionMock.aiSummary,
+    },
     details: { ...reportSubmissionMock.details },
     detectedTags: [...reportSubmissionMock.detectedTags],
     completion: { ...reportSubmissionMock.completion },
@@ -101,6 +112,22 @@ function makeReviewState(): EditableReviewData {
 function toLocalDateTimeString(date: Date) {
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return offsetDate.toISOString().slice(0, 19);
+}
+
+function formatDraftDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function getSummary(contents: ReportDraftResponse['reportDraft']['contents']) {
@@ -118,6 +145,13 @@ function makeReviewStateFromDraft(data: ReportDraftResponse): EditableReviewData
     location: {
       address: reportDraft.roadAddress ?? '',
       detail: reportDraft.jibunAddress ?? '',
+    },
+    contents: {
+      ...contents,
+      when: contents.when ?? reportDraft.occurredAt,
+      where: contents.where ?? reportDraft.roadAddress ?? reportDraft.jibunAddress ?? '',
+      what: contents.what ?? contents.how ?? contents.summary ?? '',
+      why: contents.why ?? `위험 점수 ${reportDraft.riskScore}`,
     },
     details: {
       occurredAt: reportDraft.occurredAt,
@@ -393,11 +427,23 @@ export function ReportCreateFlowScreen() {
             location: { address: trimmedPrimary, detail: trimmedSecondary },
           };
         case 'occurredAt':
-          return { ...prev, details: { ...prev.details, occurredAt: trimmedPrimary } };
+          return {
+            ...prev,
+            contents: { ...prev.contents, when: trimmedPrimary },
+            details: { ...prev.details, occurredAt: trimmedPrimary },
+          };
         case 'issue':
-          return { ...prev, details: { ...prev.details, issue: trimmedPrimary } };
+          return {
+            ...prev,
+            contents: { ...prev.contents, what: trimmedPrimary },
+            details: { ...prev.details, issue: trimmedPrimary },
+          };
         case 'risk':
-          return { ...prev, details: { ...prev.details, risk: trimmedPrimary } };
+          return {
+            ...prev,
+            contents: { ...prev.contents, why: trimmedPrimary },
+            details: { ...prev.details, risk: trimmedPrimary },
+          };
       }
     });
 
@@ -469,6 +515,7 @@ export function ReportCreateFlowScreen() {
         title: editableReview.title,
         contents: {
           ...draft.contents,
+          ...editableReview.contents,
           summary: editableReview.aiSummary || draft.contents.summary,
           what: editableReview.details.issue || draft.contents.what,
           why: editableReview.details.risk || draft.contents.why,
@@ -722,6 +769,43 @@ function getEditorMeta(field: DetailFieldKey | null) {
 }
 
 // ── AI 정리중 (loading) ──
+function getSixWItems(reviewData: EditableReviewData) {
+  const contents = reviewData.contents ?? {};
+
+  return [
+    {
+      label: '누가',
+      value: contents.who || '확인되지 않음',
+      editableField: null,
+    },
+    {
+      label: '언제',
+      value: formatDraftDateTime(contents.when || reviewData.details.occurredAt),
+      editableField: 'occurredAt' as const,
+    },
+    {
+      label: '어디서',
+      value: contents.where || reviewData.location.address || reviewData.location.detail,
+      editableField: 'location' as const,
+    },
+    {
+      label: '무엇을',
+      value: contents.what || reviewData.details.issue,
+      editableField: 'issue' as const,
+    },
+    {
+      label: '어떻게',
+      value: contents.how || reviewData.details.issue,
+      editableField: null,
+    },
+    {
+      label: '왜',
+      value: contents.why || reviewData.details.risk,
+      editableField: 'risk' as const,
+    },
+  ].filter((item) => item.value);
+}
+
 function AnalyzingScreen({ onBack }: { onBack: () => void }) {
   const [done, setDone] = useState(0);
 
@@ -841,6 +925,8 @@ function ReviewStep({
   reviewData: EditableReviewData & { sourceContent: string; images: ReportImage[] };
   onEditField: (field: DetailFieldKey) => void;
 }) {
+  const sixWItems = getSixWItems(reviewData);
+
   return (
     <View style={styles.stepContent}>
       <View style={styles.aiLine}>
@@ -888,10 +974,16 @@ function ReviewStep({
       </Card>
 
       <Card style={styles.gap}>
-        <AppText style={[styles.cardLabel, styles.detailHead]}>상세 내용</AppText>
-        <DetailItem icon="clock" label="발생 시각" value={reviewData.details.occurredAt} onPress={() => onEditField('occurredAt')} />
-        <DetailItem icon="alert" label="문제 내용" value={reviewData.details.issue} onPress={() => onEditField('issue')} />
-        <DetailItem icon="info" label="위험 이유" value={reviewData.details.risk} onPress={() => onEditField('risk')} />
+        <AppText style={[styles.cardLabel, styles.detailHead]}>육하원칙</AppText>
+        {sixWItems.map((item) => (
+          <DetailItem
+            key={item.label}
+            icon={item.label === '언제' ? 'clock' : item.label === '왜' ? 'info' : 'alert'}
+            label={item.label}
+            value={item.value}
+            onPress={item.editableField ? () => onEditField(item.editableField) : undefined}
+          />
+        ))}
       </Card>
 
       {reviewData.images.length > 0 ? (
@@ -919,7 +1011,7 @@ function DetailItem({
   icon: 'clock' | 'alert' | 'info';
   label: string;
   value: string;
-  onPress: () => void;
+  onPress?: () => void;
 }) {
   return (
     <View style={styles.detailItem}>
@@ -930,7 +1022,7 @@ function DetailItem({
           <AppText style={styles.detailValue}>{value}</AppText>
         </View>
       </View>
-      <EditButton onPress={onPress} />
+      {onPress ? <EditButton onPress={onPress} /> : null}
     </View>
   );
 }
