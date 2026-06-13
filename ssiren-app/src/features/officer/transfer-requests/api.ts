@@ -8,7 +8,7 @@ import {
   type OfficerSentTransferRequestsResponse,
   type OfficerTransferRequestDto,
   type OfficerTransferRequestResponseBody,
-} from '../types/officerTransferRequest';
+} from './types';
 
 export async function fetchReceivedTransferRequests() {
   const response = await apiClient.get<ApiResponse<OfficerIncomingTransferRequestsResponse>>(
