@@ -42,8 +42,6 @@ export const transferRequestStyles = StyleSheet.create({
   refreshButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brandSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -60,10 +58,7 @@ export const transferRequestStyles = StyleSheet.create({
     color: '#8A8A8A',
   },
   pendingBadge: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: colors.brandSoft,
+    minWidth: 58,
     alignItems: 'center',
     justifyContent: 'center',
   },

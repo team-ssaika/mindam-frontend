@@ -25,6 +25,10 @@ export function TransferRequestSummaryCard({
         </AppText>
       </View>
       <View style={styles.summaryActions}>
+        <View style={styles.pendingBadge}>
+          <AppText style={styles.pendingCount}>{pendingCount}</AppText>
+          <AppText style={styles.pendingLabel}>대기</AppText>
+        </View>
         {embedded ? (
           <Pressable onPress={onRefresh} disabled={isLoading} hitSlop={8} style={styles.refreshButton}>
             {isLoading ? (
@@ -34,10 +38,6 @@ export function TransferRequestSummaryCard({
             )}
           </Pressable>
         ) : null}
-        <View style={styles.pendingBadge}>
-          <AppText style={styles.pendingCount}>{pendingCount}</AppText>
-          <AppText style={styles.pendingLabel}>대기</AppText>
-        </View>
       </View>
     </View>
   );

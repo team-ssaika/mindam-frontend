@@ -25,6 +25,8 @@ import {
 type ViewMode = 'list' | 'grid';
 type OpenDropdown = 'sort' | 'status' | null;
 
+const INBOX_BG = '#F4F5F8';
+
 /** 탭바 SVG 아이콘과 동일한 라인 두께·톤 */
 const CONTROL_ICON_STROKE = 2.25;
 const CONTROL_ICON_INACTIVE = '#8D8D8D';
@@ -120,7 +122,21 @@ export function OfficerInboxScreen() {
 
   return (
     <View style={styles.flex}>
-      <AppBar title="제보함" logo={false} right={<Icon name="bell" size={24} color={colors.brand} strokeWidth={2.2} />} />
+      <AppBar
+        title="제보함"
+        logo={false}
+        border={false}
+        backgroundColor={INBOX_BG}
+        right={
+          <Pressable onPress={loadIssues} disabled={isLoading} hitSlop={8}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.ink} />
+            ) : (
+              <Icon name="refresh" size={22} color={colors.brand} strokeWidth={2.2} />
+            )}
+          </Pressable>
+        }
+      />
 
       <View style={[styles.controls, openDropdown ? styles.controlsRaised : null]}>
         <View style={styles.searchBar}>
@@ -418,7 +434,7 @@ function GridCard({ item, onPress }: { item: AdminIssueItem; onPress: () => void
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.soft },
+  flex: { flex: 1, backgroundColor: INBOX_BG },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
@@ -430,9 +446,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
     gap: 10,
-    backgroundColor: colors.soft,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.hairline,
+    backgroundColor: INBOX_BG,
     overflow: 'visible',
   },
   controlsRaised: {
