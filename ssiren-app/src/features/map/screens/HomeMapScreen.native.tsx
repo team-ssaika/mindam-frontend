@@ -67,7 +67,7 @@ const HEADER_BODY_HEIGHT = Math.min(56, Math.max(46, SCREEN_HEIGHT * 0.055));
 const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 const SEARCH_TOP_OFFSET = 14;
 const SEARCH_HEIGHT = 48;
-const SEARCH_SIDE = 27;
+const SEARCH_SIDE = 20;
 const SEARCH_PANEL_MAX_HEIGHT = Math.min(360, SCREEN_HEIGHT * 0.42);
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
@@ -1183,14 +1183,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 17,
-    paddingRight: 14,
+    paddingLeft: 16,
+    paddingRight: 8,
     overflow: 'hidden',
   },
   searchInput: {
     flex: 1,
     height: SEARCH_HEIGHT,
-    marginLeft: 12,
+    marginLeft: 10,
     backgroundColor: 'transparent',
     borderWidth: 0,
     elevation: 0,
