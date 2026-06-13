@@ -263,6 +263,51 @@ export function ReportCreateFlowScreen() {
     setImages((prev) => [...prev, ...nextImages].slice(0, MAX_IMAGES));
   };
 
+  const handleCaptureImage = async () => {
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert('사진은 최대 5장까지 첨부할 수 있어요.');
+      return;
+    }
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('카메라 권한이 필요해요.', '설정에서 카메라 권한을 허용한 뒤 다시 시도해주세요.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 0.8,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const nextImages = result.assets.map((asset, index) => ({
+      id: `${asset.assetId ?? asset.uri}-${Date.now()}-${index}`,
+      uri: asset.uri,
+      name: asset.fileName,
+      type: asset.mimeType,
+    }));
+
+    setImages((prev) => [...prev, ...nextImages].slice(0, MAX_IMAGES));
+  };
+
+  const handleAddImage = () => {
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert('사진은 최대 5장까지 첨부할 수 있어요.');
+      return;
+    }
+
+    Alert.alert('사진 첨부', '사진을 어떻게 추가할까요?', [
+      { text: '사진 촬영', onPress: () => { void handleCaptureImage(); } },
+      { text: '갤러리에서 선택', onPress: () => { void handlePickImages(); } },
+      { text: '취소', style: 'cancel' },
+    ]);
+  };
+
   const handleRemoveImage = (id: string) => {
     setImages((prev) => prev.filter((image) => image.id !== id));
   };
@@ -573,7 +618,7 @@ export function ReportCreateFlowScreen() {
                 content={content}
                 images={images}
                 onChangeContent={setContent}
-                onPickImages={handlePickImages}
+                onAddImage={handleAddImage}
                 onRemoveImage={handleRemoveImage}
               />
             ) : null}
@@ -733,13 +778,13 @@ function WriteStep({
   content,
   images,
   onChangeContent,
-  onPickImages,
+  onAddImage,
   onRemoveImage,
 }: {
   content: string;
   images: ReportImage[];
   onChangeContent: (text: string) => void;
-  onPickImages: () => Promise<void>;
+  onAddImage: () => void;
   onRemoveImage: (id: string) => void;
 }) {
   return (
@@ -760,7 +805,7 @@ function WriteStep({
       </View>
       <AppText style={styles.counter}>{content.length} / {MAX_CONTENT_LENGTH}</AppText>
 
-      <Pressable style={styles.attachRow} onPress={onPickImages}>
+      <Pressable style={styles.attachRow} onPress={onAddImage}>
         <View style={styles.attachLeft}>
           <Icon name="image" size={20} color={colors.ink} />
           <AppText variant="section" color={colors.ink}>사진</AppText>
@@ -778,7 +823,7 @@ function WriteStep({
           </View>
         ))}
         {images.length < MAX_IMAGES ? (
-          <Pressable onPress={onPickImages} style={styles.addImage}>
+          <Pressable onPress={onAddImage} style={styles.addImage}>
             <Icon name="camera" size={24} color={colors.muted} />
             <AppText style={styles.addImageText}>추가</AppText>
           </Pressable>
