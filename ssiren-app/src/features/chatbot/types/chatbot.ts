@@ -36,8 +36,10 @@ export type SendChatbotMessageRequest = {
 };
 
 export type SendChatbotMessageResponse = {
-  session: ChatbotSession;
-  messages: ChatbotMessage[];
+  answer: string;
+  usedReportIds: number[] | null;
+  session?: ChatbotSession;
+  messages?: ChatbotMessage[];
 };
 
 export type UpdateChatbotSessionTitleRequest = {

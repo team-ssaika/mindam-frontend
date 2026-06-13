@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, Platform, Pressable, StatusBar, StyleSheet, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
@@ -30,10 +30,19 @@ export default function AppBar({
   border = false,
   backgroundColor = colors.canvas,
 }: AppBarProps) {
+  const insets = useSafeAreaInsets();
   const shouldCenter = centerTitle ?? Boolean(title);
+  const androidStatusFallback =
+    Platform.OS === 'android' && insets.top === 0 ? StatusBar.currentHeight ?? 0 : 0;
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safe, { backgroundColor, paddingTop: androidStatusFallback }]}
+    >
+      {Platform.OS === 'android' ? (
+        <StatusBar translucent={false} backgroundColor={backgroundColor} barStyle="dark-content" />
+      ) : null}
       <View style={[styles.bar, { backgroundColor }, border && styles.border]}>
         <View style={styles.side}>
           {onBack ? (

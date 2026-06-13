@@ -233,8 +233,7 @@ export function SettingsScreen() {
         </SettingCard>
 
         <SettingCard>
-          <SettingRow icon="info" label="버전 정보" value="1.32" first showChevron={false} />
-          <SettingRow icon="headset" label="고객센터" onPress={() => console.log('[Settings] support')} />
+          <SettingRow icon="headset" label="고객센터" first onPress={() => console.log('[Settings] support')} />
           <SettingRow
             icon="building"
             label="담당자 모드"
@@ -253,6 +252,8 @@ export function SettingsScreen() {
             <SettingRow icon="arrowL" label="로그인하기" first onPress={goToStartSelection} />
           )}
         </SettingCard>
+
+        <AppText style={styles.versionText}>버전 정보 1.0.0</AppText>
 
       </ScrollView>
 
@@ -348,5 +349,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: fontSize.md,
     color: '#8A8A8A',
+  },
+  versionText: {
+    alignSelf: 'center',
+    marginTop: -6,
+    marginBottom: 6,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    color: '#9A9A9A',
   },
 });

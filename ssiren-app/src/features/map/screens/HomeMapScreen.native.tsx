@@ -7,6 +7,7 @@ import {
   Image,
   PanResponder,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
+import * as SecureStore from 'expo-secure-store';
 import Svg, { Path } from 'react-native-svg';
 import {
   getAppCurrentPosition,
@@ -25,6 +27,8 @@ import { Icon } from '../../../components/ui';
 import {
   KakaoMapView,
   type KakaoMapCircle,
+  type KakaoMapMarker,
+  type KakaoPlaceSearchResult,
   type KakaoMapRegion,
   type KakaoMapViewHandle,
 } from '../../../components/map/KakaoMapView';
@@ -75,17 +79,21 @@ const SKY_SOFT = 'rgba(126, 200, 247, 0.22)';
 const TEXT = '#050505';
 const MUTED = '#777777';
 const DANGER = '#D95E5E';
-const HEADER_BODY_HEIGHT = Math.min(49, Math.max(40, SCREEN_HEIGHT * 0.05));
+const HEADER_BODY_HEIGHT = Math.min(56, Math.max(46, SCREEN_HEIGHT * 0.055));
 const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 const SEARCH_TOP_OFFSET = 14;
 const SEARCH_HEIGHT = 48;
 const SEARCH_SIDE = 27;
-const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.37, 292), 326);
-const COLLAPSED_SHEET_HEIGHT = 74;
+const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.4, 336), 356);
+const COLLAPSED_SHEET_HEIGHT = 112;
 const CARD_WIDTH = Math.min(304, Math.max(264, SCREEN_WIDTH * 0.64));
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
 const EXPANDED_DELTA = { latitudeDelta: 0.0045, longitudeDelta: 0.0045 };
+const RECENT_SEARCHES_STORAGE_KEY = 'ssiren.recentPlaceSearches';
+const MAX_RECENT_SEARCHES = 10;
+const MIN_SEARCH_QUERY_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 380;
 
 type LatLng = { latitude: number; longitude: number };
 
@@ -124,50 +132,6 @@ const ENGLISH_ADDRESS_FALLBACKS: Record<string, string> = {
   'Gongdeok-dong': '마포구 공덕동',
   Mapo: '마포구 공덕동',
 };
-
-function makeMockReports(center: LatLng = DEFAULT_MAP_CENTER): NearbyReport[] {
-  return [
-    {
-      id: 'mock-7',
-      latitude: center.latitude + 0.0018,
-      longitude: center.longitude - 0.0014,
-      keyword: '쓰레기 무단투기',
-      title: '역삼동 인근 일반 쓰레기 봉투 무단투기',
-      riskScore: 64.5,
-      createdAt: new Date(Date.now() - 19 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 7,
-    },
-    {
-      id: 'mock-13',
-      latitude: center.latitude - 0.0009,
-      longitude: center.longitude - 0.0026,
-      keyword: '쓰레기 무단투기',
-      title: '역삼동 인근 일반 쓰레기 봉투 무단투기',
-      riskScore: 64.5,
-      createdAt: new Date(Date.now() - 36 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 13,
-    },
-    {
-      id: 'mock-22',
-      latitude: center.latitude - 0.0015,
-      longitude: center.longitude + 0.0018,
-      keyword: '도로 파손',
-      title: '역삼역 주변 보도블록 파손으로 보행 위험',
-      riskScore: 72,
-      createdAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
-      address: '강남구 역삼동',
-      sigungu: '강남구',
-      eupmyeondong: '역삼동',
-      count: 22,
-    },
-  ];
-}
 
 function distanceMeters(a: LatLng, b: LatLng): number {
   const toRad = (value: number) => (value * Math.PI) / 180;
@@ -210,19 +174,19 @@ function formatTimeAgo(createdAt: string) {
   }
 
   const diffMinutes = Math.max(Math.floor((Date.now() - time) / 60_000), 0);
-  if (diffMinutes < 1) return '방금전';
-  if (diffMinutes < 60) return `${diffMinutes}분전`;
+  if (diffMinutes < 1) return '방금 전';
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}시간전`;
+  if (diffHours < 24) return `${diffHours}시간 전`;
 
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}일전`;
+  return `${diffDays}일 전`;
 }
 
 function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' | 'address'> | null) {
   if (!report) {
-    return '내 주변';
+    return '현 위치';
   }
 
   if (report.sigungu || report.eupmyeondong) {
@@ -231,7 +195,7 @@ function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' |
 
   const address = report.address?.trim();
   if (!address) {
-    return '내 주변';
+    return '현 위치';
   }
 
   for (const [english, korean] of Object.entries(ENGLISH_ADDRESS_FALLBACKS)) {
@@ -254,7 +218,7 @@ function mapPublicReport(item: PublicReportItem): NearbyReport {
     latitude: item.report.latitude,
     longitude: item.report.longitude,
     keyword: item.category.categoryName || '제보',
-    title: item.issueGroup.title || item.report.title || '주변 제보',
+    title: item.report.title || item.issueGroup.title || '주변 제보',
     riskScore: Number(item.report.riskScore ?? item.issueGroup.riskScore ?? 0),
     createdAt: item.report.createdAt || item.issueGroup.recentReportedAt,
     address: item.report.roadAddress || item.report.jibunAddress,
@@ -289,7 +253,7 @@ function toNearbyReportDetail(
     category: item.keyword,
     yesCount: item.count,
     organization: item.keyword,
-    status: '접수됨',
+    status: '접수중',
   };
 }
 
@@ -409,6 +373,7 @@ async function resolveAddressLabel(location: LatLng, fallback?: NearbyReport | n
 export default function HomeMapScreen() {
   const mapRef = useRef<KakaoMapViewHandle | null>(null);
   const detailRequestIdRef = useRef(0);
+  const latestSearchKeywordRef = useRef('');
   const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
   const [currentRegion, setCurrentRegion] = useState<KakaoMapRegion>({
     ...DEFAULT_MAP_CENTER,
@@ -416,10 +381,16 @@ export default function HomeMapScreen() {
   });
   const [nearbyReports, setNearbyReports] = useState<NearbyReport[]>([]);
   const [selectedReports, setSelectedReports] = useState<NearbyReport[]>([]);
-  const [currentAddressLabel, setCurrentAddressLabel] = useState('내 주변');
+  const [currentAddressLabel, setCurrentAddressLabel] = useState('현 위치');
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [searchResults, setSearchResults] = useState<KakaoPlaceSearchResult[]>([]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [recentSearches, setRecentSearches] = useState<KakaoPlaceSearchResult[]>([]);
+  const [selectedSearchPlace, setSelectedSearchPlace] = useState<KakaoPlaceSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSheetExpanded, setIsSheetExpanded] = useState(true);
   const [detailSheetReport, setDetailSheetReport] = useState<ReportDetail | null>(null);
@@ -432,11 +403,14 @@ export default function HomeMapScreen() {
   const sheetPanResponder = useMemo(
     () =>
       PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 10,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.05,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          Math.abs(gesture.dy) > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.05,
         onPanResponderRelease: (_, gesture) => {
-          if (gesture.dy > 18) {
+          if (gesture.dy > 14 || gesture.vy > 0.55) {
             setIsSheetExpanded(false);
-          } else if (gesture.dy < -18) {
+          } else if (gesture.dy < -14 || gesture.vy < -0.55) {
             setIsSheetExpanded(true);
           }
         },
@@ -446,6 +420,16 @@ export default function HomeMapScreen() {
 
   const visibleReports = selectedReports.length > 0 ? selectedReports : nearbyReports;
   const sheetHeight = isSheetExpanded ? BOTTOM_SHEET_HEIGHT : COLLAPSED_SHEET_HEIGHT;
+  const trimmedSearchText = searchText.trim();
+  const showSearchPanel = isSearchFocused;
+  const searchMarker: KakaoMapMarker | null = selectedSearchPlace
+    ? {
+        id: `search-${selectedSearchPlace.id}`,
+        kind: 'search',
+        latitude: selectedSearchPlace.latitude,
+        longitude: selectedSearchPlace.longitude,
+      }
+    : null;
 
   const clusters = useMemo(
     () => buildClusters(nearbyReports, currentRegion),
@@ -475,6 +459,69 @@ export default function HomeMapScreen() {
     mapRef.current?.animateToRegion(nextRegion, duration);
   }, []);
 
+  useEffect(() => {
+    SecureStore.getItemAsync(RECENT_SEARCHES_STORAGE_KEY)
+      .then((value) => {
+        if (!value) {
+          return;
+        }
+        const parsed = JSON.parse(value) as KakaoPlaceSearchResult[];
+        if (Array.isArray(parsed)) {
+          setRecentSearches(
+            parsed.filter(
+              (item) =>
+                item &&
+                typeof item.id === 'string' &&
+                typeof item.placeName === 'string' &&
+                Number.isFinite(item.latitude) &&
+                Number.isFinite(item.longitude)
+            )
+          );
+        }
+      })
+      .catch((nextError) => {
+        console.log('[Search] recent searches load failed', nextError);
+      });
+  }, []);
+
+  const persistRecentSearches = useCallback((items: KakaoPlaceSearchResult[]) => {
+    SecureStore.setItemAsync(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(items)).catch((nextError) => {
+      console.log('[Search] recent searches save failed', nextError);
+    });
+  }, []);
+
+  const saveRecentSearch = useCallback(
+    (place: KakaoPlaceSearchResult) => {
+      setRecentSearches((prev) => {
+        const next = [
+          place,
+          ...prev.filter((item) => item.id !== place.id),
+        ].slice(0, MAX_RECENT_SEARCHES);
+        persistRecentSearches(next);
+        return next;
+      });
+    },
+    [persistRecentSearches]
+  );
+
+  const removeRecentSearch = useCallback(
+    (placeId: string) => {
+      setRecentSearches((prev) => {
+        const next = prev.filter((item) => item.id !== placeId);
+        persistRecentSearches(next);
+        return next;
+      });
+    },
+    [persistRecentSearches]
+  );
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([]);
+    SecureStore.deleteItemAsync(RECENT_SEARCHES_STORAGE_KEY).catch((nextError) => {
+      console.log('[Search] recent searches clear failed', nextError);
+    });
+  }, []);
+
   const loadNearbyReports = useCallback(
     async (region = currentRegion, location = currentLocation) => {
       if (isLoadingReports) {
@@ -494,21 +541,19 @@ export default function HomeMapScreen() {
               .filter(hasValidReportCoordinate)
               .map(mapPublicReport)
           : [];
-        const displayReports =
-          reports.length >= 3 ? reports : makeMockReports(location ?? region);
-
-        setNearbyReports(displayReports);
-        setSelectedReports(displayReports);
+        setNearbyReports(reports);
+        setSelectedReports(reports);
         setCurrentAddressLabel(
-          await resolveAddressLabel(location ?? region, displayReports[0] ?? null)
+          await resolveAddressLabel(location ?? region, reports[0] ?? null)
         );
       } catch (nextError) {
         console.log('[Issues] nearby fetch failed', nextError);
-        const fallbackReports = makeMockReports(location ?? region);
         setError('nearby_fetch_failed');
-        setNearbyReports(fallbackReports);
-        setSelectedReports(fallbackReports);
-        setCurrentAddressLabel(compactAddress(fallbackReports[0]));
+        setNearbyReports([]);
+        setSelectedReports([]);
+        setCurrentAddressLabel(
+          await resolveAddressLabel(location ?? region, null)
+        );
       } finally {
         setIsLoadingReports(false);
       }
@@ -582,40 +627,108 @@ export default function HomeMapScreen() {
   };
 
   const handleMapPress = () => {
+    setIsSearchFocused(false);
     if (isSheetExpanded) {
       setIsSheetExpanded(false);
     }
   };
 
-  const searchAddress = async (keyword: string) => {
-    const trimmed = keyword.trim();
-    if (!trimmed) {
+  const runPlaceSearch = useCallback(
+    async (keyword: string) => {
+      const trimmed = keyword.trim();
+      if (trimmed.length < MIN_SEARCH_QUERY_LENGTH) {
+        setSearchResults([]);
+        setSearchError(null);
+        setIsSearching(false);
+        return;
+      }
+
+      latestSearchKeywordRef.current = trimmed;
+      setIsSearching(true);
+      setSearchError(null);
+
+      try {
+        const results = await mapRef.current?.searchPlaces(trimmed, {
+          ...(currentLocation
+            ? {
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+                radiusMeters: 5000,
+              }
+            : {}),
+        });
+
+        if (latestSearchKeywordRef.current !== trimmed) {
+          return;
+        }
+
+        setSearchResults(results ?? []);
+      } catch (nextError) {
+        if (latestSearchKeywordRef.current !== trimmed) {
+          return;
+        }
+        console.warn('[Search] place search failed', nextError);
+        setSearchResults([]);
+        setSearchError('검색 중 문제가 발생했습니다.');
+      } finally {
+        if (latestSearchKeywordRef.current === trimmed) {
+          setIsSearching(false);
+        }
+      }
+    },
+    [currentLocation]
+  );
+
+  useEffect(() => {
+    if (!isSearchFocused) {
       return;
     }
 
-    try {
-      const results = await mapRef.current?.searchPlaces(trimmed, {
-        ...(currentLocation
-          ? {
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-              radiusMeters: 5000,
-            }
-          : {}),
-      });
-      const first = results?.[0];
-      if (!first) {
-        Alert.alert('검색 결과 없음', '입력한 주소나 지역을 찾지 못했어요.');
-        return;
-      }
-      syncMapRegion({ latitude: first.latitude, longitude: first.longitude, ...DEFAULT_DELTA }, 500);
-    } catch (nextError) {
-      console.warn('[Search] place search failed', nextError);
+    if (trimmedSearchText.length < MIN_SEARCH_QUERY_LENGTH) {
+      latestSearchKeywordRef.current = trimmedSearchText;
+      setSearchResults([]);
+      setSearchError(null);
+      setIsSearching(false);
+      return;
     }
-  };
+
+    const timeoutId = setTimeout(() => {
+      void runPlaceSearch(trimmedSearchText);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [isSearchFocused, runPlaceSearch, trimmedSearchText]);
+
+  const selectSearchPlace = useCallback(
+    (place: KakaoPlaceSearchResult) => {
+      setSearchText(place.placeName);
+      setSelectedSearchPlace(place);
+      setSearchResults([]);
+      setSearchError(null);
+      setIsSearchFocused(false);
+      saveRecentSearch(place);
+      syncMapRegion({ latitude: place.latitude, longitude: place.longitude, ...DEFAULT_DELTA }, 500);
+    },
+    [saveRecentSearch, syncMapRegion]
+  );
+
+  const clearSearch = useCallback(() => {
+    latestSearchKeywordRef.current = '';
+    setSearchText('');
+    setSearchResults([]);
+    setSearchError(null);
+    setIsSearching(false);
+    setSelectedSearchPlace(null);
+    setIsSearchFocused(true);
+  }, []);
 
   const handleSearchPress = () => {
-    void searchAddress(searchText);
+    setIsSearchFocused(true);
+    if (trimmedSearchText.length >= MIN_SEARCH_QUERY_LENGTH) {
+      void runPlaceSearch(trimmedSearchText);
+    }
   };
 
   const handleMicPress = () => {
@@ -653,7 +766,7 @@ export default function HomeMapScreen() {
       console.warn('[VoiceSearch] speech recognition is not available in this runtime');
       Alert.alert(
         '음성 검색 준비 중',
-        '현재 실행 환경에서는 음성 인식을 바로 사용할 수 없어요. dev build에서 음성 인식 모듈을 연결하면 이 버튼에 붙일 수 있습니다.'
+        '현재 실행 환경에서는 음성 인식을 바로 사용할 수 없습니다. dev build에서 음성 인식 모듈을 연결하면 이 버튼을 붙일 수 있습니다.'
       );
       return;
     }
@@ -668,8 +781,9 @@ export default function HomeMapScreen() {
         return;
       }
       setSearchText(transcript);
+      setIsSearchFocused(true);
       console.log('[VoiceSearch] transcript', transcript);
-      void searchAddress(transcript);
+      void runPlaceSearch(transcript);
     };
     recognition.onerror = (event) => {
       console.warn('[VoiceSearch] failed', event);
@@ -713,6 +827,53 @@ export default function HomeMapScreen() {
     </Pressable>
   );
 
+  const renderPlaceRow = (
+    place: KakaoPlaceSearchResult,
+    options: { recent?: boolean } = {}
+  ) => {
+    const address = place.roadAddressName || place.addressName || '주소 정보 없음';
+
+    return (
+      <Pressable
+        key={place.id}
+        style={styles.placeRow}
+        onPress={() => selectSearchPlace(place)}
+        accessibilityRole="button"
+      >
+        <View style={styles.placeIcon}>
+          <Icon name={options.recent ? 'clock' : 'pin'} size={18} color={SKY_DARK} strokeWidth={2.1} />
+        </View>
+        <View style={styles.placeTextBox}>
+          <Text style={styles.placeName} numberOfLines={1}>
+            {place.placeName}
+          </Text>
+          <Text style={styles.placeAddress} numberOfLines={1}>
+            {address}
+          </Text>
+          {place.categoryName ? (
+            <Text style={styles.placeCategory} numberOfLines={1}>
+              {place.categoryName}
+            </Text>
+          ) : null}
+        </View>
+        {options.recent ? (
+          <Pressable
+            style={styles.placeDeleteButton}
+            hitSlop={8}
+            onPress={(event) => {
+              event.stopPropagation();
+              removeRecentSearch(place.id);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="최근 검색 삭제"
+          >
+            <Icon name="x" size={16} color="#A8A8A8" strokeWidth={2.1} />
+          </Pressable>
+        ) : null}
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
@@ -737,6 +898,7 @@ export default function HomeMapScreen() {
           region={currentRegion}
           markers={markers}
           circles={densityCircles}
+          searchMarker={searchMarker}
           userLocation={currentLocation}
           showsUserLocation
           onRegionChangeComplete={handleRegionChangeComplete}
@@ -744,6 +906,7 @@ export default function HomeMapScreen() {
           onMapPress={handleMapPress}
           onMapDragStart={() => {
             setSelectedReports([]);
+            setIsSearchFocused(false);
             setIsSheetExpanded(false);
           }}
         />
@@ -754,7 +917,11 @@ export default function HomeMapScreen() {
               <Icon name="search" size={24} color="#6B6B6B" strokeWidth={2.25} />
               <TextInput
                 value={searchText}
-                onChangeText={setSearchText}
+                onChangeText={(value) => {
+                  setSearchText(value);
+                  setIsSearchFocused(true);
+                }}
+                onFocus={() => setIsSearchFocused(true)}
                 placeholder="지역 · 주소로 제보 찾기"
                 placeholderTextColor="#666666"
                 underlineColorAndroid="transparent"
@@ -764,11 +931,60 @@ export default function HomeMapScreen() {
                 returnKeyType="search"
                 onSubmitEditing={handleSearchPress}
               />
-              <Pressable style={styles.micButton} onPress={handleMicPress}>
-                <Icon name="mic" size={24} color="#6B6B6B" strokeWidth={2.25} />
+              <Pressable
+                style={styles.micButton}
+                onPress={searchText ? clearSearch : handleMicPress}
+                accessibilityRole="button"
+                accessibilityLabel={searchText ? '검색어 지우기' : '음성 검색'}
+              >
+                <Icon
+                  name={searchText ? 'x' : 'mic'}
+                  size={24}
+                  color="#6B6B6B"
+                  strokeWidth={2.25}
+                />
               </Pressable>
             </Pressable>
           </View>
+
+          {showSearchPanel ? (
+            <View style={styles.searchPanel}>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                style={styles.searchPanelScroller}
+              >
+                {trimmedSearchText.length === 0 ? (
+                  recentSearches.length > 0 ? (
+                    <>
+                      <View style={styles.searchPanelHeader}>
+                        <Text style={styles.searchPanelTitle}>최근 검색</Text>
+                        <Pressable onPress={clearRecentSearches} hitSlop={8}>
+                          <Text style={styles.searchPanelAction}>전체 삭제</Text>
+                        </Pressable>
+                      </View>
+                      {recentSearches.map((place) => renderPlaceRow(place, { recent: true }))}
+                    </>
+                  ) : (
+                    <Text style={styles.searchEmptyText}>최근 검색 기록이 없습니다.</Text>
+                  )
+                ) : trimmedSearchText.length < MIN_SEARCH_QUERY_LENGTH ? (
+                  <Text style={styles.searchEmptyText}>두 글자 이상 입력해 주세요.</Text>
+                ) : isSearching ? (
+                  <View style={styles.searchLoadingRow}>
+                    <ActivityIndicator size="small" color={SKY_DARK} />
+                    <Text style={styles.searchLoadingText}>장소를 찾는 중입니다.</Text>
+                  </View>
+                ) : searchError ? (
+                  <Text style={styles.searchEmptyText}>{searchError}</Text>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((place) => renderPlaceRow(place))
+                ) : (
+                  <Text style={styles.searchEmptyText}>검색 결과가 없습니다.</Text>
+                )}
+              </ScrollView>
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -937,6 +1153,105 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     textAlignVertical: 'center',
   },
+  searchPanel: {
+    position: 'absolute',
+    top: SEARCH_HEIGHT + 10,
+    left: 0,
+    right: 0,
+    maxHeight: Math.min(360, SCREEN_HEIGHT * 0.42),
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    paddingVertical: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 12,
+    zIndex: 40,
+    overflow: 'hidden',
+  },
+  searchPanelScroller: {
+    maxHeight: Math.min(360, SCREEN_HEIGHT * 0.42),
+  },
+  searchPanelHeader: {
+    minHeight: 34,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  searchPanelTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.md,
+    color: TEXT,
+  },
+  searchPanelAction: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.sm,
+    color: SKY_DARK,
+  },
+  searchEmptyText: {
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    color: MUTED,
+  },
+  searchLoadingRow: {
+    minHeight: 58,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  searchLoadingText: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.md,
+    color: MUTED,
+  },
+  placeRow: {
+    minHeight: 72,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  placeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: SKY_SOFT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeTextBox: {
+    flex: 1,
+    minWidth: 0,
+  },
+  placeName: {
+    fontFamily: fonts.bold,
+    fontSize: fontSize.mdLg,
+    color: TEXT,
+  },
+  placeAddress: {
+    marginTop: 3,
+    fontFamily: fonts.medium,
+    fontSize: fontSize.sm,
+    color: MUTED,
+  },
+  placeCategory: {
+    marginTop: 2,
+    fontFamily: fonts.regular,
+    fontSize: fontSize.xs,
+    color: '#9A9A9A',
+  },
+  placeDeleteButton: {
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   micButton: {
     width: 38,
     height: 38,
@@ -1030,7 +1345,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingLeft: 24,
     paddingRight: 24,
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   reportListScroller: {
     marginHorizontal: -24,

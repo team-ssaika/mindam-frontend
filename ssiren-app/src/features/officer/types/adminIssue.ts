@@ -10,6 +10,7 @@ export type AdminStatusHistory = {
   updatedAt: string;
   reportId: number;
   userId: number | null;
+  department: AdminDepartment | null;
 };
 
 export type AdminRepresentativeReport = {

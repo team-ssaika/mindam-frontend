@@ -1,4 +1,5 @@
 import type { MyReportItem, ReportStatus } from './myReport';
+import type { ReportStatusHistory } from './myReportDetail';
 import type { ReportAgencyType, ReportDepartment } from './reportSubmission';
 
 export type PublicReportItem = {
@@ -8,6 +9,7 @@ export type PublicReportItem = {
   issueGroup: MyReportItem['issueGroup'];
   department: ReportDepartment;
   agencyType: ReportAgencyType;
+  statusHistories?: ReportStatusHistory[];
 };
 
 export type PublicReportsQuery = {

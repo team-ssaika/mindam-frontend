@@ -397,7 +397,6 @@ export default function OfficerHomeScreen() {
                 return (
                   <Pressable
                     key={item.issueGroup.id}
-                    delayPressIn={120}
                     android_ripple={{ color: 'rgba(0,0,0,0.04)' }}
                     style={({ pressed }) => [styles.peekCard, pressed && styles.peekCardPressed]}
                     onPress={() => {

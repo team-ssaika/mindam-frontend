@@ -1,4 +1,5 @@
 import type { MyReportItem } from './myReport';
+import type { ReportStatusHistory } from './myReportDetail';
 import type { ReportAgencyType, ReportDepartment } from './reportSubmission';
 
 export type IssueGroupStatus = 'ACTIVE' | 'RESOLVED' | 'MERGED' | string;
@@ -11,9 +12,17 @@ export type IssueReport = MyReportItem['report'];
 
 export type IssueCategory = MyReportItem['category'];
 
+export type IssueRepresentativeReport = {
+  report: IssueReport;
+  reportImages: MyReportItem['reportImages'];
+  statusHistories?: ReportStatusHistory[];
+};
+
+export type IssueRepresentativeReportLike = IssueReport | IssueRepresentativeReport;
+
 export type IssueItem = {
   issueGroup: IssueGroup;
-  representativeReport: IssueReport | null;
+  representativeReport: IssueRepresentativeReportLike | null;
   category: IssueCategory | null;
   department: ReportDepartment;
   agencyType: ReportAgencyType;
@@ -25,8 +34,8 @@ export type IssuesResponse = {
 
 export type IssueDetail = {
   issueGroup: IssueGroup;
-  representativeReport: IssueReport | null;
-  reports: IssueReport[];
+  representativeReport: IssueRepresentativeReportLike | null;
+  reports: Array<IssueReport | { report: IssueReport; reportImages: MyReportItem['reportImages'] }>;
   category: IssueCategory | null;
   department: ReportDepartment | null;
   agencyType: ReportAgencyType | null;

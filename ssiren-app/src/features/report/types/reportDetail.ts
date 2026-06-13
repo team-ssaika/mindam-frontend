@@ -1,3 +1,5 @@
+import type { ReportStatusHistory } from './myReportDetail';
+
 export type ReportDetail = {
   id: string;
   title: string;
@@ -10,4 +12,5 @@ export type ReportDetail = {
   yesCount: number;
   organization: string;
   status: string;
+  statusHistories?: ReportStatusHistory[];
 };
