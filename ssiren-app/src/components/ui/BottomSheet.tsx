@@ -5,10 +5,8 @@ import {
   Dimensions,
   Easing,
   Modal,
-  PanResponder,
   Pressable,
   StyleSheet,
-  type GestureResponderHandlers,
   type StyleProp,
   View,
   type ViewStyle,
@@ -18,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const BottomSheetCloseContext = createContext<(() => void) | null>(null);
-const BottomSheetDragContext = createContext<GestureResponderHandlers | null>(null);
 
 export function useBottomSheetClose() {
   const requestClose = useContext(BottomSheetCloseContext);
@@ -26,10 +23,6 @@ export function useBottomSheetClose() {
     throw new Error('useBottomSheetClose must be used within BottomSheet');
   }
   return requestClose;
-}
-
-export function useBottomSheetDragHandlers() {
-  return useContext(BottomSheetDragContext);
 }
 
 type BottomSheetProps = {
@@ -58,10 +51,10 @@ export function BottomSheet({
   const insets = useSafeAreaInsets();
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacityValue = useRef(new Animated.Value(0)).current;
-  const dismissableRef = useRef(dismissable);
+  const onCloseRef = useRef(onClose);
   const closeTranslateY = SCREEN_HEIGHT;
 
-  dismissableRef.current = dismissable;
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!visible) {
@@ -102,57 +95,10 @@ export function BottomSheet({
         easing: Easing.in(Easing.quad),
         useNativeDriver: true,
       }),
-    ]).start(onClose);
+    ]).start(() => {
+      onCloseRef.current();
+    });
   };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponderCapture: (_, gesture) =>
-        gesture.dy > 10 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.05,
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        gesture.dy > 10 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.05,
-      onPanResponderGrant: () => {
-        sheetTranslateY.stopAnimation();
-      },
-      onPanResponderMove: (_, gesture) => {
-        sheetTranslateY.setValue(Math.max(gesture.dy, 0));
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (!dismissableRef.current) {
-          Animated.spring(sheetTranslateY, {
-            toValue: 0,
-            damping: 18,
-            stiffness: 180,
-            mass: 0.85,
-            useNativeDriver: true,
-          }).start();
-          return;
-        }
-
-        if (gesture.dy > 84 || gesture.vy > 0.85) {
-          requestClose();
-          return;
-        }
-
-        Animated.spring(sheetTranslateY, {
-          toValue: 0,
-          damping: 18,
-          stiffness: 180,
-          mass: 0.85,
-          useNativeDriver: true,
-        }).start();
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(sheetTranslateY, {
-          toValue: 0,
-          damping: 18,
-          stiffness: 180,
-          mass: 0.85,
-          useNativeDriver: true,
-        }).start();
-      },
-    })
-  ).current;
 
   const handleHardwareBackPress = () => {
     if (dismissable) {
@@ -164,6 +110,7 @@ export function BottomSheet({
 
   const backdrop = (
     <Animated.View
+      pointerEvents="none"
       style={[
         styles.backdropFill,
         {
@@ -200,21 +147,17 @@ export function BottomSheet({
         )}
 
         <Animated.View
-          {...(dismissable ? panResponder.panHandlers : {})}
           style={[
             styles.container,
             { minHeight },
             { transform: [{ translateY: sheetTranslateY }] },
             containerStyle,
-            // Keep content clear of the system navigation bar (edge-to-edge).
             { paddingBottom: 24 + insets.bottom },
           ]}
         >
           {showHandle ? <View style={styles.handle} /> : null}
           <BottomSheetCloseContext.Provider value={requestClose}>
-            <BottomSheetDragContext.Provider value={panResponder.panHandlers}>
-              {children}
-            </BottomSheetDragContext.Provider>
+            {children}
           </BottomSheetCloseContext.Provider>
         </Animated.View>
       </View>

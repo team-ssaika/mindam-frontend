@@ -69,6 +69,57 @@ export function getIssueGroupDiscomfortCount(
   return Math.max(0, reportCount + yesCount);
 }
 
+export type ReportMarkerToneStyle = {
+  textColor: string;
+  iconColor: string;
+};
+
+export const REPORT_MARKER_TONE_STYLES: Record<ReportMarkerTone, ReportMarkerToneStyle> = {
+  processing: {
+    textColor: '#5CB0D6',
+    iconColor: '#5CB0D6',
+  },
+  low: {
+    textColor: '#C9A12E',
+    iconColor: '#C9A12E',
+  },
+  medium: {
+    textColor: '#F3A45D',
+    iconColor: '#F3A45D',
+  },
+  high: {
+    textColor: '#E96B66',
+    iconColor: '#E96B66',
+  },
+};
+
+export function getReportMarkerToneStyle(tone: ReportMarkerTone): ReportMarkerToneStyle {
+  return REPORT_MARKER_TONE_STYLES[tone];
+}
+
+function parseRiskScoreFromLabel(riskLabel: string) {
+  const value = riskLabel.match(/\d+(?:\.\d+)?/)?.[0];
+  return value ? Number(value) : 0;
+}
+
+export function resolveReportMarkerTone(
+  report: Pick<ReportDetail, 'markerTone' | 'riskLabel' | 'status'>
+): ReportMarkerTone {
+  if (report.markerTone) {
+    return report.markerTone;
+  }
+
+  if (
+    report.status === '확인 중' ||
+    report.status === '처리 중' ||
+    report.status === '이관'
+  ) {
+    return 'processing';
+  }
+
+  return getReportMarkerTone(undefined, parseRiskScoreFromLabel(report.riskLabel));
+}
+
 export function getReportMarkerTone(
   status: string | undefined,
   riskScore: number
@@ -120,11 +171,14 @@ export function toMapReportDetail(
     longitude: issueGroup.groupLongitude,
   };
 
+  const riskScore = Number(issueGroup.riskScore ?? report.riskScore ?? 0);
+
   return {
     id: String(report.id),
     issueGroupId: issueGroup.id,
     title: issueGroup.title || report.title,
-    riskLabel: `위험지수 ${issueGroup.riskScore ?? report.riskScore}`,
+    riskLabel: `위험지수 ${riskScore}`,
+    markerTone: getReportMarkerTone(report.status, riskScore),
     timeAgo: formatTimeAgo(issueGroup.recentReportedAt || report.createdAt),
     distance:
       userLocation != null

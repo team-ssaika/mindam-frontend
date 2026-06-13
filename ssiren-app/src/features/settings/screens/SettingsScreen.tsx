@@ -1,13 +1,13 @@
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { ReactNode, useCallback, useState } from 'react';
+import { ReactNode, useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppBar, AppText, Icon, Toggle } from '../../../components/ui';
 import type { IconName } from '../../../components/ui';
 import { colors, fonts, fontSize } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import {
-  deactivateStoredPushToken,
+  disablePushNotificationsWithProfile,
   registerDevicePushToken,
 } from '../../notifications/services/pushNotificationService';
 import { fetchMyProfile, updateMyProfile } from '../../profile/api/userApi';
@@ -87,12 +87,17 @@ export function SettingsScreen() {
   const [isAlarmLoading, setIsAlarmLoading] = useState(true);
   const [isAlarmSaving, setIsAlarmSaving] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const isAlarmSavingRef = useRef(false);
 
   const goToStartSelection = () => {
     router.replace('/auth/role-select');
   };
 
   const loadSettings = useCallback(async () => {
+    if (isAlarmSavingRef.current) {
+      return;
+    }
+
     setIsAlarmLoading(true);
 
     try {
@@ -126,14 +131,15 @@ export function SettingsScreen() {
     }
 
     const previousValue = isAlarmEnabled;
-    setIsAlarmEnabled(nextValue);
+    isAlarmSavingRef.current = true;
     setIsAlarmSaving(true);
 
     try {
-      const updatedProfile = await updateMyProfile({ isAlarmEnabled: nextValue });
-      setIsAlarmEnabled(Boolean(updatedProfile.isAlarmEnabled));
-
       if (nextValue) {
+        setIsAlarmEnabled(true);
+        const updatedProfile = await updateMyProfile({ isAlarmEnabled: true });
+        setIsAlarmEnabled(Boolean(updatedProfile.isAlarmEnabled));
+
         try {
           await registerDevicePushToken();
         } catch (error) {
@@ -143,14 +149,18 @@ export function SettingsScreen() {
             '다만 이 에뮬레이터에서 FCM 토큰 등록에 실패했어요. Firebase/에뮬레이터 설정을 확인해주세요.'
           );
         }
-      } else {
-        await deactivateStoredPushToken();
+        return;
       }
+
+      setIsAlarmEnabled(false);
+      const updatedProfile = await disablePushNotificationsWithProfile();
+      setIsAlarmEnabled(Boolean(updatedProfile.isAlarmEnabled));
     } catch (error) {
       console.log('[Settings] alarm update error', error);
       setIsAlarmEnabled(previousValue);
       Alert.alert('알림 설정 변경 실패', '다시 시도해주세요.');
     } finally {
+      isAlarmSavingRef.current = false;
       setIsAlarmSaving(false);
     }
   };
