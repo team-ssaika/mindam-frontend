@@ -5,7 +5,7 @@ import { colors, fontSize, fonts, layout } from '../../theme';
 import AppText from './AppText';
 import Icon from './Icon';
 
-const ssirenNameLogo = require('../../assets/SSIREN-name.png');
+const mindamNameLogo = require('../../assets/mindam_name.png');
 
 type AppBarProps = {
   title?: string;
@@ -18,7 +18,7 @@ type AppBarProps = {
 };
 
 function Logo() {
-  return <Image source={ssirenNameLogo} style={styles.nameLogo} resizeMode="contain" />;
+  return <Image source={mindamNameLogo} style={styles.nameLogo} resizeMode="contain" />;
 }
 
 export default function AppBar({
@@ -114,7 +114,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   nameLogo: {
-    width: 96,
-    height: 30,
+    width: 88,
+    height: 28,
+    marginLeft: -6,
   },
 });

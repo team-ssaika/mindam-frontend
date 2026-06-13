@@ -52,7 +52,7 @@ import {
 } from '../../report/utils/publicReportMap';
 import { fonts, fontSize } from '../../../theme';
 
-const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
+const mindamNameLogo = require('../../../assets/mindam_name.png');
 const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
 const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
 
@@ -997,7 +997,7 @@ export default function HomeMapScreen() {
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
         <View style={styles.header}>
-          <Image source={ssirenNameLogo} style={styles.nameLogo} resizeMode="contain" />
+          <Image source={mindamNameLogo} style={styles.nameLogo} resizeMode="contain" />
           <Pressable
             style={styles.bellButton}
             onPress={() => console.log('[Home] notification press')}
@@ -1148,12 +1148,12 @@ const styles = StyleSheet.create({
   headerSafe: {
     backgroundColor: '#ffffff',
     zIndex: 20,
+    paddingTop: 10,
   },
   header: {
     height: HEADER_BODY_HEIGHT,
-    paddingLeft: 22,
+    paddingLeft: 10,
     paddingRight: 20,
-    paddingTop: 2,
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
@@ -1161,7 +1161,7 @@ const styles = StyleSheet.create({
   },
   nameLogo: {
     width: LOGO_WIDTH,
-    height: LOGO_WIDTH * 0.31,
+    height: LOGO_WIDTH * 0.4,
   },
   bellButton: {
     width: 34,
