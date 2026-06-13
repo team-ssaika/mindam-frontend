@@ -29,7 +29,7 @@ export function SettingsRow({
         ) : null}
         {rightElement}
         {withChevron ? (
-          <Ionicons name="chevron-forward" size={22} color="#C5CAD4" />
+          <Ionicons name="chevron-forward" size={18} color="#C5CAD4" />
         ) : null}
       </View>
     </View>
@@ -52,14 +52,14 @@ export function SettingsRow({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 58,
+    minHeight: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
   label: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.mdLg,
     color: '#17171F',
   },
   subtleLabel: {
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rightLabel: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.mdLg,
     color: '#17171F',
   },
   pressed: {

@@ -60,7 +60,7 @@ function SettingRow({
       ]}
     >
       <View style={styles.iconSlot}>
-        <Icon name={icon} size={25} color={tint} strokeWidth={1.9} />
+        <Icon name={icon} size={21} color={tint} strokeWidth={1.9} />
       </View>
 
       <View style={styles.rowTextBox}>
@@ -71,7 +71,7 @@ function SettingRow({
       {right ?? (
         <View style={styles.rowRight}>
           {value ? <AppText style={styles.rowValue}>{value}</AppText> : null}
-          {shouldShowChevron ? <Icon name="chevR" size={20} color="#B8B5C2" strokeWidth={2.2} /> : null}
+          {shouldShowChevron ? <Icon name="chevR" size={17} color="#B8B5C2" strokeWidth={2.2} /> : null}
         </View>
       )}
     </Pressable>
@@ -298,10 +298,10 @@ const styles = StyleSheet.create({
     gap: 22,
   },
   card: {
-    borderRadius: 20,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 2,
     shadowColor: '#AAB2C0',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.06,
@@ -310,11 +310,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   row: {
-    minHeight: 70,
+    minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingVertical: 13,
+    gap: 12,
+    paddingVertical: 10,
   },
   rowDivider: {
     borderTopWidth: 1,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   iconSlot: {
-    width: 30,
+    width: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -334,18 +334,18 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontFamily: fonts.semibold,
-    fontSize: fontSize.lg,
-    lineHeight: 23,
+    fontSize: fontSize.mdLg,
+    lineHeight: 20,
     color: '#111111',
   },
   dangerText: {
     color: '#EF5A5A',
   },
   rowSub: {
-    marginTop: 3,
+    marginTop: 2,
     fontFamily: fonts.regular,
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     color: '#8A8A8A',
   },
   rowRight: {
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   },
   rowValue: {
     fontFamily: fonts.medium,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     color: '#8A8A8A',
   },
   versionText: {
@@ -365,8 +365,8 @@ const styles = StyleSheet.create({
     marginTop: -6,
     marginBottom: 6,
     fontFamily: fonts.regular,
-    fontSize: fontSize.sm,
-    lineHeight: 18,
+    fontSize: fontSize.xs,
+    lineHeight: 16,
     color: '#9A9A9A',
   },
 });

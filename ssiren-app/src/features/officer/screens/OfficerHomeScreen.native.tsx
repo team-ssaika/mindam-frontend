@@ -561,14 +561,14 @@ const styles = StyleSheet.create({
   peekHeaderMain: { flex: 1 },
   peekTitle: {
     fontFamily: fonts.black,
-    fontSize: fontSize.display,
-    lineHeight: 36,
+    fontSize: 25,
+    lineHeight: 30,
     color: colors.ink,
   },
   peekCount: {
     fontFamily: fonts.black,
-    fontSize: fontSize.display,
-    lineHeight: 36,
+    fontSize: 25,
+    lineHeight: 30,
     color: colors.brand,
   },
   countsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
