@@ -75,12 +75,13 @@ function summarizeIssues(issues: AdminIssueItem[]) {
   return issues.reduce(
     (acc, item) => {
       const status = item.representativeReport?.report?.status as ReportStatus | undefined;
+      const reportCount = getIssueGroupDiscomfortCount(item.issueGroup);
       if (!status) {
         return acc;
       }
       const tone = getReportStatusTone(status);
-      acc.total += 1;
-      acc[tone] += 1;
+      acc.total += reportCount;
+      acc[tone] += reportCount;
       return acc;
     },
     { total: 0, wait: 0, prog: 0, done: 0 }
@@ -189,8 +190,6 @@ export default function OfficerHomeScreen() {
     [mapReports]
   );
 
-  const summary = useMemo(() => summarizeIssues(issues), [issues]);
-
   const sortedIssues = useMemo(() => {
     const visible = issues.filter(hasValidAdminIssueCoordinate);
     if (!userLocation) {
@@ -210,6 +209,8 @@ export default function OfficerHomeScreen() {
         })
     );
   }, [issues, userLocation]);
+
+  const summary = useMemo(() => summarizeIssues(sortedIssues), [sortedIssues]);
 
   const jurisdictionLabel = useMemo(() => {
     const department = issues[0]?.department;
@@ -356,8 +357,8 @@ export default function OfficerHomeScreen() {
             <View style={styles.peekHeaderMain}>
               <AppText style={styles.peekTitle}>
                 {isLoadingIssues
-                  ? '관할 제보 불러오는 중...'
-                  : `내 관할 제보 `}
+                  ? '현재 보이는 제보 불러오는 중...'
+                  : `현재 보이는 제보 `}
                 {!isLoadingIssues ? (
                   <AppText style={styles.peekCount}>{summary.total}건</AppText>
                 ) : null}
@@ -387,7 +388,7 @@ export default function OfficerHomeScreen() {
               <ActivityIndicator size="small" color={colors.brand} />
             </View>
           ) : sortedIssues.length === 0 ? (
-            <AppText style={styles.peekEmpty}>현재 지도 영역에 관할 제보가 없어요.</AppText>
+            <AppText style={styles.peekEmpty}>현재 지도 영역에 보이는 제보가 없어요.</AppText>
           ) : (
             <ScrollView
               horizontal
@@ -397,6 +398,7 @@ export default function OfficerHomeScreen() {
               {sortedIssues.map((item) => {
                 const report = item.representativeReport.report;
                 const reportStatus = report.status as ReportStatus;
+                const visibleReportCount = getIssueGroupDiscomfortCount(item.issueGroup);
                 const dist = userLocation
                   ? formatDistance(
                       distanceMeters(userLocation, {
@@ -433,7 +435,7 @@ export default function OfficerHomeScreen() {
                     </AppText>
                     <View style={styles.peekCardMeta}>
                       <AppText style={styles.peekCardCount}>
-                        제보 {item.issueGroup.reportCount}건
+                        제보 {visibleReportCount}건
                       </AppText>
                       {dist ? (
                         <>
