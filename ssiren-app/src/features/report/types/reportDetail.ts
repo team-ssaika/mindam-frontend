@@ -2,6 +2,7 @@ import type { ReportStatusHistory } from './myReportDetail';
 
 export type ReportDetail = {
   id: string;
+  issueGroupId?: number;
   title: string;
   riskLabel: string;
   timeAgo: string;

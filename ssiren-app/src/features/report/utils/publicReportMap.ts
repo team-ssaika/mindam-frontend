@@ -122,6 +122,7 @@ export function toMapReportDetail(
 
   return {
     id: String(report.id),
+    issueGroupId: issueGroup.id,
     title: issueGroup.title || report.title,
     riskLabel: `위험지수 ${issueGroup.riskScore ?? report.riskScore}`,
     timeAgo: formatTimeAgo(issueGroup.recentReportedAt || report.createdAt),
@@ -132,7 +133,7 @@ export function toMapReportDetail(
     address: report.roadAddress || report.jibunAddress,
     summary: issueGroup.content || formatAiSummary(report.contents),
     category: category.categoryName,
-    yesCount: Number(issueGroup.yesCount ?? 0),
+    yesCount: getIssueGroupDiscomfortCount(issueGroup),
     organization: formatDepartmentName(item.department) || issueGroup.title,
     status: getReportStatusLabel(report.status),
     statusHistories: item.statusHistories,
