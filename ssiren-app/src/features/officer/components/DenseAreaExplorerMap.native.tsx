@@ -16,9 +16,9 @@ import {
   resolveDenseAreaViewRadiusMeters,
   type DenseAreaIssueGroupMarker,
 } from '../utils/officerDenseArea';
+import { MARKER_LOGO_DATA_URI } from '../../../constants/markerLogo';
 
-const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
-const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
+const markerIconUri = MARKER_LOGO_DATA_URI;
 
 type DenseAreaExplorerMapProps = {
   denseAreas: AdminDashboardDenseAreaItem[];

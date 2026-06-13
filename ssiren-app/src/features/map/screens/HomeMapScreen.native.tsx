@@ -51,10 +51,10 @@ import {
   type ReportMarkerTone,
 } from '../../report/utils/publicReportMap';
 import { fonts, fontSize } from '../../../theme';
+import { MARKER_LOGO_DATA_URI } from '../../../constants/markerLogo';
 
 const mindamNameLogo = require('../../../assets/mindam_name.png');
-const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
-const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
+const markerIconUri = MARKER_LOGO_DATA_URI;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SKY = '#7EC8F7';

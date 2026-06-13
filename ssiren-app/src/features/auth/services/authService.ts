@@ -11,6 +11,7 @@ import {
 } from '../../../lib/api/client';
 import {
   clearPendingNotificationPrompt,
+  deactivateStoredPushToken,
   getStoredFcmToken,
   markPendingNotificationPrompt,
   registerDevicePushToken,
