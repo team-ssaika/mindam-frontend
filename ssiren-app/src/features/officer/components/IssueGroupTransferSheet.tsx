@@ -20,16 +20,22 @@ import { createAdminIssueGroupTransferRequest } from '../api/adminIssueApi';
 import type { AdminDepartment } from '../types/adminIssue';
 import { getTransferApiErrorMessage } from '../transfer-requests/utils';
 
+type TargetPickerStep = 'agency' | 'department';
+
+type IssueGroupTransferTargetPickerProps = {
+  visible: boolean;
+  fromDepartment: AdminDepartment;
+  onClose: () => void;
+  onSelect: (department: Department) => void;
+};
+
 type IssueGroupTransferSheetProps = {
   visible: boolean;
   issueGroupId: number;
-  issueGroupTitle: string;
-  fromDepartment: AdminDepartment;
+  targetDepartment: Department;
   onClose: () => void;
   onSuccess: () => void;
 };
-
-type TransferStep = 'agency' | 'department' | 'reason';
 
 function formatDepartmentLabel(department: Pick<AdminDepartment, 'name'> & {
   agencyType?: { name: string } | null;
@@ -39,32 +45,25 @@ function formatDepartmentLabel(department: Pick<AdminDepartment, 'name'> & {
   return [agencyName, department.name].filter(Boolean).join(' · ');
 }
 
-export function IssueGroupTransferSheet({
+export function IssueGroupTransferTargetPicker({
   visible,
-  issueGroupId,
-  issueGroupTitle,
   fromDepartment,
   onClose,
-  onSuccess,
-}: IssueGroupTransferSheetProps) {
-  const [step, setStep] = useState<TransferStep>('agency');
+  onSelect,
+}: IssueGroupTransferTargetPickerProps) {
+  const [step, setStep] = useState<TargetPickerStep>('agency');
   const [agencies, setAgencies] = useState<AgencyType[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedAgency, setSelectedAgency] = useState<AgencyType | null>(null);
-  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
-  const [requestReason, setRequestReason] = useState('');
   const [isLoadingAgencies, setIsLoadingAgencies] = useState(false);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible) {
       setStep('agency');
       setSelectedAgency(null);
-      setSelectedDepartment(null);
       setDepartments([]);
-      setRequestReason('');
       setLoadErrorMessage(null);
       return;
     }
@@ -98,7 +97,6 @@ export function IssueGroupTransferSheet({
 
   const handleSelectAgency = async (agency: AgencyType) => {
     setSelectedAgency(agency);
-    setSelectedDepartment(null);
     setStep('department');
     setLoadErrorMessage(null);
     setIsLoadingDepartments(true);
@@ -116,18 +114,8 @@ export function IssueGroupTransferSheet({
     }
   };
 
-  const handleSelectDepartment = (department: Department) => {
-    setSelectedDepartment(department);
-    setStep('reason');
-  };
-
   const handleBack = () => {
     setLoadErrorMessage(null);
-    if (step === 'reason') {
-      setStep('department');
-      setSelectedDepartment(null);
-      return;
-    }
     if (step === 'department') {
       setStep('agency');
       setSelectedAgency(null);
@@ -135,61 +123,28 @@ export function IssueGroupTransferSheet({
     }
   };
 
-  const handleSubmit = async () => {
-    if (!selectedDepartment || isSubmitting) {
-      return;
-    }
-
-    const trimmedReason = requestReason.trim();
-    if (!trimmedReason) {
-      Alert.alert('이관 사유 필요', '이관 요청 사유를 입력해 주세요.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await createAdminIssueGroupTransferRequest(issueGroupId, {
-        targetDepartmentId: selectedDepartment.id,
-        requestReason: trimmedReason,
-      });
-      onSuccess();
-    } catch (error) {
-      Alert.alert('이관 요청 실패', getTransferApiErrorMessage(error, '이관 요청에 실패했습니다.'));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const sheetTitle =
-    step === 'agency'
-      ? '이관 받을 기관 선택'
-      : step === 'department'
-        ? '이관 받을 부서 선택'
-        : '이관 요청 사유';
+    step === 'agency' ? '이관 받을 기관 선택' : '이관 받을 부서 선택';
 
   return (
     <BottomSheet visible={visible} onClose={onClose} minHeight="65%">
       <View style={styles.body}>
         <View style={styles.header}>
-          {step !== 'agency' ? (
-            <Pressable onPress={handleBack} disabled={isSubmitting} hitSlop={8} style={styles.backButton}>
-              <Icon name="arrowL" size={20} color={colors.ink} />
-            </Pressable>
-          ) : (
-            <View style={styles.backPlaceholder} />
-          )}
-          <View style={styles.headerText}>
-            <AppText style={styles.eyebrow}>부서 이관 요청</AppText>
-            <AppText style={styles.title} numberOfLines={2}>
-              {sheetTitle}
-            </AppText>
-            <AppText style={styles.subtitle} numberOfLines={2}>
-              {issueGroupTitle}
-            </AppText>
-            <AppText style={styles.fromDepartment}>
-              현재 담당 · {formatDepartmentLabel(fromDepartment)}
-            </AppText>
+          <View style={styles.headerTop}>
+            {step !== 'agency' ? (
+              <Pressable
+                onPress={handleBack}
+                hitSlop={8}
+                style={styles.backButton}
+                accessibilityRole="button"
+              >
+                <Icon name="arrowL" size={20} color={colors.ink} />
+              </Pressable>
+            ) : null}
           </View>
+          <AppText style={styles.title} numberOfLines={2}>
+            {sheetTitle}
+          </AppText>
         </View>
 
         {loadErrorMessage ? <AppText style={styles.errorText}>{loadErrorMessage}</AppText> : null}
@@ -218,7 +173,10 @@ export function IssueGroupTransferSheet({
         {step === 'department' ? (
           <>
             {selectedAgency ? (
-              <AppText style={styles.stepMeta}>{selectedAgency.name}</AppText>
+              <View style={styles.stepMetaRow}>
+                <AppText style={styles.stepMeta}>{selectedAgency.name}</AppText>
+                <Icon name="check" size={14} color={colors.brand} strokeWidth={2.4} />
+              </View>
             ) : null}
             {isLoadingDepartments ? (
               <View style={styles.centered}>
@@ -232,7 +190,7 @@ export function IssueGroupTransferSheet({
                   <Pressable
                     key={department.id}
                     style={styles.optionRow}
-                    onPress={() => handleSelectDepartment(department)}
+                    onPress={() => onSelect(department)}
                   >
                     <AppText style={styles.optionLabel}>{department.name}</AppText>
                     <Icon name="chevR" size={16} color={colors.faint} />
@@ -242,58 +200,107 @@ export function IssueGroupTransferSheet({
             )}
           </>
         ) : null}
+      </View>
+    </BottomSheet>
+  );
+}
 
-        {step === 'reason' && selectedDepartment ? (
-          <View style={styles.reasonStep}>
-            <View style={styles.targetBox}>
-              <AppText style={styles.targetLabel}>이관 대상 부서</AppText>
-              <AppText style={styles.targetValue}>
-                {formatDepartmentLabel({
-                  name: selectedDepartment.name,
-                  agencyTypeName: selectedDepartment.agencyTypeName,
-                })}
-              </AppText>
-            </View>
-            <AppText style={styles.inputLabel}>이관 요청 사유</AppText>
-            <TextInput
-              value={requestReason}
-              onChangeText={setRequestReason}
-              placeholder="이관이 필요한 이유를 입력하세요"
-              placeholderTextColor={colors.faint}
-              multiline
-              maxLength={500}
-              textAlignVertical="top"
-              style={styles.reasonInput}
-            />
-            <AppText
-              style={[
-                styles.reasonCounter,
-                requestReason.length >= 500 && styles.reasonCounterLimit,
-              ]}
-            >
-              {requestReason.length}/500
+export function IssueGroupTransferSheet({
+  visible,
+  issueGroupId,
+  targetDepartment,
+  onClose,
+  onSuccess,
+}: IssueGroupTransferSheetProps) {
+  const [requestReason, setRequestReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setRequestReason('');
+      return;
+    }
+  }, [visible]);
+
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    const trimmedReason = requestReason.trim();
+    if (!trimmedReason) {
+      Alert.alert('이관 사유 필요', '이관 요청 사유를 입력해 주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createAdminIssueGroupTransferRequest(issueGroupId, {
+        targetDepartmentId: targetDepartment.id,
+        requestReason: trimmedReason,
+      });
+      onSuccess();
+    } catch (error) {
+      Alert.alert('이관 요청 실패', getTransferApiErrorMessage(error, '이관 요청에 실패했습니다.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} minHeight="65%">
+      <View style={styles.body}>
+        <AppText style={styles.title}>부서 이관 요청</AppText>
+
+        <View style={styles.reasonStep}>
+          <View style={styles.targetBox}>
+            <AppText style={styles.targetLabel}>이관 대상 부서</AppText>
+            <AppText style={styles.targetValue}>
+              {formatDepartmentLabel({
+                name: targetDepartment.name,
+                agencyTypeName: targetDepartment.agencyTypeName,
+              })}
             </AppText>
-            <View style={styles.actions}>
-              <View style={styles.actionButton}>
-                <Button
-                  label="취소"
-                  variant="secondary"
-                  color={colors.muted}
-                  onPress={onClose}
-                  disabled={isSubmitting}
-                />
-              </View>
-              <View style={styles.actionButton}>
-                <Button
-                  label="이관 요청"
-                  onPress={handleSubmit}
-                  loading={isSubmitting}
-                  disabled={isSubmitting || !requestReason.trim()}
-                />
-              </View>
+          </View>
+          <AppText style={styles.inputLabel}>이관 요청 사유</AppText>
+          <TextInput
+            value={requestReason}
+            onChangeText={setRequestReason}
+            placeholder="이관이 필요한 이유를 입력하세요"
+            placeholderTextColor={colors.faint}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+            style={styles.reasonInput}
+          />
+          <AppText
+            style={[
+              styles.reasonCounter,
+              requestReason.length >= 500 && styles.reasonCounterLimit,
+            ]}
+          >
+            {requestReason.length}/500
+          </AppText>
+          <View style={styles.actions}>
+            <View style={styles.actionButton}>
+              <Button
+                label="취소"
+                variant="secondary"
+                color={colors.muted}
+                onPress={onClose}
+                disabled={isSubmitting}
+              />
+            </View>
+            <View style={styles.actionButton}>
+              <Button
+                label="이관 요청"
+                onPress={handleSubmit}
+                loading={isSubmitting}
+                disabled={isSubmitting || !requestReason.trim()}
+              />
             </View>
           </View>
-        ) : null}
+        </View>
       </View>
     </BottomSheet>
   );
@@ -301,25 +308,32 @@ export function IssueGroupTransferSheet({
 
 const styles = StyleSheet.create({
   body: { flex: 1, gap: 14 },
-  header: { flexDirection: 'row', gap: 8 },
+  header: { gap: 6 },
+  headerTop: {
+    minHeight: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   backButton: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    borderRadius: 15,
+    backgroundColor: colors.soft,
   },
-  backPlaceholder: { width: 32 },
-  headerText: { flex: 1, gap: 4 },
-  eyebrow: { fontFamily: fonts.bold, fontSize: fontSize.md, color: colors.brand },
   title: {
     fontFamily: fonts.bold,
     fontSize: fontSize.xl,
     lineHeight: 26,
     color: colors.ink,
   },
-  subtitle: { fontSize: fontSize.md, color: colors.muted, lineHeight: 21 },
-  fromDepartment: { fontSize: fontSize.sm, color: colors.faint, marginTop: 2 },
+  stepMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   stepMeta: { fontFamily: fonts.semibold, fontSize: fontSize.md, color: colors.body },
   errorText: { fontSize: fontSize.md, color: colors.danger, lineHeight: 21 },
   emptyText: { fontSize: fontSize.md, color: colors.muted, textAlign: 'center', paddingVertical: 24 },
@@ -343,7 +357,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 4,
   },
-  targetLabel: { fontFamily: fonts.semibold, fontSize: fontSize.sm, color: colors.muted },
+  targetLabel: { fontFamily: fonts.semibold, fontSize: fontSize.sm, color: colors.brand },
   targetValue: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink },
   inputLabel: {
     fontFamily: fonts.semibold,

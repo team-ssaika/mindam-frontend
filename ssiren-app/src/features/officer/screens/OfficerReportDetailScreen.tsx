@@ -19,7 +19,11 @@ import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } 
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { colors, fonts, radius, shadow, statusColors, fontSize } from '../../../theme';
 import { fetchAdminIssueDetail, updateAdminIssueStatus } from '../api/adminIssueApi';
-import { IssueGroupTransferSheet } from '../components/IssueGroupTransferSheet';
+import {
+  IssueGroupTransferSheet,
+  IssueGroupTransferTargetPicker,
+} from '../components/IssueGroupTransferSheet';
+import type { Department } from '../../auth/api/onboardingApi';
 import type { AdminIssueDetail, AdminUpdatableReportStatus } from '../types/adminIssue';
 import type { ReportStatus } from '../../report/types/myReport';
 import { formatAiSummary } from '../../report/utils/reportAiSummary';
@@ -54,7 +58,9 @@ export function OfficerReportDetailScreen() {
   const [selectedStatus, setSelectedStatus] = useState<AdminUpdatableReportStatus>('RECEIVED');
   const [reason, setReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [transferPickerOpen, setTransferPickerOpen] = useState(false);
   const [transferSheetOpen, setTransferSheetOpen] = useState(false);
+  const [transferTargetDepartment, setTransferTargetDepartment] = useState<Department | null>(null);
   const [otherReportsExpanded, setOtherReportsExpanded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -403,7 +409,7 @@ export function OfficerReportDetailScreen() {
               <View style={styles.headerActionRow}>
                 <Pressable
                   style={[styles.headerActionBtn, styles.headerActionTrigger]}
-                  onPress={() => setTransferSheetOpen(true)}
+                  onPress={() => setTransferPickerOpen(true)}
                   accessibilityRole="button"
                 >
                   <AppText style={styles.headerActionTriggerText}>이관 요청</AppText>
@@ -645,18 +651,35 @@ export function OfficerReportDetailScreen() {
       ) : null}
 
       {detail ? (
-        <IssueGroupTransferSheet
-          visible={transferSheetOpen}
-          issueGroupId={detail.issueGroup.id}
-          issueGroupTitle={detail.issueGroup.title || representativeReport?.title || '제보'}
-          fromDepartment={detail.department}
-          onClose={() => setTransferSheetOpen(false)}
-          onSuccess={() => {
-            setTransferSheetOpen(false);
-            loadDetail({ silent: true });
-            showToast('이관 요청을 보냈어요');
-          }}
-        />
+        <>
+          <IssueGroupTransferTargetPicker
+            visible={transferPickerOpen}
+            fromDepartment={detail.department}
+            onClose={() => setTransferPickerOpen(false)}
+            onSelect={(department) => {
+              setTransferTargetDepartment(department);
+              setTransferPickerOpen(false);
+              setTransferSheetOpen(true);
+            }}
+          />
+          {transferTargetDepartment ? (
+            <IssueGroupTransferSheet
+              visible={transferSheetOpen}
+              issueGroupId={detail.issueGroup.id}
+              targetDepartment={transferTargetDepartment}
+              onClose={() => {
+                setTransferSheetOpen(false);
+                setTransferTargetDepartment(null);
+              }}
+              onSuccess={() => {
+                setTransferSheetOpen(false);
+                setTransferTargetDepartment(null);
+                loadDetail({ silent: true });
+                showToast('이관 요청을 보냈어요');
+              }}
+            />
+          ) : null}
+        </>
       ) : null}
 
       {toast ? (

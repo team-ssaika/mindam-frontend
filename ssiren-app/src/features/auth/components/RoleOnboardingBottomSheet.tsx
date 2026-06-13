@@ -121,6 +121,12 @@ export function RoleOnboardingBottomSheet({
     <BottomSheet
       visible={visible}
       onClose={() => undefined}
+      dismissable={false}
+      onHardwareBackPress={() => {
+        if (!isSubmitting && step !== 'role') {
+          handleBack();
+        }
+      }}
       backdropOpacity={0.68}
       minHeight="60%"
       showHandle={false}

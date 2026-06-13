@@ -40,6 +40,8 @@ type BottomSheetProps = {
   containerStyle?: StyleProp<ViewStyle>;
   minHeight?: DimensionValue;
   showHandle?: boolean;
+  dismissable?: boolean;
+  onHardwareBackPress?: () => void;
 };
 
 export function BottomSheet({
@@ -50,11 +52,16 @@ export function BottomSheet({
   containerStyle,
   minHeight = '38%',
   showHandle = true,
+  dismissable = true,
+  onHardwareBackPress,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const sheetTranslateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropOpacityValue = useRef(new Animated.Value(0)).current;
+  const dismissableRef = useRef(dismissable);
   const closeTranslateY = SCREEN_HEIGHT;
+
+  dismissableRef.current = dismissable;
 
   useEffect(() => {
     if (!visible) {
@@ -111,6 +118,17 @@ export function BottomSheet({
         sheetTranslateY.setValue(Math.max(gesture.dy, 0));
       },
       onPanResponderRelease: (_, gesture) => {
+        if (!dismissableRef.current) {
+          Animated.spring(sheetTranslateY, {
+            toValue: 0,
+            damping: 18,
+            stiffness: 180,
+            mass: 0.85,
+            useNativeDriver: true,
+          }).start();
+          return;
+        }
+
         if (gesture.dy > 84 || gesture.vy > 0.85) {
           requestClose();
           return;
@@ -136,35 +154,53 @@ export function BottomSheet({
     })
   ).current;
 
+  const handleHardwareBackPress = () => {
+    if (dismissable) {
+      requestClose();
+      return;
+    }
+    onHardwareBackPress?.();
+  };
+
+  const backdrop = (
+    <Animated.View
+      style={[
+        styles.backdropFill,
+        {
+          backgroundColor: '#111827',
+          opacity: backdropOpacityValue,
+        },
+      ]}
+    />
+  );
+
   return (
     <Modal
       animationType="none"
       transparent
       visible={visible}
-      onRequestClose={requestClose}
+      onRequestClose={handleHardwareBackPress}
       statusBarTranslucent
     >
       <View style={styles.overlay}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={requestClose}
-          accessibilityRole="button"
-          accessibilityLabel="바텀시트 닫기"
-          accessibilityHint="현재 열려 있는 바텀시트를 닫습니다"
-        >
-          <Animated.View
-            style={[
-              styles.backdropFill,
-              {
-                backgroundColor: '#111827',
-                opacity: backdropOpacityValue,
-              },
-            ]}
-          />
-        </Pressable>
+        {dismissable ? (
+          <Pressable
+            style={styles.backdrop}
+            onPress={requestClose}
+            accessibilityRole="button"
+            accessibilityLabel="바텀시트 닫기"
+            accessibilityHint="현재 열려 있는 바텀시트를 닫습니다"
+          >
+            {backdrop}
+          </Pressable>
+        ) : (
+          <View style={styles.backdrop} pointerEvents="auto">
+            {backdrop}
+          </View>
+        )}
 
         <Animated.View
-          {...panResponder.panHandlers}
+          {...(dismissable ? panResponder.panHandlers : {})}
           style={[
             styles.container,
             { minHeight },
