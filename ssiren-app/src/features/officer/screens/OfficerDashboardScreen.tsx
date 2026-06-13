@@ -34,6 +34,7 @@ import {
 
 const DASHBOARD_BG = '#F4F5F8';
 const CARD_HORIZONTAL_INSET = 38;
+const CTA_GRADIENT = ['#52B0ED', colors.brandActive, colors.brand] as const;
 
 function SectionCard({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
@@ -330,7 +331,8 @@ export function OfficerDashboardScreen() {
 
           <SectionCard style={styles.ctaCard}>
             <LinearGradient
-              colors={[colors.brand, colors.brandActive]}
+              colors={[...CTA_GRADIENT]}
+              locations={[0, 0.5, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.cta}
