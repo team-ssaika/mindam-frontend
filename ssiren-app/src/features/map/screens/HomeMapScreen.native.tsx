@@ -36,6 +36,7 @@ import { fetchIssueDetail, fetchIssues } from '../../report/api/issueApi';
 import { ReportDetailBottomSheet } from '../../report/components/ReportDetailBottomSheet';
 import type { ReportDetail } from '../../report/types/reportDetail';
 import type { PublicReportItem } from '../../report/types/publicReport';
+import { searchLocations } from '../api/locationSearchApi';
 import {
   getIssueGroupDiscomfortCount,
   getReportMarkerTone,
@@ -88,6 +89,7 @@ const LOGO_WIDTH = Math.min(104, Math.max(88, SCREEN_WIDTH * 0.225));
 const SEARCH_TOP_OFFSET = 14;
 const SEARCH_HEIGHT = 48;
 const SEARCH_SIDE = 27;
+const SEARCH_PANEL_MAX_HEIGHT = Math.min(360, SCREEN_HEIGHT * 0.42);
 const BOTTOM_SHEET_HEIGHT = Math.min(Math.max(SCREEN_HEIGHT * 0.35, 304), 324);
 const COLLAPSED_SHEET_HEIGHT = 104;
 const CARD_WIDTH = Math.min(304, Math.max(264, SCREEN_WIDTH * 0.64));
@@ -95,6 +97,7 @@ const DEFAULT_MAP_CENTER = getDefaultMapCenter();
 const DEFAULT_DELTA = { latitudeDelta: 0.012, longitudeDelta: 0.012 };
 const EXPANDED_DELTA = { latitudeDelta: 0.0045, longitudeDelta: 0.0045 };
 const RECENT_SEARCHES_STORAGE_KEY = 'ssiren.recentPlaceSearches';
+const RECENT_SEARCH_KEYWORDS_STORAGE_KEY = 'ssiren.recentSearchKeywords';
 const MAX_RECENT_SEARCHES = 10;
 const MIN_SEARCH_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 380;
@@ -401,6 +404,7 @@ export default function HomeMapScreen() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [recentSearchKeywords, setRecentSearchKeywords] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<KakaoPlaceSearchResult[]>([]);
   const [selectedSearchPlace, setSelectedSearchPlace] = useState<KakaoPlaceSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -434,15 +438,6 @@ export default function HomeMapScreen() {
   const sheetHeight = isSheetExpanded ? BOTTOM_SHEET_HEIGHT : COLLAPSED_SHEET_HEIGHT;
   const trimmedSearchText = searchText.trim();
   const showSearchPanel = isSearchFocused;
-  const searchMarker: KakaoMapMarker | null = selectedSearchPlace
-    ? {
-        id: `search-${selectedSearchPlace.id}`,
-        kind: 'search',
-        latitude: selectedSearchPlace.latitude,
-        longitude: selectedSearchPlace.longitude,
-      }
-    : null;
-
   const clusters = useMemo(
     () => buildClusters(nearbyReports, currentRegion),
     [currentRegion, nearbyReports]
@@ -497,11 +492,68 @@ export default function HomeMapScreen() {
       });
   }, []);
 
+  useEffect(() => {
+    SecureStore.getItemAsync(RECENT_SEARCH_KEYWORDS_STORAGE_KEY)
+      .then((value) => {
+        if (!value) {
+          return;
+        }
+        const parsed = JSON.parse(value) as string[];
+        if (Array.isArray(parsed)) {
+          setRecentSearchKeywords(
+            parsed
+              .filter((item) => typeof item === 'string' && item.trim().length >= MIN_SEARCH_QUERY_LENGTH)
+              .map((item) => item.trim())
+              .slice(0, MAX_RECENT_SEARCHES)
+          );
+        }
+      })
+      .catch((nextError) => {
+        console.log('[Search] recent search keywords load failed', nextError);
+      });
+  }, []);
+
   const persistRecentSearches = useCallback((items: KakaoPlaceSearchResult[]) => {
     SecureStore.setItemAsync(RECENT_SEARCHES_STORAGE_KEY, JSON.stringify(items)).catch((nextError) => {
       console.log('[Search] recent searches save failed', nextError);
     });
   }, []);
+
+  const persistRecentSearchKeywords = useCallback((items: string[]) => {
+    SecureStore.setItemAsync(RECENT_SEARCH_KEYWORDS_STORAGE_KEY, JSON.stringify(items)).catch((nextError) => {
+      console.log('[Search] recent search keywords save failed', nextError);
+    });
+  }, []);
+
+  const saveRecentSearchKeyword = useCallback(
+    (keyword: string) => {
+      const trimmed = keyword.trim();
+      if (trimmed.length < MIN_SEARCH_QUERY_LENGTH) {
+        return;
+      }
+
+      setRecentSearchKeywords((prev) => {
+        const next = [
+          trimmed,
+          ...prev.filter((item) => item !== trimmed),
+        ].slice(0, MAX_RECENT_SEARCHES);
+        persistRecentSearchKeywords(next);
+        return next;
+      });
+    },
+    [persistRecentSearchKeywords]
+  );
+
+  const removeRecentSearchKeyword = useCallback(
+    (keyword: string) => {
+      setRecentSearchKeywords((prev) => {
+        const next = prev.filter((item) => item !== keyword);
+        persistRecentSearchKeywords(next);
+        return next;
+      });
+    },
+    [persistRecentSearchKeywords]
+  );
 
   const saveRecentSearch = useCallback(
     (place: KakaoPlaceSearchResult) => {
@@ -530,8 +582,12 @@ export default function HomeMapScreen() {
 
   const clearRecentSearches = useCallback(() => {
     setRecentSearches([]);
+    setRecentSearchKeywords([]);
     SecureStore.deleteItemAsync(RECENT_SEARCHES_STORAGE_KEY).catch((nextError) => {
       console.log('[Search] recent searches clear failed', nextError);
+    });
+    SecureStore.deleteItemAsync(RECENT_SEARCH_KEYWORDS_STORAGE_KEY).catch((nextError) => {
+      console.log('[Search] recent search keywords clear failed', nextError);
     });
   }, []);
 
@@ -649,7 +705,7 @@ export default function HomeMapScreen() {
   };
 
   const runPlaceSearch = useCallback(
-    async (keyword: string) => {
+    async (keyword: string, shouldSaveKeyword = false) => {
       const trimmed = keyword.trim();
       if (trimmed.length < MIN_SEARCH_QUERY_LENGTH) {
         setSearchResults([]);
@@ -658,26 +714,31 @@ export default function HomeMapScreen() {
         return;
       }
 
+      if (shouldSaveKeyword) {
+        saveRecentSearchKeyword(trimmed);
+      }
+
       latestSearchKeywordRef.current = trimmed;
       setIsSearching(true);
       setSearchError(null);
 
       try {
-        const results = await mapRef.current?.searchPlaces(trimmed, {
-          ...(currentLocation
-            ? {
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                radiusMeters: 5000,
-              }
-            : {}),
-        });
+        let results: KakaoPlaceSearchResult[] = [];
+        try {
+          results = await searchLocations(trimmed);
+        } catch (apiError) {
+          console.warn('[Search] backend location search failed', apiError);
+        }
+
+        if (results.length === 0 && mapRef.current) {
+          results = (await mapRef.current?.searchPlaces(trimmed)) ?? [];
+        }
 
         if (latestSearchKeywordRef.current !== trimmed) {
           return;
         }
 
-        setSearchResults(results ?? []);
+        setSearchResults(results);
       } catch (nextError) {
         if (latestSearchKeywordRef.current !== trimmed) {
           return;
@@ -691,7 +752,16 @@ export default function HomeMapScreen() {
         }
       }
     },
-    [currentLocation]
+    [saveRecentSearchKeyword]
+  );
+
+  const selectRecentSearchKeyword = useCallback(
+    (keyword: string) => {
+      setSearchText(keyword);
+      setIsSearchFocused(true);
+      void runPlaceSearch(keyword, true);
+    },
+    [runPlaceSearch]
   );
 
   useEffect(() => {
@@ -742,7 +812,7 @@ export default function HomeMapScreen() {
   const handleSearchPress = () => {
     setIsSearchFocused(true);
     if (trimmedSearchText.length >= MIN_SEARCH_QUERY_LENGTH) {
-      void runPlaceSearch(trimmedSearchText);
+      void runPlaceSearch(trimmedSearchText, true);
     }
   };
 
@@ -798,7 +868,7 @@ export default function HomeMapScreen() {
       setSearchText(transcript);
       setIsSearchFocused(true);
       console.log('[VoiceSearch] transcript', transcript);
-      void runPlaceSearch(transcript);
+      void runPlaceSearch(transcript, true);
     };
     recognition.onerror = (event) => {
       console.warn('[VoiceSearch] failed', event);
@@ -889,6 +959,39 @@ export default function HomeMapScreen() {
     );
   };
 
+  const renderRecentKeywordRow = (keyword: string) => (
+    <Pressable
+      key={`keyword-${keyword}`}
+      style={styles.placeRow}
+      onPress={() => selectRecentSearchKeyword(keyword)}
+      accessibilityRole="button"
+    >
+      <View style={styles.placeIcon}>
+        <Icon name="search" size={18} color={SKY_DARK} strokeWidth={2.1} />
+      </View>
+      <View style={styles.placeTextBox}>
+        <Text style={styles.placeName} numberOfLines={1}>
+          {keyword}
+        </Text>
+        <Text style={styles.placeAddress} numberOfLines={1}>
+          최근 검색어
+        </Text>
+      </View>
+      <Pressable
+        style={styles.placeDeleteButton}
+        hitSlop={8}
+        onPress={(event) => {
+          event.stopPropagation();
+          removeRecentSearchKeyword(keyword);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="최근 검색어 삭제"
+      >
+        <Icon name="x" size={16} color="#A8A8A8" strokeWidth={2.1} />
+      </Pressable>
+    </Pressable>
+  );
+
   return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
@@ -913,7 +1016,7 @@ export default function HomeMapScreen() {
           region={currentRegion}
           markers={markers}
           circles={densityCircles}
-          searchMarker={searchMarker}
+          searchMarker={null}
           userLocation={currentLocation}
           showsUserLocation
           onRegionChangeComplete={handleRegionChangeComplete}
@@ -926,7 +1029,10 @@ export default function HomeMapScreen() {
           }}
         />
 
-        <View style={styles.searchWrap} pointerEvents="box-none">
+        <View
+          style={[styles.searchWrap, showSearchPanel ? styles.searchWrapExpanded : null]}
+          pointerEvents="box-none"
+        >
           <View style={styles.searchShadow}>
             <Pressable style={styles.searchBox} onPress={handleSearchPress}>
               <Icon name="search" size={24} color="#6B6B6B" strokeWidth={2.25} />
@@ -966,11 +1072,15 @@ export default function HomeMapScreen() {
             <View style={styles.searchPanel}>
               <ScrollView
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                nestedScrollEnabled
+                scrollEnabled
                 showsVerticalScrollIndicator={false}
                 style={styles.searchPanelScroller}
+                contentContainerStyle={styles.searchPanelContent}
               >
                 {trimmedSearchText.length === 0 ? (
-                  recentSearches.length > 0 ? (
+                  recentSearchKeywords.length > 0 || recentSearches.length > 0 ? (
                     <>
                       <View style={styles.searchPanelHeader}>
                         <Text style={styles.searchPanelTitle}>최근 검색</Text>
@@ -978,6 +1088,7 @@ export default function HomeMapScreen() {
                           <Text style={styles.searchPanelAction}>전체 삭제</Text>
                         </Pressable>
                       </View>
+                      {recentSearchKeywords.map(renderRecentKeywordRow)}
                       {recentSearches.map((place) => renderPlaceRow(place, { recent: true }))}
                     </>
                   ) : (
@@ -1132,6 +1243,9 @@ const styles = StyleSheet.create({
     right: SEARCH_SIDE,
     zIndex: 12,
   },
+  searchWrapExpanded: {
+    height: SEARCH_HEIGHT + 10 + SEARCH_PANEL_MAX_HEIGHT,
+  },
   searchShadow: {
     height: SEARCH_HEIGHT,
     borderRadius: 15,
@@ -1173,7 +1287,7 @@ const styles = StyleSheet.create({
     top: SEARCH_HEIGHT + 10,
     left: 0,
     right: 0,
-    maxHeight: Math.min(360, SCREEN_HEIGHT * 0.42),
+    maxHeight: SEARCH_PANEL_MAX_HEIGHT,
     borderRadius: 18,
     backgroundColor: '#ffffff',
     paddingVertical: 8,
@@ -1186,7 +1300,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   searchPanelScroller: {
-    maxHeight: Math.min(360, SCREEN_HEIGHT * 0.42),
+    maxHeight: SEARCH_PANEL_MAX_HEIGHT,
+  },
+  searchPanelContent: {
+    paddingBottom: 8,
   },
   searchPanelHeader: {
     minHeight: 34,
