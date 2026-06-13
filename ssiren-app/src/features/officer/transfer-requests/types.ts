@@ -6,6 +6,8 @@ export type OfficerTransferRequestStatus =
 
 export type OfficerTransferDirection = 'received' | 'sent';
 
+export type OfficerTransferActiveTab = OfficerTransferDirection;
+
 export type OfficerTransferDepartment = {
   id: number;
   name: string;
@@ -33,6 +35,7 @@ export type OfficerTransferRequestDto = {
 
 export type OfficerIncomingTransferRequestsResponse = {
   transferRequests?: OfficerTransferRequestDto[] | null;
+  transferHistories?: OfficerTransferRequestDto[] | null;
 };
 
 export type OfficerSentTransferRequestsResponse = {
@@ -70,6 +73,11 @@ export type OfficerTransferRequestsViewResponse = {
   transferRequests: OfficerTransferRequest[];
 };
 
+export type OfficerTransferResponseSheetState = {
+  request: OfficerTransferRequest;
+  decision: OfficerTransferResponseDecision;
+} | null;
+
 function toViewModel(dto: OfficerTransferRequestDto): OfficerTransferRequest {
   return {
     id: dto.transferId,
@@ -91,10 +99,14 @@ function toViewModel(dto: OfficerTransferRequestDto): OfficerTransferRequest {
 export function mapIncomingTransferRequests(
   data: OfficerIncomingTransferRequestsResponse
 ): OfficerTransferRequestsViewResponse {
+  const items = Array.isArray(data.transferRequests)
+    ? data.transferRequests
+    : Array.isArray(data.transferHistories)
+      ? data.transferHistories
+      : [];
+
   return {
-    transferRequests: (Array.isArray(data.transferRequests) ? data.transferRequests : []).map(
-      toViewModel
-    ),
+    transferRequests: items.map(toViewModel),
   };
 }
 

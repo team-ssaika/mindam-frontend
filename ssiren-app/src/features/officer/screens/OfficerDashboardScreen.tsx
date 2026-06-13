@@ -2,17 +2,18 @@ import axios from 'axios';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getAppCurrentPosition, requestAppLocationPermission } from '../../../lib/location/appLocation';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  type ViewStyle,
 } from 'react-native';
-import { AppBar, AppText, Button, Icon, SectionLabel } from '../../../components/ui';
+import { AppBar, AppText, Button, Icon } from '../../../components/ui';
 import { resolveApiBaseUrl } from '../../../lib/api/client';
-import { colors, fontSize, fonts, layout, radius, statusColors, type StatusKey } from '../../../theme';
+import { colors, fontSize, fonts, radius } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
 import { DashboardCategoryStatRow } from '../components/DashboardCategoryStatRow';
 import { OfficerDenseAreaList } from '../components/OfficerDenseAreaList';
@@ -31,18 +32,41 @@ import {
   sortCategoriesByCount,
 } from '../utils/dashboardCategoryDisplay';
 
+const DASHBOARD_BG = '#F4F5F8';
+const CARD_HORIZONTAL_INSET = 38;
+
+function SectionCard({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.card, style]}>{children}</View>;
+}
+
+function DashboardSectionTitle({ title, right }: { title: string; right?: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <AppText style={styles.sectionTitle}>{title}</AppText>
+      {right ? <AppText style={styles.sectionMeta}>{right}</AppText> : null}
+    </View>
+  );
+}
+
 type FunnelItem = {
   label: string;
   count: number;
-  tone: StatusKey | 'all';
+  color: string;
 };
+
+const FUNNEL_STATUS_COLORS = {
+  all: '#111111',
+  prog: '#E8A64B',
+  done: '#7EC8BF',
+  wait: '#7EA7F6',
+} as const;
 
 function buildFunnelItems(stats: AdminDashboardStatistics): FunnelItem[] {
   return [
-    { label: '전체', count: stats.totalReportCount, tone: 'all' },
-    { label: '처리 중', count: stats.processingReportCount, tone: 'prog' },
-    { label: '완료', count: stats.completedReportCount, tone: 'done' },
-    { label: '지연', count: stats.delayedReportCount, tone: 'wait' },
+    { label: '전체', count: stats.totalReportCount, color: FUNNEL_STATUS_COLORS.all },
+    { label: '처리 중', count: stats.processingReportCount, color: FUNNEL_STATUS_COLORS.prog },
+    { label: '완료', count: stats.completedReportCount, color: FUNNEL_STATUS_COLORS.done },
+    { label: '지연', count: stats.delayedReportCount, color: FUNNEL_STATUS_COLORS.wait },
   ];
 }
 
@@ -196,6 +220,8 @@ export function OfficerDashboardScreen() {
       <AppBar
         title="대시보드"
         logo={false}
+        border={false}
+        backgroundColor={DASHBOARD_BG}
         right={
           <Pressable onPress={handleRefresh} disabled={isLoading} hitSlop={8}>
             {isLoading ? (
@@ -224,7 +250,7 @@ export function OfficerDashboardScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.heroSection}>
+          <SectionCard>
             <View style={styles.heroHeadlineRow}>
               <AppText style={styles.heroHeadline}>오늘 신규 제보</AppText>
               <AppText style={styles.heroCount}>{statistics.todayNewReportCount}건</AppText>
@@ -235,73 +261,55 @@ export function OfficerDashboardScreen() {
               </AppText>
               <AppText style={styles.heroDate}>{formatTodayLabel()}</AppText>
             </View>
-          </View>
+          </SectionCard>
 
-          <View style={styles.statusSection}>
-            <AppText style={styles.statusSectionTitle}>처리 현황</AppText>
-            <View style={styles.statusGrid}>
-              {funnelItems.map((item, index) => {
-                const color = item.tone === 'all' ? colors.ink : statusColors[item.tone].dot;
-                const isLast = index === funnelItems.length - 1;
-                return (
-                  <View key={item.label} style={[styles.statusCard, !isLast && styles.statusCardDivider]}>
-                    <AppText style={[styles.statusCount, { color }]}>{item.count}</AppText>
-                    <View style={styles.statusLabelRow}>
-                      <View style={[styles.statusDot, { backgroundColor: color }]} />
-                      <AppText style={styles.statusLabel} numberOfLines={2}>
-                        {item.label}
-                      </AppText>
-                    </View>
+          <SectionCard>
+            <DashboardSectionTitle title="처리 현황" />
+            <View style={styles.statRow}>
+              {funnelItems.map((item, index) => (
+                <View key={item.label} style={styles.statColumn}>
+                  {index > 0 ? <View style={styles.statSeparator} /> : null}
+                  <View style={styles.statPressable}>
+                    <AppText style={[styles.statCount, { color: item.color }]}>{item.count}</AppText>
+                    <AppText style={styles.statLabel}>{item.label}</AppText>
                   </View>
-                );
-              })}
+                </View>
+              ))}
             </View>
-          </View>
+          </SectionCard>
 
-          <View style={styles.sectionDivider} />
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <SectionLabel title="유형별 제보 수" right="내 관할" />
-              {sortedCategories.length > 0 ? (
-                <AppText style={styles.categorySummary}>
-                  {sortedCategories.length}개 유형 · 총 {totalCategoryReports}건
+          <SectionCard>
+            <DashboardSectionTitle title="유형별 제보 수" right="내 관할" />
+            {sortedCategories.length > 0 ? (
+              <AppText style={styles.categorySummary}>
+                {sortedCategories.length}개 유형 · 총 {totalCategoryReports}건
+              </AppText>
+            ) : null}
+            {sortedCategories.length === 0 ? (
+              <View style={styles.emptyCategoryBox}>
+                <View style={styles.emptyCategoryIcon}>
+                  <Icon name="chart" size={22} color={colors.faint} />
+                </View>
+                <AppText style={styles.emptyCategoryTitle}>집계된 제보 유형이 없어요</AppText>
+                <AppText style={styles.emptyCategoryText}>
+                  담당 구역에 접수된 제보가 쌓이면 유형별 통계가 표시됩니다.
                 </AppText>
-              ) : null}
-            </View>
-            <View style={styles.categoryRows}>
-              {sortedCategories.length === 0 ? (
-                <View style={styles.emptyCategoryBox}>
-                  <View style={styles.emptyCategoryIcon}>
-                    <Icon name="chart" size={22} color={colors.faint} />
-                  </View>
-                  <AppText style={styles.emptyCategoryTitle}>집계된 제보 유형이 없어요</AppText>
-                  <AppText style={styles.emptyCategoryText}>
-                    담당 구역에 접수된 제보가 쌓이면 유형별 통계가 표시됩니다.
-                  </AppText>
-                </View>
-              ) : (
-                <View style={styles.categoryCard}>
-                  {sortedCategories.map((item, index) => (
-                    <DashboardCategoryStatRow
-                      key={item.categoryId}
-                      item={item}
-                      rank={index + 1}
-                      totalCount={totalCategoryReports}
-                      isLast={index === sortedCategories.length - 1}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
+              </View>
+            ) : (
+              sortedCategories.map((item, index) => (
+                <DashboardCategoryStatRow
+                  key={item.categoryId}
+                  item={item}
+                  rank={index + 1}
+                  totalCount={totalCategoryReports}
+                  isLast={index === sortedCategories.length - 1}
+                />
+              ))
+            )}
+          </SectionCard>
 
-          <View style={styles.sectionDivider} />
-
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <SectionLabel title="주변 밀집 구역" right={denseAreaSectionRight} />
-            </View>
+          <SectionCard>
+            <DashboardSectionTitle title="주변 밀집 구역" right={denseAreaSectionRight} />
             {!userLocation ? (
               <AppText style={styles.emptyCategoryText}>
                 현재 위치 권한이 필요합니다. 위치를 허용하면 주변 밀집 구역을 볼 수 있어요.
@@ -314,13 +322,13 @@ export function OfficerDashboardScreen() {
                 formatDistance={formatDistance}
                 getDistanceMeters={getDenseAreaDistance}
                 emptyText="반경 5km 안에 밀집 구역이 없습니다."
+                contentInset={CARD_HORIZONTAL_INSET}
+                edgePadding={0}
               />
             )}
-          </View>
+          </SectionCard>
 
-          <View style={styles.sectionDivider} />
-
-          <View style={styles.ctaSection}>
+          <SectionCard style={styles.ctaCard}>
             <LinearGradient
               colors={[colors.brand, colors.brandActive]}
               start={{ x: 0, y: 0 }}
@@ -329,14 +337,14 @@ export function OfficerDashboardScreen() {
             >
               <View style={styles.ctaText}>
                 <AppText style={styles.ctaTitle}>{ctaTitle}</AppText>
-                <AppText style={styles.ctaSub}>제보함에서 오래된 순으로 처리해 보세요</AppText>
+                <AppText style={styles.ctaSub}>제보함에서 민원을 확인하세요</AppText>
               </View>
               <Pressable style={styles.ctaButton} onPress={() => router.push('/(officer)/inbox')}>
                 <AppText style={styles.ctaButtonText}>처리하기</AppText>
                 <Icon name="chevR" size={15} color={colors.ink} />
               </Pressable>
             </LinearGradient>
-          </View>
+          </SectionCard>
         </ScrollView>
       ) : null}
     </View>
@@ -344,23 +352,51 @@ export function OfficerDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.canvas },
+  flex: { flex: 1, backgroundColor: DASHBOARD_BG },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   errorText: { fontSize: fontSize.mdLg, color: colors.muted, textAlign: 'center', lineHeight: 23 },
   retryWrap: { width: '100%', maxWidth: 220 },
-  content: { paddingTop: 8 },
-
-  heroSection: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: 12,
-    paddingBottom: 20,
-    gap: 10,
+  content: {
+    paddingTop: 22,
+    paddingHorizontal: 16,
+    gap: 22,
   },
+  card: {
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    paddingHorizontal: 22,
+    paddingVertical: 22,
+    shadowColor: '#AAB2C0',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  sectionTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.base,
+    color: '#707070',
+    letterSpacing: -0.1,
+  },
+  sectionMeta: {
+    fontFamily: fonts.medium,
+    fontSize: fontSize.sm,
+    color: colors.muted,
+  },
+
   heroHeadlineRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 10,
   },
   heroHeadline: {
     fontFamily: fonts.bold,
@@ -395,99 +431,50 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
 
-  sectionDivider: {
-    height: 8,
-    backgroundColor: colors.soft,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.hairline,
-  },
-  section: {
-    paddingTop: 18,
-    paddingBottom: 18,
-  },
-  sectionHeader: {
-    paddingHorizontal: layout.screenPadding,
-    marginBottom: 8,
-    gap: 4,
-  },
   categorySummary: {
     fontFamily: fonts.medium,
     fontSize: fontSize.sm,
     color: colors.muted,
-  },
-  categoryRows: {
-    paddingHorizontal: layout.screenPadding,
-  },
-  categoryCard: {
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.lg,
-    backgroundColor: colors.canvas,
-    paddingHorizontal: 14,
-    paddingVertical: 2,
+    marginTop: -10,
+    marginBottom: 12,
   },
 
-  statusSection: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: 4,
-    paddingBottom: 22,
-    gap: 12,
-  },
-  statusSectionTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: fontSize.lg,
-    color: colors.ink,
-    letterSpacing: -0.2,
-  },
-  statusGrid: {
+  statRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    borderWidth: 1,
-    borderColor: colors.hairline,
-    borderRadius: radius.lg,
-    backgroundColor: colors.canvas,
-    overflow: 'hidden',
+    paddingTop: 6,
+    paddingBottom: 2,
+    marginHorizontal: -10,
   },
-  statusCard: {
+  statColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statSeparator: {
+    width: 1,
+    alignSelf: 'stretch',
+    backgroundColor: '#ECECEC',
+    marginVertical: 8,
+  },
+  statPressable: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 6,
-    gap: 8,
-  },
-  statusCardDivider: {
-    borderRightWidth: 1,
-    borderRightColor: colors.hairline,
-  },
-  statusLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
-    paddingHorizontal: 2,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    flexShrink: 0,
-  },
-  statusLabel: {
-    flexShrink: 1,
-    fontFamily: fonts.semibold,
-    fontSize: fontSize.sm,
-    color: colors.body,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  statusCount: {
+  statCount: {
     fontFamily: fonts.bold,
-    fontSize: fontSize['3xl'],
+    fontSize: 34,
+    lineHeight: 40,
     letterSpacing: -0.5,
     textAlign: 'center',
-    lineHeight: 30,
+  },
+  statLabel: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.base,
+    color: '#777777',
+    textAlign: 'center',
   },
 
   emptyCategoryBox: {
@@ -514,16 +501,14 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
     lineHeight: 23,
-    paddingHorizontal: layout.screenPadding,
   },
 
-  ctaSection: {
-    paddingHorizontal: layout.screenPadding,
-    paddingTop: 18,
-    paddingBottom: 18,
+  ctaCard: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   cta: {
-    borderRadius: radius.lg,
+    borderRadius: 20,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',

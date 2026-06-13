@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -204,12 +204,12 @@ function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' |
     }
   }
 
-  const koreanTokens = address.match(/[가-힣]+(?:구|군|시|동|읍|면|로|길)/g);
+  const koreanTokens = address.match(/[가-힣]+(?:시|군|구|읍|면|동|로|길)/g);
   if (koreanTokens && koreanTokens.length > 0) {
     return koreanTokens.slice(0, 2).join(' ');
   }
 
-  return '강남구 역삼동';
+  return '내 주변';
 }
 
 function mapPublicReport(item: PublicReportItem): NearbyReport {
@@ -535,11 +535,11 @@ export default function HomeMapScreen() {
         const data = await fetchIssues(buildIssueQuery(region, location));
         const reports = Array.isArray(data.issues)
           ? data.issues
-              .filter(hasValidIssueCoordinate)
-              .map(issueToPublicReportItem)
-              .filter((item): item is PublicReportItem => item != null)
-              .filter(hasValidReportCoordinate)
-              .map(mapPublicReport)
+            .filter(hasValidIssueCoordinate)
+            .map(issueToPublicReportItem)
+            .filter((item): item is PublicReportItem => item != null)
+            .filter(hasValidReportCoordinate)
+            .map(mapPublicReport)
           : [];
         setNearbyReports(reports);
         setSelectedReports(reports);
@@ -1016,7 +1016,7 @@ export default function HomeMapScreen() {
 
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>
-              내 주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
+              주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
             </Text>
             <TouchableOpacity
               style={styles.refreshButton}

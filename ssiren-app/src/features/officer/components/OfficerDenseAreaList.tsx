@@ -30,6 +30,8 @@ type OfficerDenseAreaListProps = {
   userLocation?: { latitude: number; longitude: number } | null;
   formatDistance?: (meters: number) => string;
   getDistanceMeters?: (area: AdminDashboardDenseAreaItem) => number | null;
+  contentInset?: number;
+  edgePadding?: number;
 };
 
 export function OfficerDenseAreaList({
@@ -39,9 +41,12 @@ export function OfficerDenseAreaList({
   userLocation = null,
   formatDistance,
   getDistanceMeters,
+  contentInset = layout.screenPadding,
+  edgePadding = layout.screenPadding,
 }: OfficerDenseAreaListProps) {
   const { width: screenWidth } = useWindowDimensions();
-  const mapSize = screenWidth - layout.screenPadding * 2;
+  const mapSize = screenWidth - contentInset * 2;
+  const viewportWidth = mapSize;
   const chipWidth = denseAreas.length <= 2 ? (mapSize - CHIP_GAP) / 2 : 148;
   const chipScrollRef = useRef<ScrollView>(null);
   const shouldAnimateChipScrollRef = useRef(false);
@@ -52,21 +57,21 @@ export function OfficerDenseAreaList({
 
   const scrollChipToCenter = useCallback(
     (index: number, animated = true) => {
-      const chipStart = layout.screenPadding + index * (chipWidth + CHIP_GAP);
+      const chipStart = edgePadding + index * (chipWidth + CHIP_GAP);
       const chipCenter = chipStart + chipWidth / 2;
-      const targetX = chipCenter - screenWidth / 2;
+      const targetX = chipCenter - viewportWidth / 2;
       const contentWidth =
-        layout.screenPadding * 2 +
+        edgePadding * 2 +
         denseAreas.length * chipWidth +
         Math.max(0, denseAreas.length - 1) * CHIP_GAP;
-      const maxX = Math.max(0, contentWidth - screenWidth);
+      const maxX = Math.max(0, contentWidth - viewportWidth);
 
       chipScrollRef.current?.scrollTo({
         x: Math.min(maxX, Math.max(0, targetX)),
         animated,
       });
     },
-    [chipWidth, denseAreas.length, screenWidth]
+    [chipWidth, denseAreas.length, edgePadding, viewportWidth]
   );
 
   const handleSelectChip = useCallback((index: number) => {
@@ -160,7 +165,7 @@ export function OfficerDenseAreaList({
 
   return (
     <View style={styles.container}>
-      <View style={styles.mapWrap}>
+      <View style={[styles.mapWrap, { paddingHorizontal: edgePadding }]}>
         <DenseAreaExplorerMap
           denseAreas={denseAreas}
           selectedIndex={selectedIndex}
@@ -175,7 +180,7 @@ export function OfficerDenseAreaList({
         ref={chipScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipScroll}
+        contentContainerStyle={[styles.chipScroll, { paddingHorizontal: edgePadding }]}
         style={styles.chipScroller}
       >
         {denseAreas.map((area, index) => {
@@ -223,15 +228,12 @@ export function OfficerDenseAreaList({
 
 const styles = StyleSheet.create({
   container: { gap: 12 },
-  mapWrap: {
-    paddingHorizontal: layout.screenPadding,
-  },
+  mapWrap: {},
   chipScroller: {
     flexGrow: 0,
   },
   chipScroll: {
     gap: 8,
-    paddingHorizontal: layout.screenPadding,
   },
   chip: {
     minHeight: 64,
@@ -301,7 +303,6 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     paddingVertical: 24,
-    paddingHorizontal: layout.screenPadding,
     alignItems: 'center',
   },
   emptyText: {
