@@ -1,7 +1,9 @@
 import type { PublicReportItem } from '../types/publicReport';
-import type { IssueDetail, IssueItem } from '../types/issue';
+import type { IssueDetail, IssueItem, IssueRepresentativeReportLike } from '../types/issue';
 import type { ReportDetail } from '../types/reportDetail';
 import type { MyReportItem } from '../types/myReport';
+import type { ReportDepartment } from '../types/reportSubmission';
+import { formatAiSummary } from './reportAiSummary';
 import { getReportStatusLabel } from './reportStatus';
 
 function formatTimeAgo(isoDate: string) {
@@ -64,7 +66,7 @@ export function toMapReportDetail(
 
   return {
     id: String(report.id),
-    title: issueGroup.title || report.title,
+    title: report.title || issueGroup.title,
     riskLabel: `위험지수 ${report.riskScore}`,
     timeAgo: formatTimeAgo(report.createdAt),
     distance:
@@ -75,11 +77,12 @@ export function toMapReportDetail(
           })
         : '-',
     address: report.roadAddress || report.jibunAddress,
-    summary: report.contents.summary ?? issueGroup.content ?? report.title,
+    summary: formatAiSummary(report.contents),
     category: category.categoryName,
     yesCount: issueGroup.yesCount ?? 0,
-    organization: issueGroup.title,
+    organization: formatDepartmentName(item.department) || issueGroup.title,
     status: getReportStatusLabel(report.status),
+    statusHistories: item.statusHistories,
   };
 }
 
@@ -99,6 +102,50 @@ function departmentFromReport(report: MyReportItem['report']) {
   };
 }
 
+function isRepresentativeBundle(
+  representativeReport: IssueRepresentativeReportLike
+): representativeReport is Extract<IssueRepresentativeReportLike, { report: MyReportItem['report'] }> {
+  return 'report' in representativeReport;
+}
+
+function getRepresentativeReport(representativeReport: IssueRepresentativeReportLike) {
+  return isRepresentativeBundle(representativeReport)
+    ? representativeReport.report
+    : representativeReport;
+}
+
+function getRepresentativeReportImages(representativeReport: IssueRepresentativeReportLike) {
+  return isRepresentativeBundle(representativeReport)
+    ? representativeReport.reportImages ?? []
+    : [];
+}
+
+function getRepresentativeStatusHistories(representativeReport: IssueRepresentativeReportLike) {
+  return isRepresentativeBundle(representativeReport)
+    ? representativeReport.statusHistories ?? []
+    : [];
+}
+
+function normalizeDepartment(
+  department: ReportDepartment | ({ id: number; name: string; agencyType?: { id: number; name: string } } & Record<string, unknown>) | null | undefined,
+  fallbackReport: MyReportItem['report']
+): ReportDepartment {
+  if (!department) {
+    return departmentFromReport(fallbackReport);
+  }
+
+  if ('agencyTypeName' in department && 'agencyTypeId' in department) {
+    return department as ReportDepartment;
+  }
+
+  return {
+    id: department.id,
+    name: department.name,
+    agencyTypeId: department.agencyType?.id ?? fallbackReport.agencyTypeId,
+    agencyTypeName: department.agencyType?.name ?? fallbackReport.agencyTypeName,
+  };
+}
+
 function agencyTypeFromReport(report: MyReportItem['report']) {
   return {
     id: report.agencyTypeId,
@@ -106,23 +153,34 @@ function agencyTypeFromReport(report: MyReportItem['report']) {
   };
 }
 
+function formatDepartmentName(department: ReportDepartment | null | undefined) {
+  if (!department) {
+    return '';
+  }
+
+  return [department.agencyTypeName, department.name].filter(Boolean).join(' · ');
+}
+
 export function issueToPublicReportItem(item: IssueItem): PublicReportItem | null {
   const { issueGroup, representativeReport, category } = item;
   if (!representativeReport || !category) {
     return null;
   }
+  const report = getRepresentativeReport(representativeReport);
+  const department = normalizeDepartment(item.department, report);
 
   return {
     report: {
-      ...representativeReport,
+      ...report,
       latitude: issueGroup.groupLatitude,
       longitude: issueGroup.groupLongitude,
     },
-    reportImages: [],
+    reportImages: getRepresentativeReportImages(representativeReport),
     category,
     issueGroup,
-    department: item.department ?? departmentFromReport(representativeReport),
-    agencyType: item.agencyType ?? agencyTypeFromReport(representativeReport),
+    department,
+    agencyType: item.agencyType ?? agencyTypeFromReport(report),
+    statusHistories: getRepresentativeStatusHistories(representativeReport),
   };
 }
 
@@ -131,18 +189,21 @@ export function issueDetailToPublicReportItem(detail: IssueDetail): PublicReport
   if (!representativeReport || !category) {
     return null;
   }
+  const report = getRepresentativeReport(representativeReport);
+  const department = normalizeDepartment(detail.department, report);
 
   return {
     report: {
-      ...representativeReport,
+      ...report,
       latitude: issueGroup.groupLatitude,
       longitude: issueGroup.groupLongitude,
     },
-    reportImages: [],
+    reportImages: getRepresentativeReportImages(representativeReport),
     category,
     issueGroup,
-    department: detail.department ?? departmentFromReport(representativeReport),
-    agencyType: detail.agencyType ?? agencyTypeFromReport(representativeReport),
+    department,
+    agencyType: detail.agencyType ?? agencyTypeFromReport(report),
+    statusHistories: getRepresentativeStatusHistories(representativeReport),
   };
 }
 

@@ -38,10 +38,14 @@ export type KakaoMapCircle = {
 export type KakaoPlaceSearchResult = {
   id: string;
   placeName: string;
-  addressName: string;
-  roadAddressName: string;
+  categoryName?: string;
+  addressName?: string;
+  roadAddressName?: string;
+  phone?: string;
   latitude: number;
   longitude: number;
+  placeUrl?: string;
+  distance?: string;
 };
 
 export type KakaoPlaceSearchOptions = {
@@ -606,10 +610,14 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
                     return {
                       id: item.id,
                       placeName: item.place_name,
+                      categoryName: item.category_name,
                       addressName: item.address_name,
                       roadAddressName: item.road_address_name,
+                      phone: item.phone,
                       latitude: Number(item.y),
-                      longitude: Number(item.x)
+                      longitude: Number(item.x),
+                      placeUrl: item.place_url,
+                      distance: item.distance
                     };
                   })
                 });

@@ -73,5 +73,6 @@ export function adminIssueToPublicReportItem(item: AdminIssueItem): PublicReport
       id: report.agencyTypeId,
       name: report.agencyTypeName,
     },
+    statusHistories: representativeReport.statusHistories ?? [],
   };
 }

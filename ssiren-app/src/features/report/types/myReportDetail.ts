@@ -2,6 +2,17 @@ import type { MyReportItem, ReportContents, ReportStatus } from './myReport';
 
 export type ReportCategory = MyReportItem['category'];
 
+export type ReportStatusHistoryDepartment =
+  | MyReportItem['department']
+  | {
+      id: number;
+      name: string;
+      agencyType: {
+        id: number;
+        name: string;
+      };
+    };
+
 export type ReportStatusHistory = {
   id: number;
   previousStatus: ReportStatus | null;
@@ -10,7 +21,8 @@ export type ReportStatusHistory = {
   createdAt: string;
   updatedAt: string;
   reportId: number;
-  userId: number;
+  userId: number | null;
+  department?: ReportStatusHistoryDepartment | null;
 };
 
 export type ReportReactionLog = {

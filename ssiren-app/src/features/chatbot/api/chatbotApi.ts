@@ -144,10 +144,11 @@ export async function sendChatbotMessage(
     logSuccess(name, {
       ...response.data,
       data: {
-        sessionId: response.data.data.session.id,
-        title: response.data.data.session.title,
-        messageCount: response.data.data.messages.length,
-        senderTypes: response.data.data.messages.map((message) => message.senderType),
+        answerLength: response.data.data.answer?.length ?? 0,
+        usedReportIds: response.data.data.usedReportIds ?? null,
+        sessionId: response.data.data.session?.id ?? sessionId,
+        messageCount: response.data.data.messages?.length ?? undefined,
+        senderTypes: response.data.data.messages?.map((message) => message.senderType),
       },
     });
     return response.data.data;

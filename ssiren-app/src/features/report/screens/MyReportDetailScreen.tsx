@@ -25,6 +25,7 @@ import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { deleteMyReport, fetchMyReportDetail } from '../api/reportApi';
 import { MyReportEditSheet } from '../components/MyReportEditSheet';
 import type { MyReportDetail } from '../types/myReportDetail';
+import { formatAiSummary } from '../utils/reportAiSummary';
 import {
   canDeleteReport,
   canEditReport,
@@ -60,13 +61,7 @@ function uniqueNonEmpty(values: Array<string | null | undefined>) {
 
 function getAddressLines(report: MyReportDetail['report']) {
   const region = [report.sido, report.sigungu, report.eupmyeondong].filter(Boolean).join(' ');
-  const lines = uniqueNonEmpty([report.roadAddress, report.jibunAddress]);
-
-  if (region && !lines.some((line) => line.includes(region))) {
-    lines.push(region);
-  }
-
-  return lines;
+  return uniqueNonEmpty([report.roadAddress, report.jibunAddress, region]).slice(0, 1);
 }
 
 function getDepartmentLines(department: MyReportDetail['department']) {
@@ -74,6 +69,21 @@ function getDepartmentLines(department: MyReportDetail['department']) {
   const showDepartmentOnly = department.name && department.name !== agencyLine;
 
   return uniqueNonEmpty([agencyLine, showDepartmentOnly ? department.name : undefined]);
+}
+
+function getHistoryDepartmentLine(
+  department: MyReportDetail['statusHistories'][number]['department'] | MyReportDetail['department'] | null | undefined
+) {
+  if (!department) {
+    return null;
+  }
+
+  const agencyTypeName =
+    'agencyType' in department
+      ? department.agencyType?.name
+      : department.agencyTypeName;
+
+  return [agencyTypeName, department.name].filter(Boolean).join(' · ') || null;
 }
 
 export function MyReportDetailScreen() {
@@ -155,7 +165,7 @@ export function MyReportDetailScreen() {
     ]);
   }, [detail, isDeleting, router]);
 
-  const summaryText = detail?.report.contents.summary ?? detail?.issueGroup.content ?? '';
+  const summaryText = formatAiSummary(detail?.report.contents);
   const addressLines = detail ? getAddressLines(detail.report) : [];
   const departmentLines = detail ? getDepartmentLines(detail.department) : [];
 
@@ -323,24 +333,38 @@ export function MyReportDetailScreen() {
               <Card>
                 <AppText style={[styles.cardLabel, styles.cardLabelGap]}>처리 이력</AppText>
                 {statusHistories.map((history, index) => (
-                  <View key={history.id} style={styles.timelineItem}>
-                    <View style={styles.timelineLeft}>
-                      <View
-                        style={[
-                          styles.timelineDot,
-                          index === activeHistoryIndex ? styles.timelineDotActive : null,
-                        ]}
-                      />
-                      {index < statusHistories.length - 1 ? <View style={styles.timelineLine} /> : null}
-                    </View>
-                    <View style={styles.timelineContent}>
-                      <AppText style={styles.timelineStatus}>
-                        {formatStatusTransition(history.previousStatus, history.newStatus)}
-                      </AppText>
-                      {history.reason ? <AppText style={styles.timelineReason}>{history.reason}</AppText> : null}
-                      <AppText style={styles.timelineDate}>{formatReportDateTime(history.createdAt)}</AppText>
-                    </View>
-                  </View>
+                  (() => {
+                    const historyDepartment = getHistoryDepartmentLine(history.department ?? detail.department);
+
+                    return (
+                      <View key={history.id} style={styles.timelineItem}>
+                        <View style={styles.timelineLeft}>
+                          <View
+                            style={[
+                              styles.timelineDot,
+                              index === activeHistoryIndex ? styles.timelineDotActive : null,
+                            ]}
+                          />
+                          {index < statusHistories.length - 1 ? <View style={styles.timelineLine} /> : null}
+                        </View>
+                        <View style={styles.timelineContent}>
+                          <AppText style={styles.timelineStatus}>
+                            {formatStatusTransition(history.previousStatus, history.newStatus)}
+                          </AppText>
+                          {historyDepartment ? (
+                            <View style={styles.timelineDepartmentRow}>
+                              <Icon name="building" size={13} color={colors.muted} strokeWidth={2} />
+                              <AppText style={styles.timelineDepartmentText}>
+                                {getReportStatusLabel(history.newStatus)} 부서 · {historyDepartment}
+                              </AppText>
+                            </View>
+                          ) : null}
+                          {history.reason ? <AppText style={styles.timelineReason}>{history.reason}</AppText> : null}
+                          <AppText style={styles.timelineDate}>{formatReportDateTime(history.createdAt)}</AppText>
+                        </View>
+                      </View>
+                    );
+                  })()
                 ))}
               </Card>
             ) : null}
@@ -454,6 +478,8 @@ const styles = StyleSheet.create({
   timelineLine: { flex: 1, width: 2, backgroundColor: colors.hairline, marginVertical: 2 },
   timelineContent: { flex: 1, paddingBottom: 18 },
   timelineStatus: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink },
+  timelineDepartmentRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  timelineDepartmentText: { flex: 1, fontFamily: fonts.semibold, fontSize: fontSize.sm, color: colors.muted },
   timelineReason: { fontSize: fontSize.md, color: colors.body, marginTop: 3, lineHeight: 23 },
   timelineDate: { fontSize: fontSize.xs, color: colors.faint, marginTop: 4 },
 

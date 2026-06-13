@@ -1,10 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BottomSheet, useBottomSheetClose } from '../../../components/ui/BottomSheet';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  BottomSheet,
+  useBottomSheetClose,
+  useBottomSheetDragHandlers,
+} from '../../../components/ui/BottomSheet';
 import { fonts, fontSize } from '../../../theme';
 import { submitReportReaction } from '../api/reportApi';
+import type { ReportStatus } from '../types/myReport';
 import type { ReportDetail } from '../types/reportDetail';
+import { sortStatusHistories } from '../utils/reportStatus';
 
 const SKY = '#75C7F4';
 const SKY_DARK = '#34758A';
@@ -19,6 +25,57 @@ type ReportDetailBottomSheetProps = {
   report: ReportDetail;
   onClose: () => void;
 };
+
+function TimelineDot({ active }: { active: boolean }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!active) {
+      pulse.stopAnimation();
+      pulse.setValue(0);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 1550,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [active, pulse]);
+
+  const pulseStyle = {
+    opacity: pulse.interpolate({
+      inputRange: [0, 0.55, 1],
+      outputRange: [0.34, 0.16, 0],
+    }),
+    transform: [
+      {
+        scale: pulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 2.45],
+        }),
+      },
+    ],
+  };
+
+  return (
+    <View style={styles.timelineDotWrap}>
+      {active ? (
+        <Animated.View style={[styles.timelineDotPulse, pulseStyle]} />
+      ) : null}
+      <View style={[styles.timelineDot, active ? styles.timelineDotActive : null]} />
+    </View>
+  );
+}
 
 function formatRiskLabel(label: string) {
   const value = label.match(/\d+(?:\.\d+)?/)?.[0];
@@ -55,32 +112,90 @@ function getActiveStatusIndex(status: string) {
   return 0;
 }
 
-function buildTimeline(organization: string) {
-  const agency = organization || '담당 기관';
+function getTimelineLabel(status: ReportStatus) {
+  if (status === 'COMPLETED') {
+    return '처리완료';
+  }
+
+  if (
+    status === 'CHECKING' ||
+    status === 'IN_PROGRESS' ||
+    status === 'TRANSFERRED'
+  ) {
+    return '처리중';
+  }
+
+  return '접수중';
+}
+
+type TimelineDepartment = NonNullable<NonNullable<ReportDetail['statusHistories']>[number]['department']>;
+
+function formatTimelineDepartment(department: TimelineDepartment | null | undefined) {
+  if (!department) {
+    return '';
+  }
+
+  const agencyTypeName =
+    'agencyType' in department
+      ? department.agencyType?.name
+      : department.agencyTypeName;
+
+  return [agencyTypeName, department.name].filter(Boolean).join(' · ');
+}
+
+function getTimelineDescription(status: ReportStatus, agency: string) {
+  if (status === 'COMPLETED') {
+    return `${agency}에서 처리완료했습니다.`;
+  }
+
+  if (
+    status === 'CHECKING' ||
+    status === 'IN_PROGRESS' ||
+    status === 'TRANSFERRED'
+  ) {
+    return `${agency}에서 처리하고 있습니다.`;
+  }
+
+  return `${agency}에 접수되었습니다.`;
+}
+
+function buildTimeline(report: ReportDetail) {
+  const histories = sortStatusHistories(report.statusHistories ?? []);
+  const descriptions = histories.reduce<Record<string, string>>((acc, history) => {
+    const agency = formatTimelineDepartment(history.department);
+    if (agency) {
+      acc[getTimelineLabel(history.newStatus)] = getTimelineDescription(history.newStatus, agency);
+    }
+    return acc;
+  }, {});
 
   return [
     {
       label: '접수중',
-      description: `${agency}에 접수되었습니다.`,
+      description: descriptions['접수중'],
     },
     {
       label: '처리중',
-      description: `${agency}에서 내용을 확인하고 있습니다.`,
+      description: descriptions['처리중'],
     },
     {
       label: '처리완료',
-      description: `${agency}에서 처리완료 되었습니다.`,
+      description: descriptions['처리완료'],
     },
   ];
 }
 
 function ReportDetailContent({ report }: { report: ReportDetail }) {
   const requestClose = useBottomSheetClose();
+  const dragHandlers = useBottomSheetDragHandlers();
   const [isPressed, setIsPressed] = useState(false);
   const [discomfortCount, setDiscomfortCount] = useState(report.yesCount);
   const [isSubmittingReaction, setIsSubmittingReaction] = useState(false);
-  const activeStatusIndex = getActiveStatusIndex(report.status);
-  const timeline = buildTimeline(report.organization);
+  const timeline = buildTimeline(report);
+  const latestHistory = sortStatusHistories(report.statusHistories ?? []).at(-1);
+  const activeStatusIndex = latestHistory
+    ? timeline.findIndex((item) => item.label === getTimelineLabel(latestHistory.newStatus))
+    : getActiveStatusIndex(report.status);
 
   useEffect(() => {
     setIsPressed(false);
@@ -129,6 +244,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
 
   return (
     <ScrollView
+      {...dragHandlers}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
     >
@@ -201,9 +317,9 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
           const isLast = index === timeline.length - 1;
 
           return (
-            <View key={item.label} style={styles.timelineItem}>
+            <View key={`${item.label}-${index}`} style={styles.timelineItem}>
               <View style={styles.timelineRail}>
-                <View style={[styles.timelineDot, isActive ? styles.timelineDotActive : null]} />
+                <TimelineDot active={isActive} />
                 {!isLast ? <View style={styles.timelineLine} /> : null}
               </View>
 
@@ -211,7 +327,9 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
                 <Text style={[styles.timelineTitle, isActive ? styles.timelineTitleActive : null]}>
                   {item.label}
                 </Text>
-                <Text style={styles.timelineDescription}>{item.description}</Text>
+                {item.description ? (
+                  <Text style={styles.timelineDescription}>{item.description}</Text>
+                ) : null}
               </View>
             </View>
           );
@@ -406,14 +524,38 @@ const styles = StyleSheet.create({
   },
   timeline: {
     gap: 0,
+    overflow: 'visible',
   },
   timelineItem: {
     flexDirection: 'row',
     minHeight: 68,
+    overflow: 'visible',
   },
   timelineRail: {
-    width: 32,
+    width: 44,
     alignItems: 'center',
+    paddingLeft: 10,
+    overflow: 'visible',
+    zIndex: 2,
+  },
+  timelineDotWrap: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -12,
+    marginBottom: -12,
+    overflow: 'visible',
+    zIndex: 3,
+    elevation: 6,
+  },
+  timelineDotPulse: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: SKY,
+    zIndex: 1,
   },
   timelineDot: {
     width: 14,
@@ -422,10 +564,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#D8D8D8',
     backgroundColor: '#8F8F8F',
+    zIndex: 2,
   },
   timelineDotActive: {
     borderColor: '#9DDAF5',
     backgroundColor: SKY,
+    shadowColor: SKY_DARK,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 7,
+    elevation: 5,
   },
   timelineLine: {
     flex: 1,

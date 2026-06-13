@@ -21,6 +21,7 @@ import { colors, fonts, radius, shadow, statusColors, fontSize } from '../../../
 import { fetchAdminIssueDetail, updateAdminIssueStatus } from '../api/adminIssueApi';
 import type { AdminIssueDetail, AdminUpdatableReportStatus } from '../types/adminIssue';
 import type { ReportStatus } from '../../report/types/myReport';
+import { formatAiSummary } from '../../report/utils/reportAiSummary';
 import {
   formatReportDateTime,
   formatStatusTransition,
@@ -33,6 +34,14 @@ import {
   isAdminStatusOptionSelectable,
   toAdminUpdatableStatus,
 } from '../utils/adminIssueStatus';
+
+function formatDepartmentName(department: AdminIssueDetail['department'] | null | undefined) {
+  if (!department) {
+    return null;
+  }
+
+  return [department.agencyType?.name, department.name].filter(Boolean).join(' · ');
+}
 
 export function OfficerReportDetailScreen() {
   const router = useRouter();
@@ -210,8 +219,7 @@ export function OfficerReportDetailScreen() {
       history.newStatus === representativeReport?.status ? index : activeIndex,
     statusHistories.length > 0 ? statusHistories.length - 1 : -1
   );
-  const summaryText =
-    representativeReport?.contents.summary ?? detail?.issueGroup.content ?? '';
+  const summaryText = formatAiSummary(representativeReport?.contents);
 
   const info: [string, string][] = detail
     ? [
@@ -330,6 +338,7 @@ export function OfficerReportDetailScreen() {
                     const isActive = index === activeHistoryIndex;
                     const tone = getReportStatusTone(history.newStatus as ReportStatus);
                     const toneColor = statusColors[tone].dot;
+                    const historyDepartment = formatDepartmentName(history.department ?? detail.department);
                     return (
                       <View key={history.id} style={styles.timelineItem}>
                         <View style={styles.timelineLeft}>
@@ -366,6 +375,14 @@ export function OfficerReportDetailScreen() {
                               </View>
                             ) : null}
                           </View>
+                          {historyDepartment ? (
+                            <View style={styles.timelineDepartmentRow}>
+                              <Icon name="building" size={13} color={colors.muted} strokeWidth={2} />
+                              <AppText style={styles.timelineDepartmentText}>
+                                {getReportStatusLabel(history.newStatus as ReportStatus)} 부서 · {historyDepartment}
+                              </AppText>
+                            </View>
+                          ) : null}
                           {history.reason ? (
                             <AppText style={styles.timelineReason}>{history.reason}</AppText>
                           ) : null}
@@ -581,6 +598,8 @@ const styles = StyleSheet.create({
   timelineContentSpaced: { paddingBottom: 18 },
   timelineHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   timelineStatus: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.muted },
+  timelineDepartmentRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  timelineDepartmentText: { flex: 1, fontFamily: fonts.semibold, fontSize: fontSize.sm, color: colors.muted },
   timelineCurrentBadge: { borderRadius: radius.pill, paddingHorizontal: 7, paddingVertical: 2 },
   timelineCurrentBadgeText: { fontFamily: fonts.bold, fontSize: fontSize.micro },
   timelineReason: { fontSize: fontSize.md, color: colors.body, marginTop: 4, lineHeight: 23 },

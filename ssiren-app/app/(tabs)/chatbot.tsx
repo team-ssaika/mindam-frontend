@@ -287,15 +287,42 @@ export default function Chatbot() {
         longitude: coordinate.longitude,
       });
 
-      setCurrentSession(data.session);
-      setSessions((prev) => [
-        data.session,
-        ...prev.filter((item) => item.id !== data.session.id),
-      ]);
-      setMessages((prev) => [
-        ...prev.filter((message) => message.id !== optimisticMessage.id),
-        ...sortMessages(data.messages),
-      ]);
+      const updatedResponseSession = data.session;
+      if (updatedResponseSession) {
+        setCurrentSession(updatedResponseSession);
+        setSessions((prev) => [
+          updatedResponseSession,
+          ...prev.filter((item) => item.id !== updatedResponseSession.id),
+        ]);
+      }
+
+      if (data.messages?.length) {
+        setMessages((prev) => [
+          ...prev.filter((message) => message.id !== optimisticMessage.id),
+          ...sortMessages(data.messages ?? []),
+        ]);
+        return;
+      }
+
+      const botMessage: ChatMessage = {
+        id: `bot-${session.id}-${Date.now()}`,
+        role: 'bot',
+        text: data.answer,
+      };
+      setMessages((prev) => [...prev, botMessage]);
+
+      void fetchChatbotSessions({ page: 0, size: 20 })
+        .then((sessionPage) => {
+          const nextSessions = Array.isArray(sessionPage.contents) ? sessionPage.contents : [];
+          setSessions(nextSessions);
+          const updatedSession = nextSessions.find((item) => item.id === session.id);
+          if (updatedSession) {
+            setCurrentSession(updatedSession);
+          }
+        })
+        .catch((error) => {
+          console.log('[Chatbot] session refresh after send failed', error);
+        });
     } catch (error) {
       setMessages((prev) => prev.filter((message) => message.id !== optimisticMessage.id));
       setErrorMessage(getApiErrorMessage(error, '메시지를 전송하지 못했습니다.'));
