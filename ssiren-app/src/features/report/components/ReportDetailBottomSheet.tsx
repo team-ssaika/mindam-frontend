@@ -10,6 +10,7 @@ import { fonts, fontSize } from '../../../theme';
 import { submitReportReaction } from '../api/reportApi';
 import type { ReportStatus } from '../types/myReport';
 import type { ReportDetail } from '../types/reportDetail';
+import { getIssueGroupDiscomfortCount } from '../utils/publicReportMap';
 import { sortStatusHistories } from '../utils/reportStatus';
 
 const SKY = '#75C7F4';
@@ -231,7 +232,7 @@ function ReportDetailContent({ report }: { report: ReportDetail }) {
     try {
       const result = await submitReportReaction(reportId, reactionType);
       setIsPressed(result.reactionLog.reactionType === 'YES');
-      setDiscomfortCount(result.issueGroup.yesCount ?? previousCount);
+      setDiscomfortCount(getIssueGroupDiscomfortCount(result.issueGroup));
     } catch (error) {
       console.log('[ReportDetail] reaction submit failed', error);
       setIsPressed(previousPressed);

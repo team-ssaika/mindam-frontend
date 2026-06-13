@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import {
   KakaoMapView,
   type KakaoMapCircle,
@@ -16,6 +16,9 @@ import {
   resolveDenseAreaViewRadiusMeters,
   type DenseAreaIssueGroupMarker,
 } from '../utils/officerDenseArea';
+
+const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
+const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
 
 type DenseAreaExplorerMapProps = {
   denseAreas: AdminDashboardDenseAreaItem[];
@@ -52,8 +55,10 @@ export function DenseAreaExplorerMap({
         id: String(issueGroup.id),
         latitude: issueGroup.latitude,
         longitude: issueGroup.longitude,
-        kind: 'officer' as const,
+        kind: 'report' as const,
         reportCount: issueGroup.reportCount,
+        markerTone: issueGroup.markerTone,
+        iconUri: markerIconUri,
       })),
     [issueGroups]
   );

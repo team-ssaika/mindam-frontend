@@ -1,4 +1,5 @@
 import { colors } from '../../../theme';
+import type { ReportMarkerTone } from '../../report/utils/publicReportMap';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 
 export const DENSE_AREA_DEFAULTS = {
@@ -94,6 +95,7 @@ export type DenseAreaIssueGroupMarker = {
   latitude: number;
   longitude: number;
   reportCount: number;
+  markerTone: ReportMarkerTone;
 };
 
 export function isIssueGroupInDenseArea(

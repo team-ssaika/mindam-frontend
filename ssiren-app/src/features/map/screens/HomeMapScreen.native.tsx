@@ -37,11 +37,15 @@ import { ReportDetailBottomSheet } from '../../report/components/ReportDetailBot
 import type { ReportDetail } from '../../report/types/reportDetail';
 import type { PublicReportItem } from '../../report/types/publicReport';
 import {
+  getIssueGroupDiscomfortCount,
+  getReportMarkerTone,
+  getTopReportMarkerTone,
   hasValidIssueCoordinate,
   hasValidReportCoordinate,
   issueDetailToPublicReportItem,
   issueToPublicReportItem,
   toMapReportDetail,
+  type ReportMarkerTone,
 } from '../../report/utils/publicReportMap';
 import { fonts, fontSize } from '../../../theme';
 
@@ -108,9 +112,10 @@ type NearbyReport = {
   address?: string;
   sigungu?: string;
   eupmyeondong?: string;
-  count: number;
   issueGroupId?: number;
   reportId?: number;
+  discomfortCount: number;
+  markerTone: ReportMarkerTone;
   source?: PublicReportItem;
 };
 
@@ -121,6 +126,7 @@ type ClusterMarker = {
   count: number;
   reports: NearbyReport[];
   isCluster: boolean;
+  markerTone: ReportMarkerTone;
 };
 
 const ENGLISH_ADDRESS_FALLBACKS: Record<string, string> = {
@@ -213,22 +219,34 @@ function compactAddress(report?: Pick<NearbyReport, 'sigungu' | 'eupmyeondong' |
 }
 
 function mapPublicReport(item: PublicReportItem): NearbyReport {
+  const issueGroupId = item.issueGroup.id;
+  const reportId = item.report.id;
+  const riskScore = Number(item.issueGroup.riskScore ?? item.report.riskScore ?? 0);
+
   return {
-    id: String(item.issueGroup.id),
+    id: reportId != null ? `${issueGroupId}-${reportId}` : String(issueGroupId),
     latitude: item.report.latitude,
     longitude: item.report.longitude,
     keyword: item.category.categoryName || '제보',
     title: item.report.title || item.issueGroup.title || '주변 제보',
-    riskScore: Number(item.report.riskScore ?? item.issueGroup.riskScore ?? 0),
+    riskScore,
     createdAt: item.report.createdAt || item.issueGroup.recentReportedAt,
     address: item.report.roadAddress || item.report.jibunAddress,
     sigungu: item.report.sigungu,
     eupmyeondong: item.report.eupmyeondong,
-    count: Math.max(Number(item.issueGroup.reportCount ?? 1), 1),
-    issueGroupId: item.issueGroup.id,
-    reportId: item.report.id,
+    issueGroupId,
+    reportId,
+    discomfortCount: getIssueGroupDiscomfortCount(item.issueGroup),
+    markerTone: getReportMarkerTone(item.report.status, riskScore),
     source: item,
   };
+}
+
+function isVisibleOnMap(item: PublicReportItem) {
+  const reportStatus = item.report.status?.toUpperCase();
+  const issueStatus = item.issueGroup.status?.toUpperCase();
+
+  return reportStatus !== 'COMPLETED' && issueStatus !== 'RESOLVED';
 }
 
 function toNearbyReportDetail(
@@ -251,7 +269,7 @@ function toNearbyReportDetail(
     address: item.address || compactAddress(item),
     summary: item.title,
     category: item.keyword,
-    yesCount: item.count,
+    yesCount: item.discomfortCount,
     organization: item.keyword,
     status: '접수중',
   };
@@ -266,39 +284,18 @@ function clusterThresholdMeters(region: KakaoMapRegion) {
   return 900;
 }
 
-function expandReport(report: NearbyReport): NearbyReport[] {
-  const count = Math.max(Math.round(report.count), 1);
-  if (count === 1) {
-    return [{ ...report, count: 1 }];
-  }
-
-  const spread = 0.00018;
-  return Array.from({ length: count }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / count;
-    const ring = spread * (1 + (index % 3) * 0.45);
-    return {
-      ...report,
-      id: `${report.id}-${index + 1}`,
-      latitude: report.latitude + Math.sin(angle) * ring,
-      longitude: report.longitude + Math.cos(angle) * ring,
-      count: 1,
-    };
-  });
-}
-
 function buildClusters(reports: NearbyReport[], region: KakaoMapRegion): ClusterMarker[] {
   const threshold = clusterThresholdMeters(region);
   if (threshold === 0) {
-    return reports.flatMap((report) =>
-      expandReport(report).map((item) => ({
-        id: `report-${item.id}`,
-        latitude: item.latitude,
-        longitude: item.longitude,
-        count: 1,
-        reports: [item],
-        isCluster: false,
-      }))
-    );
+    return reports.map((report) => ({
+      id: `report-${report.id}`,
+      latitude: report.latitude,
+      longitude: report.longitude,
+      count: report.discomfortCount,
+      reports: [report],
+      isCluster: false,
+      markerTone: report.markerTone,
+    }));
   }
 
   const used = new Set<string>();
@@ -325,7 +322,8 @@ function buildClusters(reports: NearbyReport[], region: KakaoMapRegion): Cluster
 
     const latitude = group.reduce((sum, item) => sum + item.latitude, 0) / group.length;
     const longitude = group.reduce((sum, item) => sum + item.longitude, 0) / group.length;
-    const count = group.reduce((sum, item) => sum + item.count, 0);
+    const count = group.reduce((sum, item) => sum + item.discomfortCount, 0);
+    const markerTone = getTopReportMarkerTone(group);
 
     clusters.push({
       id: group.length === 1 ? `report-${group[0].id}` : `cluster-${clusters.length}`,
@@ -334,6 +332,7 @@ function buildClusters(reports: NearbyReport[], region: KakaoMapRegion): Cluster
       count,
       reports: group,
       isCluster: group.length > 1,
+      markerTone,
     });
   });
 
@@ -343,12 +342,12 @@ function buildClusters(reports: NearbyReport[], region: KakaoMapRegion): Cluster
 function buildDensityCircles(clusters: ClusterMarker[], region: KakaoMapRegion): KakaoMapCircle[] {
   const delta = Math.max(region.latitudeDelta, region.longitudeDelta);
   return clusters
-    .filter((cluster) => cluster.isCluster || cluster.count > 1)
+    .filter((cluster) => cluster.isCluster && cluster.reports.length > 1)
     .map((cluster) => ({
       id: `density-${cluster.id}`,
       latitude: cluster.latitude,
       longitude: cluster.longitude,
-      radiusMeters: Math.min(Math.max(delta * 8200, 170), 390) + cluster.count * 4,
+      radiusMeters: Math.min(Math.max(delta * 8200, 170), 390) + cluster.reports.length * 12,
       fillColor: SKY_SOFT,
       strokeColor: 'rgba(126, 200, 247, 0.05)',
     }));
@@ -445,6 +444,7 @@ export default function HomeMapScreen() {
         kind: 'report' as const,
         reportCount: cluster.count,
         iconUri: markerIconUri,
+        markerTone: cluster.markerTone,
       })),
     [clusters]
   );
@@ -538,6 +538,7 @@ export default function HomeMapScreen() {
             .filter(hasValidIssueCoordinate)
             .map(issueToPublicReportItem)
             .filter((item): item is PublicReportItem => item != null)
+            .filter(isVisibleOnMap)
             .filter(hasValidReportCoordinate)
             .map(mapPublicReport)
           : [];
@@ -609,7 +610,7 @@ export default function HomeMapScreen() {
 
     console.log('[Map] marker press', cluster);
 
-    if (cluster.count === 1 && cluster.reports.length === 1) {
+    if (cluster.reports.length === 1) {
       void openReportDetail(cluster.reports[0]);
       return;
     }
@@ -1016,7 +1017,7 @@ export default function HomeMapScreen() {
 
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>
-              주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
+              내 주변 제보 <Text style={styles.sheetCount}>{visibleReports.length}건</Text>
             </Text>
             <TouchableOpacity
               style={styles.refreshButton}
