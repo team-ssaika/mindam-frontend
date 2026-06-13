@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ReactNode, useCallback, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { AppBar, AppText, Icon } from '../../../components/ui';
 import { colors, fonts, fontSize, statusColors, StatusKey } from '../../../theme';
 import { useTabBarMetrics } from '../../../hooks/useTabBarMetrics';
@@ -27,8 +27,8 @@ const EMPTY_STATUS_SUMMARY: ReportStatusSummary = { wait: 0, prog: 0, done: 0 };
 const STATUS_SUMMARY_FETCH_SIZE = 100;
 const RECENT_REPORTS_COUNT = 3;
 
-function SectionCard({ children }: { children: ReactNode }) {
-  return <View style={styles.card}>{children}</View>;
+function SectionCard({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.card, style]}>{children}</View>;
 }
 
 function ProfileSectionTitle({
@@ -111,10 +111,10 @@ export function MyPageScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        <SectionCard>
+        <SectionCard style={styles.profileCard}>
           <View style={styles.profileSection}>
             <View style={styles.avatar}>
-              <Icon name="user" size={42} color="#B8B8B8" strokeWidth={1.8} />
+              <Icon name="user" size={34} color="#B8B8B8" strokeWidth={1.8} />
             </View>
             <View style={styles.profileInfo}>
               <AppText style={styles.profileName} numberOfLines={1}>
@@ -227,15 +227,19 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  profileCard: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
   profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
+    gap: 14,
   },
   avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#F1F1F3',
     alignItems: 'center',
     justifyContent: 'center',
@@ -243,17 +247,17 @@ const styles = StyleSheet.create({
   profileInfo: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 4,
   },
   profileName: {
     fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-    lineHeight: 25,
+    fontSize: fontSize.lg,
+    lineHeight: 22,
     color: '#111111',
   },
   email: {
     fontFamily: fonts.regular,
-    fontSize: fontSize.base,
+    fontSize: fontSize.md,
     color: '#8A8A8A',
   },
   sectionHeader: {

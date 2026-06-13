@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { AppBar, AppText, Button, Icon } from '../../../components/ui';
@@ -39,10 +40,20 @@ function SectionCard({ children, style }: { children: ReactNode; style?: ViewSty
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-function DashboardSectionTitle({ title, right }: { title: string; right?: string }) {
+function DashboardSectionTitle({
+  title,
+  right,
+  style,
+  titleStyle,
+}: {
+  title: string;
+  right?: string;
+  style?: ViewStyle;
+  titleStyle?: TextStyle;
+}) {
   return (
-    <View style={styles.sectionHeader}>
-      <AppText style={styles.sectionTitle}>{title}</AppText>
+    <View style={[styles.sectionHeader, style]}>
+      <AppText style={[styles.sectionTitle, titleStyle]}>{title}</AppText>
       {right ? <AppText style={styles.sectionMeta}>{right}</AppText> : null}
     </View>
   );
@@ -250,7 +261,7 @@ export function OfficerDashboardScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: tabBarOffset + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          <SectionCard>
+          <SectionCard style={styles.heroCard}>
             <View style={styles.heroHeadlineRow}>
               <AppText style={styles.heroHeadline}>오늘 신규 제보</AppText>
               <AppText style={styles.heroCount}>{statistics.todayNewReportCount}건</AppText>
@@ -263,8 +274,8 @@ export function OfficerDashboardScreen() {
             </View>
           </SectionCard>
 
-          <SectionCard>
-            <DashboardSectionTitle title="처리 현황" />
+          <SectionCard style={styles.statusCard}>
+            <DashboardSectionTitle title="처리 현황" style={styles.statusSectionHeader} titleStyle={styles.statusSectionTitle} />
             <View style={styles.statRow}>
               {funnelItems.map((item, index) => (
                 <View key={item.label} style={styles.statColumn}>
@@ -391,44 +402,59 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
 
+  heroCard: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
   heroHeadlineRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 6,
   },
   heroHeadline: {
     fontFamily: fonts.bold,
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize.xl,
     color: colors.ink,
-    letterSpacing: -0.5,
-    lineHeight: 34,
+    letterSpacing: -0.4,
+    lineHeight: 24,
   },
   heroCount: {
     fontFamily: fonts.bold,
-    fontSize: fontSize['3xl'],
+    fontSize: fontSize.xl,
     color: colors.brand,
-    letterSpacing: -0.5,
-    lineHeight: 34,
+    letterSpacing: -0.4,
+    lineHeight: 24,
   },
   heroSubRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
   heroSubtitle: {
     flex: 1,
     fontFamily: fonts.regular,
-    fontSize: fontSize.mdLg,
+    fontSize: fontSize.md,
     color: colors.muted,
   },
   heroDate: {
     fontFamily: fonts.medium,
-    fontSize: fontSize.md,
+    fontSize: fontSize.sm,
     color: colors.muted,
     flexShrink: 0,
+  },
+
+  statusCard: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  statusSectionHeader: {
+    marginBottom: 12,
+  },
+  statusSectionTitle: {
+    fontSize: fontSize.md,
   },
 
   categorySummary: {
@@ -442,9 +468,9 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    paddingTop: 6,
-    paddingBottom: 2,
-    marginHorizontal: -10,
+    paddingTop: 2,
+    paddingBottom: 0,
+    marginHorizontal: -8,
   },
   statColumn: {
     flex: 1,
@@ -455,24 +481,24 @@ const styles = StyleSheet.create({
     width: 1,
     alignSelf: 'stretch',
     backgroundColor: '#ECECEC',
-    marginVertical: 8,
+    marginVertical: 6,
   },
   statPressable: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 2,
   },
   statCount: {
     fontFamily: fonts.bold,
-    fontSize: 34,
-    lineHeight: 40,
-    letterSpacing: -0.5,
+    fontSize: 26,
+    lineHeight: 30,
+    letterSpacing: -0.4,
     textAlign: 'center',
   },
   statLabel: {
     fontFamily: fonts.regular,
-    fontSize: fontSize.base,
+    fontSize: fontSize.sm,
     color: '#777777',
     textAlign: 'center',
   },

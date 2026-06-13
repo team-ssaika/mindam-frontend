@@ -47,7 +47,7 @@ export function DashboardCategoryStatRow({
               {item.categoryName}
             </AppText>
           </View>
-          <View style={[styles.countPill, isTopRank && styles.countPillTop]}>
+          <View style={styles.countPill}>
             <AppText style={[styles.count, isTopRank && styles.countTop]}>
               {item.reportCount}건
             </AppText>
@@ -125,19 +125,21 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   countPill: {
-    backgroundColor: colors.soft2,
+    backgroundColor: colors.white,
     borderRadius: radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
     flexShrink: 0,
-  },
-  countPillTop: {
-    backgroundColor: colors.brandSoft,
+    shadowColor: '#9AA3B2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
   },
   count: {
     fontFamily: fonts.bold,
     fontSize: fontSize.sm,
-    color: colors.muted,
+    color: colors.body,
   },
   countTop: {
     color: colors.brandActive,

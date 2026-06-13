@@ -11,9 +11,9 @@ export function SettingsCard({ children }: SettingsCardProps) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    gap: 8,
+    borderRadius: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    gap: 6,
   },
 });
