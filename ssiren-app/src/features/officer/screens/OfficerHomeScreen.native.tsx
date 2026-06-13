@@ -35,10 +35,10 @@ import {
   buildAdminIssueQuery,
   hasValidAdminIssueCoordinate,
 } from '../utils/adminIssueMap';
+import { MARKER_LOGO_DATA_URI } from '../../../constants/markerLogo';
 
 const mindamNameLogo = require('../../../assets/mindam_name.png');
-const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
-const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
+const markerIconUri = MARKER_LOGO_DATA_URI;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
