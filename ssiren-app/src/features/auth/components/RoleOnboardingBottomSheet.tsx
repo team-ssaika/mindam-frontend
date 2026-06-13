@@ -122,7 +122,7 @@ export function RoleOnboardingBottomSheet({
       visible={visible}
       onClose={() => undefined}
       backdropOpacity={0.68}
-      minHeight="44%"
+      minHeight="60%"
       showHandle={false}
       containerStyle={styles.sheetContainer}
     >

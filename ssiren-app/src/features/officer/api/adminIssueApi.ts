@@ -4,6 +4,8 @@ import type {
   AdminIssueDetail,
   AdminIssueStatusUpdateRequest,
   AdminIssueStatusUpdateResponse,
+  AdminIssueTransferRequestCreateBody,
+  AdminIssueTransferRequestResponse,
   AdminIssuesQuery,
   AdminIssuesResponse,
 } from '../types/adminIssue';
@@ -30,6 +32,18 @@ export async function updateAdminIssueStatus(
 ) {
   const response = await apiClient.patch<ApiResponse<AdminIssueStatusUpdateResponse>>(
     `/api/v1/admin/issues/${issueGroupId}/status`,
+    body
+  );
+
+  return response.data.data;
+}
+
+export async function createAdminIssueGroupTransferRequest(
+  issueGroupId: number,
+  body: AdminIssueTransferRequestCreateBody
+) {
+  const response = await apiClient.post<ApiResponse<AdminIssueTransferRequestResponse>>(
+    `/api/v1/admin/issues/${issueGroupId}/transfer-requests`,
     body
   );
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,7 @@ import { AppBar, AppText, Button, Card, CatChip, Icon, ImageSlot, StatusBadge } 
 import { resolveApiBaseUrl } from '../../../lib/api/client';
 import { colors, fonts, radius, shadow, statusColors, fontSize } from '../../../theme';
 import { fetchAdminIssueDetail, updateAdminIssueStatus } from '../api/adminIssueApi';
+import { IssueGroupTransferSheet } from '../components/IssueGroupTransferSheet';
 import type { AdminIssueDetail, AdminUpdatableReportStatus } from '../types/adminIssue';
 import type { ReportStatus } from '../../report/types/myReport';
 import { formatAiSummary } from '../../report/utils/reportAiSummary';
@@ -53,12 +54,26 @@ export function OfficerReportDetailScreen() {
   const [selectedStatus, setSelectedStatus] = useState<AdminUpdatableReportStatus>('RECEIVED');
   const [reason, setReason] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [transferSheetOpen, setTransferSheetOpen] = useState(false);
+  const [otherReportsExpanded, setOtherReportsExpanded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const reasonSectionRef = useRef<View | null>(null);
+  const statusSectionRef = useRef<View | null>(null);
+  const statusSectionYRef = useRef(0);
   const scrollYRef = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = useCallback((message: string) => {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+    setToast(message);
+    toastTimer.current = setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, 2500);
+  }, []);
   const footerHeight = 72 + insets.bottom;
   const scrollDownBottom = footerHeight + 12;
   const [isAtBottom, setIsAtBottom] = useState(false);
@@ -81,6 +96,13 @@ export function OfficerReportDetailScreen() {
     }
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [isAtBottom]);
+
+  const scrollToStatusSection = useCallback(() => {
+    scrollRef.current?.scrollTo({
+      y: Math.max(statusSectionYRef.current - 12, 0),
+      animated: true,
+    });
+  }, []);
 
   const ensureReasonVisible = useCallback(
     (keyboardInset: number) => {
@@ -166,6 +188,18 @@ export function OfficerReportDetailScreen() {
     loadDetail();
   }, [loadDetail]);
 
+  useEffect(() => {
+    setOtherReportsExpanded(false);
+  }, [issueGroupId]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+      }
+    };
+  }, []);
+
   const goBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -220,6 +254,60 @@ export function OfficerReportDetailScreen() {
     statusHistories.length > 0 ? statusHistories.length - 1 : -1
   );
   const summaryText = formatAiSummary(representativeReport?.contents);
+  const representativeReportId = representativeReport?.id ?? null;
+  const otherReports = useMemo(() => {
+    if (!detail || representativeReportId == null) {
+      return [];
+    }
+
+    return detail.reports.filter((bundle) => bundle.report.id !== representativeReportId);
+  }, [detail, representativeReportId]);
+  const representativeReportBundle = useMemo(() => {
+    if (!detail || representativeReportId == null) {
+      return null;
+    }
+
+    const fromList = detail.reports.find((bundle) => bundle.report.id === representativeReportId);
+    if (fromList) {
+      return fromList;
+    }
+
+    return {
+      report: detail.representativeReport.report,
+      reportImages: detail.representativeReport.reportImages,
+    };
+  }, [detail, representativeReportId]);
+
+  const renderReportCard = (
+    bundle: NonNullable<AdminIssueDetail['reports']>[number],
+    isRepresentativeCard = false
+  ) => {
+    const report = bundle.report;
+    const thumb = bundle.reportImages[0]?.imageUrl;
+    const showRepresentativeTag = isRepresentativeCard || report.id === representativeReportId;
+
+    return (
+      <Card key={report.id} style={styles.reportCard}>
+        {showRepresentativeTag || report.isDeleted ? (
+          <View style={styles.reportCardTags}>
+            {showRepresentativeTag ? (
+              <AppText style={styles.reportCardTag}>대표 제보</AppText>
+            ) : null}
+            {report.isDeleted ? (
+              <AppText style={styles.reportCardTagMuted}>삭제됨</AppText>
+            ) : null}
+          </View>
+        ) : null}
+        <AppText style={styles.reportCardTitle} numberOfLines={2}>
+          {report.title}
+        </AppText>
+        <AppText style={styles.reportCardMetaText}>
+          {formatReportDateTime(report.createdAt)}
+        </AppText>
+        {thumb ? <Image source={{ uri: thumb }} style={styles.reportThumb} /> : null}
+      </Card>
+    );
+  };
 
   const info: [string, string][] = detail
     ? [
@@ -312,6 +400,23 @@ export function OfficerReportDetailScreen() {
               <AppText variant="title" color={colors.ink} style={styles.title}>
                 {detail.issueGroup.title || representativeReport.title}
               </AppText>
+              <View style={styles.headerActionRow}>
+                <Pressable
+                  style={[styles.headerActionBtn, styles.headerActionTrigger]}
+                  onPress={() => setTransferSheetOpen(true)}
+                  accessibilityRole="button"
+                >
+                  <AppText style={styles.headerActionTriggerText}>이관 요청</AppText>
+                </Pressable>
+                <Pressable
+                  style={[styles.headerActionBtn, styles.headerActionTrigger]}
+                  onPress={scrollToStatusSection}
+                  accessibilityRole="button"
+                >
+                  <AppText style={styles.headerActionTriggerText}>상태 변경</AppText>
+                  <Icon name="chevD" size={16} color={colors.muted} strokeWidth={2.2} />
+                </Pressable>
+              </View>
             </View>
 
             {summaryText ? (
@@ -397,44 +502,47 @@ export function OfficerReportDetailScreen() {
               </Card>
             ) : null}
 
-            {detail.reports.length > 0 ? (
+            {(representativeReportBundle || otherReports.length > 0) ? (
               <View>
                 <AppText style={styles.sectionLabel}>
-                  제보 목록 ({detail.reports.length}건)
+                  제보 목록 ({detail.issueGroup.reportCount}건)
                 </AppText>
                 <View style={styles.reportList}>
-                  {detail.reports.map((bundle) => {
-                    const report = bundle.report;
-                    const thumb = bundle.reportImages[0]?.imageUrl;
-                    return (
-                      <Card key={report.id} style={styles.reportCard}>
-                        {report.isRepresentative || report.isDeleted ? (
-                          <View style={styles.reportCardTags}>
-                            {report.isRepresentative ? (
-                              <AppText style={styles.reportCardTag}>대표 제보</AppText>
-                            ) : null}
-                            {report.isDeleted ? (
-                              <AppText style={styles.reportCardTagMuted}>삭제됨</AppText>
-                            ) : null}
-                          </View>
-                        ) : null}
-                        <AppText style={styles.reportCardTitle} numberOfLines={2}>
-                          {report.title}
-                        </AppText>
-                        <AppText style={styles.reportCardMetaText}>
-                          {formatReportDateTime(report.createdAt)}
-                        </AppText>
-                        {thumb ? (
-                          <Image source={{ uri: thumb }} style={styles.reportThumb} />
-                        ) : null}
-                      </Card>
-                    );
-                  })}
+                  {representativeReportBundle
+                    ? renderReportCard(representativeReportBundle, true)
+                    : null}
                 </View>
+                {otherReports.length > 0 ? (
+                  <Pressable
+                    style={styles.otherReportsToggle}
+                    onPress={() => setOtherReportsExpanded((prev) => !prev)}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: otherReportsExpanded }}
+                  >
+                    <AppText style={styles.otherReportsToggleText}>
+                      {otherReportsExpanded
+                        ? '유사한 제보 접기'
+                        : `유사한 제보 ${otherReports.length}건 보기`}
+                    </AppText>
+                    <View style={otherReportsExpanded ? styles.chevUp : undefined}>
+                      <Icon name="chevD" size={18} color={colors.muted} strokeWidth={2.2} />
+                    </View>
+                  </Pressable>
+                ) : null}
+                {otherReportsExpanded ? (
+                  <View style={styles.reportList}>
+                    {otherReports.map((bundle) => renderReportCard(bundle))}
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
-            <View>
+            <View
+              ref={statusSectionRef}
+              onLayout={(event) => {
+                statusSectionYRef.current = event.nativeEvent.layout.y;
+              }}
+            >
               <AppText style={styles.sectionLabel}>상태 변경</AppText>
               <AppText style={styles.sectionHint}>변경 시 시민에게 알림이 전송돼요</AppText>
               <View style={styles.statusRow}>
@@ -536,6 +644,21 @@ export function OfficerReportDetailScreen() {
         </View>
       ) : null}
 
+      {detail ? (
+        <IssueGroupTransferSheet
+          visible={transferSheetOpen}
+          issueGroupId={detail.issueGroup.id}
+          issueGroupTitle={detail.issueGroup.title || representativeReport?.title || '제보'}
+          fromDepartment={detail.department}
+          onClose={() => setTransferSheetOpen(false)}
+          onSuccess={() => {
+            setTransferSheetOpen(false);
+            loadDetail({ silent: true });
+            showToast('이관 요청을 보냈어요');
+          }}
+        />
+      ) : null}
+
       {toast ? (
         <View style={[styles.toastWrap, { top: insets.top + 56 }]} pointerEvents="none">
           <View style={styles.toast}>
@@ -566,6 +689,32 @@ const styles = StyleSheet.create({
   },
   headerBadges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 0 },
   title: { lineHeight: 28 },
+  headerActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 8,
+  },
+  headerActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: radius.sm,
+  },
+  headerActionTrigger: {
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  headerActionTriggerText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.sm,
+    color: colors.ink,
+  },
   deletedBadge: {
     backgroundColor: colors.hairline,
     borderRadius: radius.pill,
@@ -606,6 +755,25 @@ const styles = StyleSheet.create({
   timelineDate: { fontSize: fontSize.xs, color: colors.faint, marginTop: 4 },
 
   reportList: { gap: 10 },
+  otherReportsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.canvas,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  otherReportsToggleText: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.mdLg,
+    color: colors.ink,
+  },
+  chevUp: { transform: [{ rotate: '180deg' }] },
   reportCard: { gap: 8 },
   reportCardTags: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   reportCardTitle: { fontFamily: fonts.semibold, fontSize: fontSize.mdLg, color: colors.ink, lineHeight: 22 },
