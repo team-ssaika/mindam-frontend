@@ -23,7 +23,11 @@ import {
 import { colors, fonts, shadow, statusColors, fontSize } from '../../../theme';
 import type { ReportStatus } from '../../report/types/myReport';
 import { getReportStatusLabel, getReportStatusTone } from '../../report/utils/reportStatus';
-import { hasValidReportCoordinate } from '../../report/utils/publicReportMap';
+import {
+  getIssueGroupDiscomfortCount,
+  getReportMarkerTone,
+  hasValidReportCoordinate,
+} from '../../report/utils/publicReportMap';
 import { fetchAdminIssues } from '../api/adminIssueApi';
 import type { AdminIssueItem } from '../types/adminIssue';
 import {
@@ -33,6 +37,8 @@ import {
 } from '../utils/adminIssueMap';
 
 const ssirenNameLogo = require('../../../assets/SSIREN-name.png');
+const ssirenMarkerLogo = require('../../../assets/ssiren-marker-logo.png');
+const markerIconUri = Image.resolveAssetSource(ssirenMarkerLogo).uri;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DEFAULT_MAP_CENTER = getDefaultMapCenter();
@@ -167,13 +173,19 @@ export default function OfficerHomeScreen() {
 
   const mapMarkers = useMemo(
     () =>
-      mapReports.map((item) => ({
-        id: String(item.issueGroup.id),
-        latitude: item.report.latitude,
-        longitude: item.report.longitude,
-        kind: 'officer' as const,
-        reportCount: item.issueGroup.reportCount,
-      })),
+      mapReports.map((item) => {
+        const riskScore = Number(item.issueGroup.riskScore ?? item.report.riskScore ?? 0);
+
+        return {
+          id: String(item.issueGroup.id),
+          latitude: item.report.latitude,
+          longitude: item.report.longitude,
+          kind: 'report' as const,
+          reportCount: getIssueGroupDiscomfortCount(item.issueGroup),
+          markerTone: getReportMarkerTone(item.report.status, riskScore),
+          iconUri: markerIconUri,
+        };
+      }),
     [mapReports]
   );
 

@@ -16,6 +16,7 @@ export type KakaoMapMarker = {
   kind: 'report' | 'officer' | 'search';
   iconUri?: string;
   label?: string;
+  markerTone?: 'processing' | 'low' | 'medium' | 'high';
   reportCount?: number;
 };
 
@@ -296,7 +297,9 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             padding: 0;
             display: inline-block;
             overflow: visible;
-            filter: drop-shadow(0 4px 10px rgba(0,0,0,.14));
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,.1));
+            --marker-color: #9BDCF4;
+            --marker-glow: rgba(155, 220, 244, .34);
           }
           .marker-report-body {
             position: relative;
@@ -305,7 +308,7 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             height: 58px;
             padding: 0 18px 0 16px;
             border-radius: 999px;
-            background: #9BDCF4;
+            background: var(--marker-color);
             border: 4px solid #fff;
             box-sizing: border-box;
             display: flex;
@@ -337,9 +340,51 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
             height: 0;
             border-left: 21px solid transparent;
             border-right: 21px solid transparent;
-            border-top: 25px solid #9BDCF4;
+            border-top: 25px solid var(--marker-color);
             transform: translateX(-50%);
             z-index: 3;
+          }
+          .marker-report.marker-tone-processing {
+            --marker-color: #9BDCF4;
+            --marker-glow: rgba(155, 220, 244, .34);
+          }
+          .marker-report.marker-tone-low {
+            --marker-color: #F4D76B;
+            --marker-glow: rgba(244, 215, 107, .34);
+          }
+          .marker-report.marker-tone-medium {
+            --marker-color: #F3A45D;
+            --marker-glow: rgba(243, 164, 93, .34);
+          }
+          .marker-report.marker-tone-high {
+            --marker-color: #E96B66;
+            --marker-glow: rgba(233, 107, 102, .36);
+          }
+          .marker-report.marker-alert::before,
+          .marker-report.marker-alert::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 29px;
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            border: 3px solid rgba(233, 107, 102, .42);
+            transform: translate(-50%, -50%) scale(.8);
+            opacity: 0;
+            z-index: 0;
+            animation: markerSirenPulse 1.25s ease-out infinite;
+          }
+          .marker-report.marker-alert::after {
+            animation-delay: .58s;
+          }
+          .marker-report.marker-alert .marker-report-body {
+            box-shadow: 0 0 0 3px rgba(233, 107, 102, .09), 0 0 10px rgba(233, 107, 102, .16);
+          }
+          @keyframes markerSirenPulse {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(.72); }
+            28% { opacity: .72; }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.55); }
           }
           .marker-report.marker-one,
           .marker-report.marker-one .marker-report-body {
@@ -511,10 +556,15 @@ function buildKakaoMapHtml(jsKey: string, initialRegion: KakaoMapRegion) {
               var rawCount = marker.reportCount || 1;
               var count = rawCount > 99 ? '99+' : String(rawCount);
               var sizeClass = rawCount === 1 ? 'marker-one' : rawCount >= 10 ? 'marker-large' : '';
+              var tone = ['processing', 'low', 'medium', 'high'].indexOf(marker.markerTone) >= 0
+                ? marker.markerTone
+                : 'processing';
+              var toneClass = 'marker-tone-' + tone;
+              var alertClass = tone === 'high' ? 'marker-alert' : '';
               var icon = marker.iconUri
                 ? '<img class="marker-report-icon" src="' + marker.iconUri + '" />'
                 : '';
-              return '<div class="marker-report-wrap"><button class="marker-report ' + sizeClass + '" data-id="' + marker.id + '"><span class="marker-report-tail-outer"></span><span class="marker-report-tail-inner"></span><span class="marker-report-body">' + icon + '<span>' + count + '개</span></span></button></div>';
+              return '<div class="marker-report-wrap"><button class="marker-report ' + sizeClass + ' ' + toneClass + ' ' + alertClass + '" data-id="' + marker.id + '"><span class="marker-report-tail-outer"></span><span class="marker-report-tail-inner"></span><span class="marker-report-body">' + icon + '<span>' + count + '개</span></span></button></div>';
             }
 
             function renderMarkers(markers) {

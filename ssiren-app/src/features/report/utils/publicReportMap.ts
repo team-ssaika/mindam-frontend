@@ -6,6 +6,8 @@ import type { ReportDepartment } from '../types/reportSubmission';
 import { formatAiSummary } from './reportAiSummary';
 import { getReportStatusLabel } from './reportStatus';
 
+export type ReportMarkerTone = 'processing' | 'low' | 'medium' | 'high';
+
 function formatTimeAgo(isoDate: string) {
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) {
@@ -58,28 +60,79 @@ function formatDistanceMeters(
   return `${(distance / 1000).toFixed(1)}km`;
 }
 
+export function getIssueGroupDiscomfortCount(
+  issueGroup: Pick<MyReportItem['issueGroup'], 'reportCount' | 'yesCount'>
+) {
+  const reportCount = Number(issueGroup.reportCount ?? 0);
+  const yesCount = Number(issueGroup.yesCount ?? 0);
+
+  return Math.max(0, reportCount + yesCount);
+}
+
+export function getReportMarkerTone(
+  status: string | undefined,
+  riskScore: number
+): ReportMarkerTone {
+  const normalizedStatus = status?.toUpperCase();
+  if (
+    normalizedStatus === 'CHECKING' ||
+    normalizedStatus === 'IN_PROGRESS' ||
+    normalizedStatus === 'TRANSFERRED'
+  ) {
+    return 'processing';
+  }
+
+  if (riskScore >= 70) {
+    return 'high';
+  }
+
+  if (riskScore >= 50) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+export function getTopReportMarkerTone<T extends { markerTone: ReportMarkerTone }>(
+  items: T[]
+): ReportMarkerTone {
+  const ranks: Record<ReportMarkerTone, number> = {
+    processing: 0,
+    low: 1,
+    medium: 2,
+    high: 3,
+  };
+
+  return items.reduce<ReportMarkerTone>(
+    (topTone, item) =>
+      ranks[item.markerTone] > ranks[topTone] ? item.markerTone : topTone,
+    'processing'
+  );
+}
+
 export function toMapReportDetail(
   item: PublicReportItem,
   userLocation?: { latitude: number; longitude: number } | null
 ): ReportDetail {
   const { report, category, issueGroup } = item;
+  const groupLocation = {
+    latitude: issueGroup.groupLatitude,
+    longitude: issueGroup.groupLongitude,
+  };
 
   return {
     id: String(report.id),
-    title: report.title || issueGroup.title,
-    riskLabel: `위험지수 ${report.riskScore}`,
-    timeAgo: formatTimeAgo(report.createdAt),
+    title: issueGroup.title || report.title,
+    riskLabel: `위험지수 ${issueGroup.riskScore ?? report.riskScore}`,
+    timeAgo: formatTimeAgo(issueGroup.recentReportedAt || report.createdAt),
     distance:
       userLocation != null
-        ? formatDistanceMeters(userLocation, {
-            latitude: report.latitude,
-            longitude: report.longitude,
-          })
+        ? formatDistanceMeters(userLocation, groupLocation)
         : '-',
     address: report.roadAddress || report.jibunAddress,
-    summary: formatAiSummary(report.contents),
+    summary: issueGroup.content || formatAiSummary(report.contents),
     category: category.categoryName,
-    yesCount: issueGroup.yesCount ?? 0,
+    yesCount: Number(issueGroup.yesCount ?? 0),
     organization: formatDepartmentName(item.department) || issueGroup.title,
     status: getReportStatusLabel(report.status),
     statusHistories: item.statusHistories,

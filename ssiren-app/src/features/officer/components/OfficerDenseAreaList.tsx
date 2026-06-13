@@ -9,6 +9,10 @@ import {
 } from 'react-native';
 import { AppText } from '../../../components/ui';
 import { colors, fonts, layout, radius, shadow, fontSize } from '../../../theme';
+import {
+  getIssueGroupDiscomfortCount,
+  getReportMarkerTone,
+} from '../../report/utils/publicReportMap';
 import { fetchAdminIssues } from '../api/adminIssueApi';
 import type { AdminDashboardDenseAreaItem } from '../types/adminDashboard';
 import type { AdminIssueItem } from '../types/adminIssue';
@@ -139,12 +143,18 @@ export function OfficerDenseAreaList({
           item.issueGroup.groupLongitude
         )
       )
-      .map((item) => ({
-        id: item.issueGroup.id,
-        latitude: item.issueGroup.groupLatitude,
-        longitude: item.issueGroup.groupLongitude,
-        reportCount: item.issueGroup.reportCount,
-      }));
+      .map((item) => {
+        const report = item.representativeReport.report;
+        const riskScore = Number(item.issueGroup.riskScore ?? report.riskScore ?? 0);
+
+        return {
+          id: item.issueGroup.id,
+          latitude: item.issueGroup.groupLatitude,
+          longitude: item.issueGroup.groupLongitude,
+          reportCount: getIssueGroupDiscomfortCount(item.issueGroup),
+          markerTone: getReportMarkerTone(report.status, riskScore),
+        };
+      });
   }, [issues, selectedArea]);
 
   if (isLoading) {
