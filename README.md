@@ -1,26 +1,20 @@
-<div align="center">
-  <img src="./ssiren-app/src/assets/mindam_logo.png" alt="민담 로고" width="96">
-  <h1>민담 프론트엔드</h1>
-  <p><strong>제보는 쉽게, 처리는 편리하게</strong></p>
-  <p>시민의 작은 소리 하나까지 놓치지 않기 위한 모바일 민원 제보 서비스</p>
-</div>
+# 민담 프론트엔드
 
-<p align="center">
-  민담은 생활 속 위험·불편 상황을 시민이 간단히 제보하고,<br>
-  담당자는 AI가 정리한 민원을 효율적으로 확인·처리할 수 있도록 만든 모바일 민원 제보 서비스입니다.
-</p>
+**제보는 쉽게, 처리는 편리하게**
 
----
+![민담 프리뷰](./docs/images/preview.png)
 
-## Preview
+생활 속 위험과 불편을 시민이 빠르게 제보하고, 담당자는 AI가 정리한 정보를 바탕으로 효율적으로 처리할 수 있도록 만든 모바일 민원 제보 서비스입니다.
 
-<!--
-아래 배너 이미지는 추후 추가해주세요.
-예시:
-![민담 배너](./docs/images/banner.png)
--->
+> `민담`은 `SSAFY X Kakao tech bootcamp AI Hackathon`에서 `카카오 대표이사상`을 수상한 프로젝트입니다.  
+> 참고 기사: [카카오·삼성전자, AI 인재 양성 위해 손잡았다… 카카오테크 부트캠프-SSAFY 공동 AI 해커톤 개최](https://www.kakaocorp.com/page/detail/12054)
 
-> 여기에 서비스 대표 화면, 발표용 배너, 시연 GIF를 넣으면 README 첫인상을 더 선명하게 만들 수 있습니다.
+**이 프로젝트에서 볼 수 있는 것**
+
+- 시민용 간편 제보 흐름
+- 지도 기반 민원 조회 UI
+- 담당자용 민원 관리 화면
+- AI 요약 결과를 반영한 정보 구조
 
 ---
 
@@ -83,9 +77,9 @@
 
 <table>
   <tr>
-    <th width="33%">시민용 제보 화면</th>
-    <th width="33%">지도 기반 조회 화면</th>
-    <th width="33%">담당자용 관리 화면</th>
+    <th width="33%"><div align="center">시민용 제보 화면</div></th>
+    <th width="33%"><div align="center">지도 기반 조회 화면</div></th>
+    <th width="33%"><div align="center">담당자용 관리 화면</div></th>
   </tr>
   <tr>
     <td align="center">
@@ -109,8 +103,9 @@
 
 <table>
   <tr>
-    <th width="50%">내 민원 조회</th>
-    <th width="50%">민원 상세 / AI 결과</th>
+    <th width="33%"><div align="center">내 민원 조회</div></th>
+    <th width="33%"><div align="center">민원 상세 / AI 결과</div></th>
+    <th width="33%"><div align="center">민원 상세 추가 화면</div></th>
   </tr>
   <tr>
     <td align="center">
@@ -119,10 +114,14 @@
     <td align="center">
       <img src="./docs/images/report-detail.png" alt="민원 상세 화면" width="100%">
     </td>
+    <td align="center">
+      <img src="./docs/images/report-detail-extra.png" alt="민원 상세 추가 화면" width="100%">
+    </td>
   </tr>
   <tr>
     <td>사용자가 제출한 민원의 현황을 확인하는 화면</td>
     <td>요약 정보, 추천 담당 부서, 유사 제보를 확인하는 상세 화면</td>
+    <td>민원 상세 흐름에서 추가로 보여주고 싶은 화면을 담는 영역</td>
   </tr>
 </table>
 
@@ -287,15 +286,3 @@ npm run web
 | 지도 화면이 비어 있을 때 | `EXPO_PUBLIC_KAKAO_MAP_JS_KEY` 설정 여부, 카카오 지도 SDK 키 권한과 플랫폼 설정 확인 |
 | 실기기에서 API 호출이 실패할 때 | 백엔드 실행 PC와 같은 네트워크인지 확인하고, 필요하면 `EXPO_PUBLIC_API_BASE_URL` 직접 지정 |
 | 푸시 알림 테스트가 안 될 때 | `google-services.json` 존재 여부, 알림 권한, 백엔드 FCM 토큰 등록 API 확인 |
-
----
-
-## Portfolio Note
-
-이 프로젝트에서 프론트엔드는 단순히 화면을 구현하는 역할에 머무르지 않고, 신고를 망설이는 시민과 중복 민원 처리에 부담을 느끼는 담당자의 문제를 하나의 사용자 흐름으로 연결하는 역할을 담당합니다.
-
-- 시민은 빠르게 제보할 수 있어야 합니다.
-- 담당자는 빠르게 판단할 수 있어야 합니다.
-- AI 결과는 복잡한 기술 정보보다 실제 행동에 도움이 되는 정보로 보이도록 구성되어야 합니다.
-
-민담 프론트엔드는 이 세 가지를 모바일 UX 안에서 자연스럽게 이어지도록 설계하고 구현하는 데 초점을 맞추고 있습니다.
